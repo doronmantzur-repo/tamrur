@@ -1,0 +1,142 @@
+/* Global application foundation */
+
+:root {
+  font-family: var(--mantine-font-family);
+  color: var(--app-color-text);
+  background-color: var(--app-color-background);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Box model and spacing reset */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Document structure */
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  min-width: 20rem;
+  min-height: 100vh;
+  background-color: var(--app-color-background);
+  color: var(--app-color-text);
+}
+
+/* Text and list reset */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+figure,
+figcaption,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Media reset */
+
+img,
+picture,
+svg,
+canvas,
+video {
+  display: block;
+  max-inline-size: 100%;
+}
+
+img,
+picture,
+canvas,
+video {
+  block-size: auto;
+}
+
+/* Form reset */
+
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+fieldset {
+  border: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* Data-display reset */
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* Accessibility */
+
+:focus-visible {
+  outline: var(--app-effect-focus-outline);
+  outline-offset: 0.125rem;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
