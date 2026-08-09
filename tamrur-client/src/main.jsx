@@ -1,10 +1,30 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
+// React
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
 
-createRoot(document.getElementById('root')).render(
+// External libraries
+import { DirectionProvider, MantineProvider } from "@mantine/core";
+
+// Internal application modules
+import App from "./App.jsx";
+import { appTheme, cssVariablesResolver } from "./theme";
+// Styles
+import "@mantine/core/styles.css";
+import "./index.css";
+
+/**
+ * Starts the Hebrew right-to-left React application with the shared Mantine theme.
+ */
+createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <App />
+    <DirectionProvider initialDirection="rtl">
+      <MantineProvider
+        theme={appTheme}
+        cssVariablesResolver={cssVariablesResolver}
+        defaultColorScheme="dark"
+      >
+        <App />
+      </MantineProvider>
+    </DirectionProvider>
   </StrictMode>,
-)
+);
