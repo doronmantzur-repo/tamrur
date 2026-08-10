@@ -13,7 +13,7 @@ import { IconLock } from "@tabler/icons-react";
  *
  * @returns {JSX.Element} The login page footer.
  */
-function LoginFooter() {
+const AuthFooter = () => {
   return (
     <Stack align="center" gap="xs">
       <Group gap="xs" justify="center">
@@ -42,6 +42,6 @@ function LoginFooter() {
       </Text>
     </Stack>
   );
-}
+};
 
-export default LoginFooter;
+export default AuthFooter;

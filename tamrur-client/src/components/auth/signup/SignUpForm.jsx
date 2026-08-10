@@ -2,13 +2,7 @@
 import { useState } from "react";
 
 // External libraries
-import {
-  Button,
-  Checkbox,
-  PasswordInput,
-  Text,
-  TextInput,
-} from "@mantine/core";
+import { Button, PasswordInput, Select, Text, TextInput } from "@mantine/core";
 import { IconMail, IconLock, IconLogin } from "@tabler/icons-react";
 import AuthFormCard from "../AuthFormCard";
 
@@ -21,10 +15,10 @@ import AuthFormCard from "../AuthFormCard";
  *
  * @returns {JSX.Element} The login form.
  */
-const LoginForm = () => {
+const SignUpForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
+  const [role, setRole] = useState("");
 
   /**
    * Handles login form submission.
@@ -80,7 +74,40 @@ const LoginForm = () => {
           },
         }}
       />
-
+      <Select
+        label="תפקיד"
+        placeholder="בחר תפקיד"
+        data={["חיל האוויר", "צוות רפואי", "חמל"]}
+        value={role}
+        onChange={(event) => setRole(event)}
+        defaultValue="React"
+        clearable
+        clearSectionMode="clear"
+        searchable
+        withAlignedLabels
+        checkIconPosition="right"
+        required
+        dir="rtl"
+        styles={{
+          label: {
+            color: "var(--app-color-text-muted)",
+            marginBottom: "0.25rem",
+          },
+          input: {
+            minHeight: "3rem",
+            backgroundColor: "var(--app-color-background)",
+            color: "var(--app-color-text)",
+            borderColor: "var(--app-color-border)",
+            fontFamily: 'ui-monospace, "SF Mono", "Consolas", monospace',
+            "&:focus": {
+              borderWidth: "2px",
+              borderColor: "var(--app-color-primary)",
+            },
+          },
+        }}
+        // rightSection={<CaretDownIcon size={16} />}
+        comboboxProps={{ shadow: "md" }}
+      />
       <PasswordInput
         id="password"
         name="password"
@@ -110,46 +137,6 @@ const LoginForm = () => {
           },
         }}
       />
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "1rem",
-          paddingTop: "0.25rem",
-        }}
-      >
-        <Checkbox
-          id="remember-me"
-          name="remember-me"
-          label="זכור אותי"
-          checked={rememberMe}
-          onChange={(event) => setRememberMe(event.currentTarget.checked)}
-          styles={{
-            label: {
-              color: "var(--app-color-text-muted)",
-            },
-            input: {
-              backgroundColor: "var(--app-color-background)",
-              borderColor: "var(--app-color-border)",
-            },
-          }}
-        />
-
-        <Text
-          component="a"
-          href="#"
-          c="var(--app-color-primary)"
-          fz="md"
-          style={{
-            textDecoration: "none",
-          }}
-        >
-          שכחת סיסמה?
-        </Text>
-      </div>
-
       <Button
         type="submit"
         fullWidth
@@ -171,10 +158,10 @@ const LoginForm = () => {
         התחבר למערכת
       </Button>
       <Text ta="center" c="var(--app-color-text-muted)" fz="md" lh={1.5}>
-        חדש במערכת?{" "}
+        כבר רשום?{" "}
         <Text
           component="a"
-          href="/signup"
+          href="/login"
           inherit
           fw={700}
           c="var(--app-color-primary)"
@@ -185,11 +172,11 @@ const LoginForm = () => {
             textUnderlineOffset: "4px",
           }}
         >
-          הירשם כאן
+          התחבר כאן
         </Text>
       </Text>
     </AuthFormCard>
   );
 };
 
-export default LoginForm;
+export default SignUpForm;

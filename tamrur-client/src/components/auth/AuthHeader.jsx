@@ -9,11 +9,11 @@ import { Box, Stack, Text, Title } from "@mantine/core";
 // Styles
 
 /**
- * Renders the branding header for the Tamrur login page.
+ * Renders the branding header for the Tamrur login/signup page.
  *
  * @returns {JSX.Element} The login page branding header.
  */
-function LoginHeader() {
+const AuthHeader = () => {
   return (
     <Stack align="center" gap="md">
       <Box
@@ -53,6 +53,6 @@ function LoginHeader() {
       </Text>
     </Stack>
   );
-}
+};
 
-export default memo(LoginHeader);
+export default memo(AuthHeader);

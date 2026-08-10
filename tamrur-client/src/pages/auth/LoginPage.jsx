@@ -5,10 +5,10 @@ import { ActionIcon, Box, Stack, useMantineColorScheme } from "@mantine/core";
 import { IconMoon, IconSun } from "@tabler/icons-react";
 
 // Internal application modules
-import LoginFooter from "../../components/auth/login/LoginFooter";
-import LoginHeader from "../../components/auth/login/LoginHeader";
+import Layout from "../../components/layout/Layout";
+import AuthHeader from "../../components/auth/AuthHeader";
 import LoginForm from "../../components/auth/login/LoginForm";
-
+import AuthFooter from "../../components/auth/AuthFooter";
 // Styles
 
 /**
@@ -16,22 +16,13 @@ import LoginForm from "../../components/auth/login/LoginForm";
  *
  * @returns {JSX.Element} The Tamrur login page.
  */
-function LoginPage() {
+const LoginPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
 
   const isDark = colorScheme === "dark";
 
   return (
-    <Box
-      component="main"
-      mih="100vh"
-      pos="relative"
-      style={{
-        overflow: "hidden",
-        backgroundColor: "var(--app-color-background)",
-        color: "var(--app-color-text)",
-      }}
-    >
+    <Layout>
       <ActionIcon
         aria-label="החלף מצב תצוגה"
         title="החלף מצב תצוגה"
@@ -95,16 +86,16 @@ function LoginPage() {
       >
         <Box w="100%" maw={448}>
           <Stack align="stretch" gap="xl">
-            <LoginHeader />
+            <AuthHeader />
 
             <LoginForm />
 
-            <LoginFooter />
+            <AuthFooter />
           </Stack>
         </Box>
       </Stack>
-    </Box>
+    </Layout>
   );
-}
+};
 
 export default LoginPage;
