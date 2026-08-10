@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 
 // External libraries
 import { DirectionProvider, MantineProvider } from "@mantine/core";
+import { BrowserRouter } from "react-router-dom";
 
 // Internal application modules
 import App from "./App.jsx";
@@ -17,14 +18,16 @@ import "./index.css";
  */
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <DirectionProvider initialDirection="rtl">
-      <MantineProvider
-        theme={appTheme}
-        cssVariablesResolver={cssVariablesResolver}
-        defaultColorScheme="dark"
-      >
-        <App />
-      </MantineProvider>
-    </DirectionProvider>
+    <BrowserRouter>
+      <DirectionProvider initialDirection="rtl">
+        <MantineProvider
+          theme={appTheme}
+          cssVariablesResolver={cssVariablesResolver}
+          defaultColorScheme="dark"
+        >
+          <App />
+        </MantineProvider>
+      </DirectionProvider>
+    </BrowserRouter>
   </StrictMode>,
 );
