@@ -72,6 +72,7 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.token = null;
+      localStorage.removeItem("token"); // add this
       state.status = "idle";
       state.error = null;
     },
@@ -99,6 +100,7 @@ const authSlice = createSlice({
         state.status = "succeeded";
         state.user = action.payload.user;
         state.token = action.payload.token;
+        localStorage.setItem("token", action.payload.token); // add this
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = "failed";
