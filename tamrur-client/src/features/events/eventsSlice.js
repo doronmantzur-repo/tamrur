@@ -22,11 +22,32 @@ export const fetchEvents = createAsyncThunk(
   },
 );
 
-/** @type {{events: Array<Object>, status: string, error: string|null}} */
+/**
+ * Creates a new event.
+ * @param {{name?: string, type: string, location: {type: "Point", coordinates: [number, number]}}} eventData
+ * @returns {Promise<Object>}
+ */
+export const createEvent = createAsyncThunk(
+  "events/create",
+  async (eventData, { rejectWithValue }) => {
+    try {
+      const response = await TamrurAPI.post("/events", eventData);
+      return response.data.event;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message ?? "Failed to create event",
+      );
+    }
+  },
+);
+
+/** @type {{events: Array<Object>, status: string, error: string|null, createStatus: string, createError: string|null}} */
 const initialState = {
   events: [],
   status: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
   error: null,
+  createStatus: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
+  createError: null,
 };
 
 /**
@@ -49,6 +70,18 @@ const eventsSlice = createSlice({
       .addCase(fetchEvents.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload;
+      })
+      .addCase(createEvent.pending, (state) => {
+        state.createStatus = "loading";
+        state.createError = null;
+      })
+      .addCase(createEvent.fulfilled, (state, action) => {
+        state.createStatus = "succeeded";
+        state.events.unshift(action.payload);
+      })
+      .addCase(createEvent.rejected, (state, action) => {
+        state.createStatus = "failed";
+        state.createError = action.payload;
       });
   },
 });
