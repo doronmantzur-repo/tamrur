@@ -1,4 +1,5 @@
 // React
+import { useState } from "react";
 
 // External libraries
 import { ActionIcon, Box, Stack, Title, useMantineColorScheme } from "@mantine/core";
@@ -6,6 +7,7 @@ import { IconMoon, IconSun } from "@tabler/icons-react";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
+import EventSelector from "../../components/dashboard/EventSelector";
 
 // Styles
 
@@ -16,6 +18,7 @@ import Layout from "../../components/layout/Layout";
  */
 const DashboardPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const [selectedEventId, setSelectedEventId] = useState(null);
 
   const isDark = colorScheme === "dark";
 
@@ -86,6 +89,8 @@ const DashboardPage = () => {
             <Title order={1} c="var(--app-color-primary)" fz="1.75rem" fw={700}>
               לוח בקרה
             </Title>
+
+            <EventSelector value={selectedEventId} onChange={setSelectedEventId} />
           </Stack>
         </Box>
       </Stack>
