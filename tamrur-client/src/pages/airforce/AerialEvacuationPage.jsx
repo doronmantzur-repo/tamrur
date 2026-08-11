@@ -1,39 +1,45 @@
 // React
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 // External libraries
-import { ActionIcon, Box, Stack, Title, useMantineColorScheme } from "@mantine/core";
+import { ActionIcon, Box, Stack, useMantineColorScheme } from "@mantine/core";
 import { IconMoon, IconSun } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
-import EventSelector from "../../components/dashboard/EventSelector";
-import EventDetailsCard from "../../components/dashboard/EventDetailsCard";
+import AuthHeader from "../../components/auth/AuthHeader";
+import AuthFooter from "../../components/auth/AuthFooter";
+import AerialEvacCard from "../../components/airforce/AerialEvacCard";
 import InjuriesCard from "../../components/dashboard/InjuriesCard";
+import { fetchEvents } from "../../features/events/eventsSlice";
 import { fetchInjuriesByEvent } from "../../features/injuries/injuriesSlice";
 
 // Styles
 
 /**
- * Renders the Tamrur event dashboard page.
+ * Renders the aerial evacuation request page.
  *
- * @returns {JSX.Element} The Tamrur dashboard page.
+ * @returns {JSX.Element} The aerial evacuation request page.
  */
-const DashboardPage = () => {
+const AerialEvacuationPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-  const [selectedEventId, setSelectedEventId] = useState(null);
   const dispatch = useDispatch();
-  const selectedEvent = useSelector((state) =>
-    state.events.events.find((event) => event.id === selectedEventId),
-  );
-  const injuries = useSelector((state) => state.injuries.byEventId[selectedEventId] || []);
+  const events = useSelector((state) => state.events.events);
+  const injuriesByEventId = useSelector((state) => state.injuries.byEventId);
+  const aerialEvacEvents = events.filter((event) => event["aerial-evac"] !== null);
 
   useEffect(() => {
-    if (selectedEventId) {
-      dispatch(fetchInjuriesByEvent(selectedEventId));
-    }
-  }, [selectedEventId, dispatch]);
+    dispatch(fetchEvents());
+  }, [dispatch]);
+
+  useEffect(() => {
+    aerialEvacEvents.forEach((event) => {
+      dispatch(fetchInjuriesByEvent(event.id));
+    });
+    // Only re-run when the set of relevant events actually changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, aerialEvacEvents.map((event) => event.id).join(",")]);
 
   const isDark = colorScheme === "dark";
 
@@ -90,7 +96,8 @@ const DashboardPage = () => {
       />
 
       <Stack
-        align="stretch"
+        align="center"
+        justify="center"
         mih="100vh"
         px="var(--app-page-padding-mobile)"
         py="xl"
@@ -99,20 +106,20 @@ const DashboardPage = () => {
           zIndex: 10,
         }}
       >
-        <Box w="100%" maw={1240} style={{ marginInline: "auto" }}>
+        <Box w="100%" maw={448}>
           <Stack align="stretch" gap="xl">
-            <Title order={1} c="var(--app-color-primary)" fz="1.75rem" fw={700}>
-              לוח בקרה
-            </Title>
+            <AuthHeader />
 
-            <EventSelector value={selectedEventId} onChange={setSelectedEventId} />
+            <Stack align="stretch" gap="xl">
+              {aerialEvacEvents.map((event) => (
+                <Stack key={event.id} align="stretch" gap="md">
+                  <AerialEvacCard event={event} />
+                  <InjuriesCard injuries={injuriesByEventId[event.id] || []} />
+                </Stack>
+              ))}
+            </Stack>
 
-            {selectedEvent && (
-              <>
-                <EventDetailsCard event={selectedEvent} />
-                <InjuriesCard injuries={injuries} />
-              </>
-            )}
+            <AuthFooter />
           </Stack>
         </Box>
       </Stack>
@@ -120,4 +127,4 @@ const DashboardPage = () => {
   );
 };
 
-export default DashboardPage;
+export default AerialEvacuationPage;
