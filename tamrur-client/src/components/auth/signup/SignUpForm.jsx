@@ -4,33 +4,44 @@ import { useState } from "react";
 // External libraries
 import { Button, PasswordInput, Select, Text, TextInput } from "@mantine/core";
 import { IconMail, IconLock, IconLogin } from "@tabler/icons-react";
-import AuthFormCard from "../AuthFormCard";
+import { useDispatch } from "react-redux";
 
 // Internal application modules
+import AuthFormCard from "../AuthFormCard";
+import { registerUser } from "../../../features/auth/authSlice";
 
 // Styles
 
 /**
- * Renders the Tamrur login form.
+ * Renders the Tamrur signup form.
  *
- * @returns {JSX.Element} The login form.
+ * @returns {JSX.Element} The signup form.
  */
 const SignUpForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("");
 
+  const dispatch = useDispatch();
+
   /**
-   * Handles login form submission.
+   * Handles signup form submission.
    *
    * Authentication will be connected when the backend is implemented.
    *
    * @param {React.FormEvent<HTMLFormElement>} event - The form submission event.
    * @returns {void}
    */
-  function handleSubmit(event) {
+  const handleSubmit = (event) => {
     event.preventDefault();
-  }
+    dispatch(registerUser({ role, email, password }));
+  };
+
+  const rolesOptions = [
+    { value: "brigade", label: "חטיבה" },
+    { value: "medic", label: "צוות רפואי" },
+    { value: "airforce", label: "חיל האוויר" },
+  ];
 
   return (
     <AuthFormCard handleSubmit={handleSubmit}>
@@ -77,9 +88,9 @@ const SignUpForm = () => {
       <Select
         label="תפקיד"
         placeholder="בחר תפקיד"
-        data={["חיל האוויר", "צוות רפואי", "חמל"]}
+        data={rolesOptions}
         value={role}
-        onChange={(event) => setRole(event)}
+        onChange={(value) => setRole(value)}
         defaultValue="React"
         clearable
         clearSectionMode="clear"
@@ -155,7 +166,7 @@ const SignUpForm = () => {
           },
         }}
       >
-        התחבר למערכת
+        הירשם למערכת
       </Button>
       <Text ta="center" c="var(--app-color-text-muted)" fz="md" lh={1.5}>
         כבר רשום?{" "}

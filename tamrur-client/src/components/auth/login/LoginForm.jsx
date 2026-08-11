@@ -10,9 +10,11 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconMail, IconLock, IconLogin } from "@tabler/icons-react";
-import AuthFormCard from "../AuthFormCard";
+import { useDispatch } from "react-redux";
 
 // Internal application modules
+import { loginUser } from "../../../features/auth/authSlice";
+import AuthFormCard from "../AuthFormCard";
 
 // Styles
 
@@ -26,6 +28,8 @@ const LoginForm = () => {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
+  const dispatch = useDispatch();
+  // const { status, error } = useSelector((state) => state.auth);
   /**
    * Handles login form submission.
    *
@@ -34,9 +38,10 @@ const LoginForm = () => {
    * @param {React.FormEvent<HTMLFormElement>} event - The form submission event.
    * @returns {void}
    */
-  function handleSubmit(event) {
+  const handleSubmit = (event) => {
     event.preventDefault();
-  }
+    dispatch(loginUser({ email, password }));
+  };
 
   return (
     <AuthFormCard handleSubmit={handleSubmit}>
