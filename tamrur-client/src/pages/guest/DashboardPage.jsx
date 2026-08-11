@@ -1,15 +1,17 @@
 // React
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // External libraries
 import { ActionIcon, Box, Stack, Title, useMantineColorScheme } from "@mantine/core";
 import { IconMoon, IconSun } from "@tabler/icons-react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
 import EventSelector from "../../components/dashboard/EventSelector";
 import EventDetailsCard from "../../components/dashboard/EventDetailsCard";
+import InjuriesCard from "../../components/dashboard/InjuriesCard";
+import { fetchInjuriesByEvent } from "../../features/injuries/injuriesSlice";
 
 // Styles
 
@@ -21,9 +23,17 @@ import EventDetailsCard from "../../components/dashboard/EventDetailsCard";
 const DashboardPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const dispatch = useDispatch();
   const selectedEvent = useSelector((state) =>
     state.events.events.find((event) => event.id === selectedEventId),
   );
+  const injuries = useSelector((state) => state.injuries.injuries);
+
+  useEffect(() => {
+    if (selectedEventId) {
+      dispatch(fetchInjuriesByEvent(selectedEventId));
+    }
+  }, [selectedEventId, dispatch]);
 
   const isDark = colorScheme === "dark";
 
@@ -97,7 +107,12 @@ const DashboardPage = () => {
 
             <EventSelector value={selectedEventId} onChange={setSelectedEventId} />
 
-            {selectedEvent && <EventDetailsCard event={selectedEvent} />}
+            {selectedEvent && (
+              <>
+                <EventDetailsCard event={selectedEvent} />
+                <InjuriesCard injuries={injuries} />
+              </>
+            )}
           </Stack>
         </Box>
       </Stack>
