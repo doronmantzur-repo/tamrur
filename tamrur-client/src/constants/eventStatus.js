@@ -14,4 +14,12 @@ export const EVENT_STATUS_LABELS = {
   completed: "הושלם",
 };
 
+export const EVENT_TYPE_LABELS = {
+  explosive: "מטען נפץ",
+  gunfire: "ירי",
+  mortar: "מרגמה",
+  "anti-tank": "נ״ט",
+  phosphorus: "זרחן לבן",
+};
+
 export const COMPLETED_STATUS = "completed";

@@ -4,10 +4,12 @@ import { useState } from "react";
 // External libraries
 import { ActionIcon, Box, Stack, Title, useMantineColorScheme } from "@mantine/core";
 import { IconMoon, IconSun } from "@tabler/icons-react";
+import { useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
 import EventSelector from "../../components/dashboard/EventSelector";
+import EventDetailsCard from "../../components/dashboard/EventDetailsCard";
 
 // Styles
 
@@ -19,6 +21,9 @@ import EventSelector from "../../components/dashboard/EventSelector";
 const DashboardPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const selectedEvent = useSelector((state) =>
+    state.events.events.find((event) => event.id === selectedEventId),
+  );
 
   const isDark = colorScheme === "dark";
 
@@ -91,6 +96,8 @@ const DashboardPage = () => {
             </Title>
 
             <EventSelector value={selectedEventId} onChange={setSelectedEventId} />
+
+            {selectedEvent && <EventDetailsCard event={selectedEvent} />}
           </Stack>
         </Box>
       </Stack>
