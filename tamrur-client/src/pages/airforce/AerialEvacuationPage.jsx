@@ -11,7 +11,9 @@ import Layout from "../../components/layout/Layout";
 import AuthHeader from "../../components/auth/AuthHeader";
 import AuthFooter from "../../components/auth/AuthFooter";
 import AerialEvacCard from "../../components/airforce/AerialEvacCard";
+import InjuriesCard from "../../components/dashboard/InjuriesCard";
 import { fetchEvents } from "../../features/events/eventsSlice";
+import { fetchInjuriesByEvent } from "../../features/injuries/injuriesSlice";
 
 // Styles
 
@@ -24,11 +26,20 @@ const AerialEvacuationPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const dispatch = useDispatch();
   const events = useSelector((state) => state.events.events);
+  const injuriesByEventId = useSelector((state) => state.injuries.byEventId);
   const aerialEvacEvents = events.filter((event) => event["aerial-evac"] !== null);
 
   useEffect(() => {
     dispatch(fetchEvents());
   }, [dispatch]);
+
+  useEffect(() => {
+    aerialEvacEvents.forEach((event) => {
+      dispatch(fetchInjuriesByEvent(event.id));
+    });
+    // Only re-run when the set of relevant events actually changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, aerialEvacEvents.map((event) => event.id).join(",")]);
 
   const isDark = colorScheme === "dark";
 
@@ -99,9 +110,12 @@ const AerialEvacuationPage = () => {
           <Stack align="stretch" gap="xl">
             <AuthHeader />
 
-            <Stack align="stretch" gap="md">
+            <Stack align="stretch" gap="xl">
               {aerialEvacEvents.map((event) => (
-                <AerialEvacCard key={event.id} event={event} />
+                <Stack key={event.id} align="stretch" gap="md">
+                  <AerialEvacCard event={event} />
+                  <InjuriesCard injuries={injuriesByEventId[event.id] || []} />
+                </Stack>
               ))}
             </Stack>
 

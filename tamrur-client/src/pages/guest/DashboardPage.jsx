@@ -27,7 +27,7 @@ const DashboardPage = () => {
   const selectedEvent = useSelector((state) =>
     state.events.events.find((event) => event.id === selectedEventId),
   );
-  const injuries = useSelector((state) => state.injuries.injuries);
+  const injuries = useSelector((state) => state.injuries.byEventId[selectedEventId] || []);
 
   useEffect(() => {
     if (selectedEventId) {
