@@ -39,10 +39,12 @@ export function setTokenGetter(tokenGetter) {
 }
 
 /**
- * Request interceptor: attaches the JWT from the Redux auth state, if present.
+ * Request interceptor: attaches the JWT from the Redux auth state.
+ * Falls back to localStorage when Redux doesn't have it yet — e.g. right
+ * after a hard refresh, before anything has re-dispatched a login.
  */
 TamrurAPI.interceptors.request.use((config) => {
-  const token = getToken();
+  const token = getToken() ?? localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
