@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 import DashboardPage from "./pages/guest/DashboardPage";
+import AerialEvacuationPage from "./pages/airforce/AerialEvacuationPage";
 
 const App = () => {
   return (
@@ -9,6 +10,7 @@ const App = () => {
       <Route path="/" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/airforce" element={<AerialEvacuationPage />} />
       <Route path="*" element={<LoginPage />} />
     </Routes>
   );
