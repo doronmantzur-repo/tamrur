@@ -5,10 +5,13 @@ import { createRoot } from "react-dom/client";
 // External libraries
 import { DirectionProvider, MantineProvider } from "@mantine/core";
 import { BrowserRouter } from "react-router-dom";
+import { Provider } from "react-redux";
 
 // Internal application modules
 import App from "./App.jsx";
 import { appTheme, cssVariablesResolver } from "./theme";
+import { store } from "./store/store";
+
 // Styles
 import "@mantine/core/styles.css";
 import "./index.css";
@@ -25,7 +28,9 @@ createRoot(document.getElementById("root")).render(
           cssVariablesResolver={cssVariablesResolver}
           defaultColorScheme="dark"
         >
-          <App />
+          <Provider store={store}>
+            <App />
+          </Provider>
         </MantineProvider>
       </DirectionProvider>
     </BrowserRouter>
