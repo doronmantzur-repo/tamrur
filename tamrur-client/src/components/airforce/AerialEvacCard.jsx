@@ -1,5 +1,5 @@
 // React
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 // External libraries
 import { Badge, Button, Group, TextInput } from "@mantine/core";
@@ -14,15 +14,38 @@ import { updateEventAerialEvac } from "../../features/events/eventsSlice";
 
 // Styles
 
+const approveButtonStyles = {
+  root: {
+    backgroundColor: "color-mix(in srgb, var(--app-color-success) 16%, transparent)",
+    color: "var(--app-color-success)",
+    border: "1px solid color-mix(in srgb, var(--app-color-success) 45%, transparent)",
+    "&:hover": {
+      backgroundColor: "color-mix(in srgb, var(--app-color-success) 28%, transparent)",
+    },
+  },
+};
+
+const denyButtonStyles = {
+  root: {
+    backgroundColor: "color-mix(in srgb, var(--app-color-error) 16%, transparent)",
+    color: "var(--app-color-error)",
+    border: "1px solid color-mix(in srgb, var(--app-color-error) 45%, transparent)",
+    "&:hover": {
+      backgroundColor: "color-mix(in srgb, var(--app-color-error) 28%, transparent)",
+    },
+  },
+};
+
 /**
  * Renders a single event's aerial-evacuation request status. The event's own
  * aerial-evac field is the single trigger for whether this is actionable —
- * whenever it's "needed", this renders approve/deny controls (approving
- * requires setting the chopper's radio call sign), regardless of what any
- * past aerial_mission row says (a fresh "needed" always means a live request).
- * Deciding creates the mission row if this event doesn't have one yet, or
- * updates it if it does, and then writes the same decision back onto the
- * event's aerial-evac field so it correctly stops being "needed".
+ * whenever it's "needed", this renders approve/deny controls, regardless of
+ * what any past aerial_mission row says (a fresh "needed" always means a live
+ * request). Denying is a single click. Approving is two steps: pressing "אשר"
+ * first reveals the chopper's radio call-sign field, and only confirming that
+ * actually sends the approval. Either decision creates the mission row if
+ * this event doesn't have one yet, or updates it if it does, and writes the
+ * decision back onto the event's aerial-evac field so it stops being "needed".
  *
  * @param {{ event: object, mission?: object }} props
  * @returns {JSX.Element} The aerial evacuation status card.
@@ -30,15 +53,8 @@ import { updateEventAerialEvac } from "../../features/events/eventsSlice";
 const AerialEvacCard = ({ event, mission }) => {
   const dispatch = useDispatch();
   const [radioSign, setRadioSign] = useState(mission?.radio_sign || "");
+  const [isApproving, setIsApproving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // `mission` arrives asynchronously (after the aerial missions fetch
-  // resolves), so seed the field once its radio sign actually shows up.
-  useEffect(() => {
-    if (mission?.radio_sign) {
-      setRadioSign(mission.radio_sign);
-    }
-  }, [mission?.radio_sign]);
 
   const status = event["aerial-evac"];
   const color = AERIAL_EVAC_COLOR_VARS[status] || "var(--app-color-text-muted)";
@@ -60,7 +76,10 @@ const AerialEvacCard = ({ event, mission }) => {
 
     dispatch(missionAction)
       .then(() => dispatch(updateEventAerialEvac({ id: event.id, aerialEvac: requestStatus })))
-      .finally(() => setIsSubmitting(false));
+      .finally(() => {
+        setIsSubmitting(false);
+        setIsApproving(false);
+      });
   }
 
   return (
@@ -80,7 +99,28 @@ const AerialEvacCard = ({ event, mission }) => {
         </Badge>
       }
     >
-      {isActionable && (
+      {isActionable && !isApproving && (
+        <Group gap="sm">
+          <Button
+            leftSection={<IconX size={18} stroke={1.8} />}
+            loading={isSubmitting}
+            onClick={() => handleDecision("denied")}
+            styles={denyButtonStyles}
+          >
+            דחה
+          </Button>
+
+          <Button
+            leftSection={<IconCheck size={18} stroke={1.8} />}
+            onClick={() => setIsApproving(true)}
+            styles={approveButtonStyles}
+          >
+            אשר
+          </Button>
+        </Group>
+      )}
+
+      {isActionable && isApproving && (
         <Group gap="sm" align="flex-end" wrap="wrap">
           <TextInput
             label="כינוי קריאה למסוק"
@@ -90,6 +130,7 @@ const AerialEvacCard = ({ event, mission }) => {
             leftSection={<IconRadio size={18} stroke={1.8} />}
             leftSectionPointerEvents="none"
             dir="rtl"
+            autoFocus
             style={{ flex: 1, minWidth: 180 }}
             styles={{
               label: { color: "var(--app-color-text-muted)", marginBottom: "0.25rem" },
@@ -102,34 +143,23 @@ const AerialEvacCard = ({ event, mission }) => {
           />
 
           <Button
+            variant="subtle"
+            color="gray"
+            disabled={isSubmitting}
+            onClick={() => setIsApproving(false)}
+            styles={{ root: { color: "var(--app-color-text-muted)" } }}
+          >
+            ביטול
+          </Button>
+
+          <Button
             leftSection={<IconCheck size={18} stroke={1.8} />}
             disabled={!radioSign.trim()}
             loading={isSubmitting}
             onClick={() => handleDecision("approved")}
-            styles={{
-              root: {
-                backgroundColor: "var(--app-color-success)",
-                color: "var(--app-color-primary-text)",
-                "&:hover": { backgroundColor: "var(--app-color-success)", filter: "brightness(1.1)" },
-              },
-            }}
+            styles={approveButtonStyles}
           >
-            אשר
-          </Button>
-
-          <Button
-            leftSection={<IconX size={18} stroke={1.8} />}
-            loading={isSubmitting}
-            onClick={() => handleDecision("denied")}
-            styles={{
-              root: {
-                backgroundColor: "var(--app-color-error)",
-                color: "var(--app-color-primary-text)",
-                "&:hover": { backgroundColor: "var(--app-color-error)", filter: "brightness(1.1)" },
-              },
-            }}
-          >
-            דחה
+            אשר פינוי
           </Button>
         </Group>
       )}
