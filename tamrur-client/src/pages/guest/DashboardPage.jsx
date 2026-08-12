@@ -12,6 +12,7 @@ import EventSelector from "../../components/dashboard/EventSelector";
 import EventDetailsCard from "../../components/dashboard/EventDetailsCard";
 import InjuriesCard from "../../components/dashboard/InjuriesCard";
 import { fetchInjuriesByEvent } from "../../features/injuries/injuriesSlice";
+import { POLL_INTERVAL_MS } from "../../constants/polling";
 
 // Styles
 
@@ -30,9 +31,17 @@ const DashboardPage = () => {
   const injuries = useSelector((state) => state.injuries.byEventId[selectedEventId] || []);
 
   useEffect(() => {
-    if (selectedEventId) {
+    if (!selectedEventId) return undefined;
+
+    dispatch(fetchInjuriesByEvent(selectedEventId));
+
+    // Other operators can log injuries for this event at any time, so keep
+    // polling instead of fetching once.
+    const intervalId = setInterval(() => {
       dispatch(fetchInjuriesByEvent(selectedEventId));
-    }
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
   }, [selectedEventId, dispatch]);
 
   const isDark = colorScheme === "dark";
