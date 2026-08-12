@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 // External libraries
-import { ActionIcon, Box, Stack, Title, useMantineColorScheme } from "@mantine/core";
+import { ActionIcon, Box, Loader, Stack, Text, Title, useMantineColorScheme } from "@mantine/core";
 import { IconMoon, IconSun } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -24,6 +24,7 @@ import { POLL_INTERVAL_MS } from "../../constants/polling";
 const DashboardPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const [isLoadingEvent, setIsLoadingEvent] = useState(false);
   const dispatch = useDispatch();
   const selectedEvent = useSelector((state) =>
     state.events.events.find((event) => event.id === selectedEventId),
@@ -33,7 +34,10 @@ const DashboardPage = () => {
   useEffect(() => {
     if (!selectedEventId) return undefined;
 
-    dispatch(fetchInjuriesByEvent(selectedEventId));
+    // Only show the loading indicator for the initial fetch of a newly
+    // selected event — background polling refreshes should stay silent.
+    setIsLoadingEvent(true);
+    dispatch(fetchInjuriesByEvent(selectedEventId)).finally(() => setIsLoadingEvent(false));
 
     // Other operators can log injuries for this event at any time, so keep
     // polling instead of fetching once.
@@ -116,7 +120,16 @@ const DashboardPage = () => {
 
             <EventSelector value={selectedEventId} onChange={setSelectedEventId} />
 
-            {selectedEvent && (
+            {selectedEvent && isLoadingEvent && (
+              <Stack align="center" gap="sm" py="xl">
+                <Loader color="var(--app-color-primary)" />
+                <Text fz="sm" c="var(--app-color-text-muted)">
+                  טוען נתוני אירוע...
+                </Text>
+              </Stack>
+            )}
+
+            {selectedEvent && !isLoadingEvent && (
               <>
                 <EventDetailsCard event={selectedEvent} />
                 <InjuriesCard injuries={injuries} />
