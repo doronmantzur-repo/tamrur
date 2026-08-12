@@ -11,14 +11,20 @@ import { Box, Group, Paper, Stack, Title } from "@mantine/core";
  * Renders a dashboard panel card matching the app's auth-form-card styling
  * (surface background, border, top gold accent bar).
  *
- * @param {{ title: string, headerExtra?: React.ReactNode, children: React.ReactNode }} props
+ * @param {{
+ *   title: string,
+ *   headerExtra?: React.ReactNode,
+ *   children: React.ReactNode,
+ *   padding?: string,
+ *   gap?: string,
+ * }} props
  * @returns {JSX.Element} The dashboard card.
  */
-const DashboardCard = ({ title, headerExtra, children }) => {
+const DashboardCard = ({ title, headerExtra, children, padding = "lg", gap = "md" }) => {
   return (
     <Paper
       radius="sm"
-      p="lg"
+      p={padding}
       withBorder
       style={{
         position: "relative",
@@ -38,7 +44,7 @@ const DashboardCard = ({ title, headerExtra, children }) => {
         }}
       />
 
-      <Stack gap="md" pt="xs">
+      <Stack gap={gap} pt="xs">
         <Group justify="space-between" wrap="wrap" gap="sm">
           <Title order={2} fz="lg" fw={700} c="var(--app-color-text)">
             {title}
