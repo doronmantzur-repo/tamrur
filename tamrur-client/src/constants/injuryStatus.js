@@ -27,3 +27,9 @@ export const EVAC_ABILITY_LABELS = {
   sit: "ישיבה",
   lie: "שכיבה",
 };
+
+// recommended-evac-dest is free text, not a fixed enum — translate the known
+// values and fall back to showing whatever else comes through as-is.
+export const EVAC_DEST_LABELS = {
+  hospital: "בית-חולים",
+};

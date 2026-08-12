@@ -8,6 +8,7 @@ import { IconBandage, IconCheck, IconX } from "@tabler/icons-react";
 import DashboardCard from "./DashboardCard";
 import {
   EVAC_ABILITY_LABELS,
+  EVAC_DEST_LABELS,
   URGENCY_COLOR_VARS,
   URGENCY_LABELS,
   URGENCY_ORDER,
@@ -115,7 +116,7 @@ const InjuriesCard = ({ injuries }) => {
                   <YesNo value={injury.escort} />
                 </Table.Td>
                 <Table.Td c="var(--app-color-text-muted)">
-                  {injury["recommended-evac-dest"] || "—"}
+                  {EVAC_DEST_LABELS[injury["recommended-evac-dest"]] || injury["recommended-evac-dest"] || "—"}
                 </Table.Td>
                 <Table.Td>
                   <YesNo value={injury["evac-ready"]} />
