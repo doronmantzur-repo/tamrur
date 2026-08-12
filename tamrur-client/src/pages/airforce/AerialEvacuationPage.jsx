@@ -14,6 +14,7 @@ import AerialEvacCard from "../../components/airforce/AerialEvacCard";
 import InjuriesCard from "../../components/dashboard/InjuriesCard";
 import { fetchEvents } from "../../features/events/eventsSlice";
 import { fetchInjuriesByEvent } from "../../features/injuries/injuriesSlice";
+import { POLL_INTERVAL_MS } from "../../constants/polling";
 
 // Styles
 
@@ -34,9 +35,22 @@ const AerialEvacuationPage = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    aerialEvacEvents.forEach((event) => {
-      dispatch(fetchInjuriesByEvent(event.id));
-    });
+    const eventIds = aerialEvacEvents.map((event) => event.id);
+    if (eventIds.length === 0) return undefined;
+
+    const fetchAll = () => {
+      eventIds.forEach((eventId) => {
+        dispatch(fetchInjuriesByEvent(eventId));
+      });
+    };
+
+    fetchAll();
+
+    // Other operators can log injuries for these events at any time, so keep
+    // polling instead of fetching once.
+    const intervalId = setInterval(fetchAll, POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
     // Only re-run when the set of relevant events actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, aerialEvacEvents.map((event) => event.id).join(",")]);
