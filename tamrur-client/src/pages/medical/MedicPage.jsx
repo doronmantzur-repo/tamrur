@@ -2,14 +2,13 @@
 import { useCallback, useEffect, useState } from "react";
 
 // External libraries
-import { ActionIcon, Alert, Box, Loader, Stack, Text, Title, useMantineColorScheme } from "@mantine/core";
+import { ActionIcon, Alert, Box, Loader, Stack, Text, useMantineColorScheme } from "@mantine/core";
 import { IconAlertTriangle, IconMoon, IconSun } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
-import EventSelector from "../../components/dashboard/EventSelector";
-import EventDetailsCard from "../../components/dashboard/EventDetailsCard";
+import MedicEventBar from "../../components/medical/MedicEventBar";
 import MedicCasualtiesCard from "../../components/medical/MedicCasualtiesCard";
 import CasualtyFormModal from "../../components/medical/CasualtyFormModal";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
@@ -32,14 +31,20 @@ const MedicPage = () => {
   // the selection derives the loading flag, so a background poll — which
   // doesn't touch it — can't flash the spinner over a populated table.
   const [loadedEventId, setLoadedEventId] = useState(null);
-  // null = closed. { casualty: null } opens a blank form, { casualty } edits one.
-  const [editing, setEditing] = useState(null);
+  // The casualty whose treatment/vitals records are open, by id — held as an id
+  // rather than the row itself so a background poll keeps the modal's header in
+  // sync instead of freezing a stale copy.
+  const [recordsCasualtyId, setRecordsCasualtyId] = useState(null);
+  // Whether the table is showing its blank "new casualty" row.
+  const [isAdding, setIsAdding] = useState(false);
   const dispatch = useDispatch();
 
   const selectedEvent = useSelector((state) =>
     state.events.events.find((event) => event.id === selectedEventId),
   );
   const casualties = useSelector((state) => state.casualties.byEventId[selectedEventId] || []);
+  const recordsCasualty =
+    casualties.find((casualty) => casualty.id === recordsCasualtyId) ?? null;
   const loadError = useSelector(
     (state) => state.casualties.error || state.treatments.error || state.vitals.error,
   );
@@ -54,7 +59,7 @@ const MedicPage = () => {
     [dispatch],
   );
 
-  const isEditorOpen = editing !== null;
+  const isEditorOpen = recordsCasualtyId !== null || isAdding;
   const isLoadingEvent = Boolean(selectedEventId) && loadedEventId !== selectedEventId;
 
   useEffect(() => {
@@ -134,19 +139,21 @@ const MedicPage = () => {
         align="stretch"
         mih="100vh"
         px="var(--app-page-padding-mobile)"
-        py="xl"
+        py="md"
         pos="relative"
         style={{
           zIndex: 10,
         }}
       >
         <Box w="100%" maw={1240} style={{ marginInline: "auto" }}>
-          <Stack align="stretch" gap="xl">
-            <Title order={1} c="var(--app-color-primary)" fz="1.75rem" fw={700}>
-              ממשק רפואי
-            </Title>
-
-            <EventSelector value={selectedEventId} onChange={setSelectedEventId} />
+          {/* Tight rhythm on purpose: everything above the casualty table is
+              chrome, and the table is what the medic actually works in. */}
+          <Stack align="stretch" gap="sm">
+            <MedicEventBar
+              selectedEventId={selectedEventId}
+              onSelectEvent={setSelectedEventId}
+              event={selectedEvent}
+            />
 
             {selectedEvent && loadError && !isLoadingEvent && (
               <Alert
@@ -166,7 +173,7 @@ const MedicPage = () => {
             )}
 
             {selectedEvent && isLoadingEvent && (
-              <Stack align="center" gap="sm" py="xl">
+              <Stack align="center" gap="xs" py="lg">
                 <Loader color="var(--app-color-primary)" />
                 <Text fz="sm" c="var(--app-color-text-muted)">
                   טוען נתוני אירוע...
@@ -175,15 +182,13 @@ const MedicPage = () => {
             )}
 
             {selectedEvent && !isLoadingEvent && (
-              <>
-                <EventDetailsCard event={selectedEvent} />
-                <MedicCasualtiesCard
-                  eventId={selectedEventId}
-                  casualties={casualties}
-                  onAddCasualty={() => setEditing({ casualty: null })}
-                  onEditCasualty={(casualty) => setEditing({ casualty })}
-                />
-              </>
+              <MedicCasualtiesCard
+                eventId={selectedEventId}
+                casualties={casualties}
+                isAdding={isAdding}
+                onAddingChange={setIsAdding}
+                onOpenRecords={(casualty) => setRecordsCasualtyId(casualty.id)}
+              />
             )}
 
             {!selectedEvent && (
@@ -198,12 +203,9 @@ const MedicPage = () => {
       {selectedEventId && (
         <CasualtyFormModal
           eventId={selectedEventId}
-          casualty={editing?.casualty ?? null}
-          opened={isEditorOpen}
-          onClose={() => setEditing(null)}
-          // Keep editing the casualty that was just created, now that it has an
-          // id — the modal switches itself to the treatments tab.
-          onCreated={(casualty) => setEditing({ casualty })}
+          casualty={recordsCasualty}
+          opened={recordsCasualty !== null}
+          onClose={() => setRecordsCasualtyId(null)}
         />
       )}
     </Layout>

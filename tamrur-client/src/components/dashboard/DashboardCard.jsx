@@ -24,7 +24,7 @@ import { Box, Group, Paper, Stack, Title } from "@mantine/core";
  *   headerExtra?: React.ReactNode,
  *   aside?: React.ReactNode,
  *   children: React.ReactNode,
- *   padding?: string,
+ *   padding?: import("@mantine/core").StyleProp<import("@mantine/core").MantineSpacing>,
  *   gap?: string,
  *   fullHeight?: boolean,
  *   h?: string,

@@ -50,8 +50,9 @@ export const createCasualty = createAsyncThunk(
 /**
  * Updates a casualty's details.
  *
- * The server COALESCEs every column, so omitting a field leaves it untouched —
- * but it also means a field can't be cleared back to null through this route.
+ * The server writes exactly the keys present in `fields` and leaves every other
+ * column alone, so sending an explicit `null` clears a value — which is what
+ * lets the casualty table uncheck a treatment or blank out a note.
  *
  * @param {{ id: string, fields: Object }} params
  * @returns {Promise<Object>} The updated casualty row.
@@ -73,7 +74,9 @@ export const updateCasualty = createAsyncThunk(
 /**
  * Keyed by event id, since more than one event's casualties can be on screen at
  * once (e.g. the airforce page lists every event needing aerial evac).
- * @type {{byEventId: Object<string, Array<Object>>, status: string, error: string|null, saveStatus: string, saveError: string|null}}
+ * `savingById` tracks in-flight row saves individually, so the casualty table
+ * can spin only the row being saved instead of every row at once.
+ * @type {{byEventId: Object<string, Array<Object>>, status: string, error: string|null, saveStatus: string, saveError: string|null, savingById: Object<string, boolean>, rowErrorById: Object<string, string>}}
  */
 const initialState = {
   byEventId: {},
@@ -81,6 +84,8 @@ const initialState = {
   error: null,
   saveStatus: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
   saveError: null,
+  savingById: {},
+  rowErrorById: {},
 };
 
 /**
@@ -94,6 +99,11 @@ const casualtiesSlice = createSlice({
     clearCasualtySaveError(state) {
       state.saveStatus = "idle";
       state.saveError = null;
+    },
+
+    /** Dismisses one row's inline save error in the casualty table. */
+    clearCasualtyRowError(state, action) {
+      delete state.rowErrorById[action.payload];
     },
   },
   extraReducers: (builder) => {
@@ -123,12 +133,17 @@ const casualtiesSlice = createSlice({
         state.saveStatus = "failed";
         state.saveError = action.payload;
       })
-      .addCase(updateCasualty.pending, (state) => {
+      // `action` is needed here: the row-level save state is keyed by the
+      // casualty id carried on the thunk argument.
+      .addCase(updateCasualty.pending, (state, action) => {
         state.saveStatus = "loading";
         state.saveError = null;
+        state.savingById[action.meta.arg.id] = true;
+        delete state.rowErrorById[action.meta.arg.id];
       })
       .addCase(updateCasualty.fulfilled, (state, action) => {
         state.saveStatus = "succeeded";
+        delete state.savingById[action.meta.arg.id];
         const casualties = state.byEventId[action.payload["event-id"]] || [];
         const index = casualties.findIndex((casualty) => casualty.id === action.payload.id);
         if (index !== -1) {
@@ -138,10 +153,12 @@ const casualtiesSlice = createSlice({
       .addCase(updateCasualty.rejected, (state, action) => {
         state.saveStatus = "failed";
         state.saveError = action.payload;
+        delete state.savingById[action.meta.arg.id];
+        state.rowErrorById[action.meta.arg.id] = action.payload;
       });
   },
 });
 
-export const { clearCasualtySaveError } = casualtiesSlice.actions;
+export const { clearCasualtySaveError, clearCasualtyRowError } = casualtiesSlice.actions;
 
 export default casualtiesSlice.reducer;
