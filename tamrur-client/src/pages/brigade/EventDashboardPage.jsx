@@ -1,5 +1,5 @@
 // React
-import { useMemo, useRef, useState } from "react";
+import { useState } from "react";
 
 // External libraries
 import { ActionIcon, Box, Button, Grid, Group, Stack, Title, useMantineColorScheme } from "@mantine/core";
@@ -11,14 +11,9 @@ import Layout from "../../components/layout/Layout";
 import EventHeaderCard from "../../components/brigade/EventHeaderCard";
 import EventMapCard from "../../components/brigade/EventMapCard";
 import InjuriesTableCard from "../../components/brigade/InjuriesTableCard";
-import EvacuationsModal from "../../components/brigade/EvacuationsModal";
+import EvacuationsTable from "../../components/brigade/EvacuationsTable";
 import { COMPLETED_STATUS } from "../../constants/eventStatus";
-import {
-  mockEvacuations,
-  mockEvent,
-  mockInjuries,
-  mockLandingPads,
-} from "./mockEventDashboardData";
+import { mockEvacuations, mockEvent, mockInjuries, mockLocations } from "./mockEventDashboardData";
 
 // Styles
 
@@ -30,42 +25,26 @@ const STATUS_ORDER = [
   "completed",
 ];
 
+/** Row height shared by the map, injuries, and evacuations cards so the three stay level. */
+const DASHBOARD_ROW_HEIGHT = "32rem";
+
 /**
  * Renders the brigade single-event dashboard: the event header (name, timer,
- * injury/evacuation summary, status controls), then a row split evenly
- * between the event map and the full injuries table (whose evacuation
- * timeline opens inline, as a row under the relevant injury). The full
- * evacuations table lives in a modal opened from the header's "פינויים"
- * stat. Currently backed by hardcoded mock data, no Redux/API wiring yet.
+ * injury/evacuation summary, status controls), then one row split 1/5-2/5-2/5
+ * between the event map, the injuries table, and the evacuation team table.
+ * Currently backed by hardcoded mock data, no Redux/API wiring yet.
  *
  * @returns {JSX.Element} The brigade event dashboard page.
  */
 const EventDashboardPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const navigate = useNavigate();
-  const mapRowRef = useRef(null);
 
   const [event, setEvent] = useState(mockEvent);
   const [evacuations, setEvacuations] = useState(mockEvacuations);
   const [injuries] = useState(mockInjuries);
 
-  const [evacuationsModalOpen, setEvacuationsModalOpen] = useState(false);
-
-  // Only one injury's evacuation timeline can be open at a time; opening
-  // another closes the previous one automatically since this is a single value.
-  const [openInjuryId, setOpenInjuryId] = useState(null);
-
   const isDark = colorScheme === "dark";
-
-  const evacuationByInjuryId = useMemo(() => {
-    const map = {};
-    evacuations.forEach((evac) => {
-      evac.injuryIds.forEach((injuryId) => {
-        map[injuryId] = evac;
-      });
-    });
-    return map;
-  }, [evacuations]);
 
   const handleAdvanceStatus = () => {
     setEvent((prev) => {
@@ -83,16 +62,14 @@ const EventDashboardPage = () => {
     }));
   };
 
-  const handleCreateEvacuation = (newEvac) => {
-    setEvacuations((prev) => [...prev, newEvac]);
+  const handleUpdateEvacuation = (evacId, changes) => {
+    setEvacuations((prev) => (
+      prev.map((evac) => (evac.id === evacId ? { ...evac, ...changes } : evac))
+    ));
   };
 
-  const handleToggleInjuryEye = (injuryId) => {
-    setOpenInjuryId((prev) => (prev === injuryId ? null : injuryId));
-  };
-
-  const handleJumpToInjuries = () => {
-    mapRowRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const handleDeleteEvacuation = (evacId) => {
+    setEvacuations((prev) => prev.filter((evac) => evac.id !== evacId));
   };
 
   return (
@@ -184,35 +161,27 @@ const EventDashboardPage = () => {
             event={event}
             injuries={injuries}
             evacuations={evacuations}
-            landingPads={mockLandingPads}
             onAdvanceStatus={handleAdvanceStatus}
             onCloseEvent={handleCloseEvent}
-            onCreateEvacuation={handleCreateEvacuation}
-            onOpenInjuries={handleJumpToInjuries}
-            onOpenEvacuations={() => setEvacuationsModalOpen(true)}
           />
 
-          <Grid gutter="sm" ref={mapRowRef}>
-            <Grid.Col span={{ base: 12, md: 6 }}>
-              <EventMapCard event={event} landingPads={mockLandingPads} evacuations={evacuations} />
+          <Grid gutter="sm" columns={10}>
+            <Grid.Col span={{ base: 10, md: 2 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
+              <EventMapCard event={event} locations={mockLocations} />
             </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 6 }}>
-              <InjuriesTableCard
-                injuries={injuries}
+            <Grid.Col span={{ base: 10, md: 4 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
+              <InjuriesTableCard injuries={injuries} />
+            </Grid.Col>
+            <Grid.Col span={{ base: 10, md: 4 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
+              <EvacuationsTable
                 evacuations={evacuations}
-                evacuationByInjuryId={evacuationByInjuryId}
-                openInjuryId={openInjuryId}
-                onToggleInjuryEye={handleToggleInjuryEye}
+                locations={mockLocations}
+                onUpdateEvacuation={handleUpdateEvacuation}
+                onDeleteEvacuation={handleDeleteEvacuation}
               />
             </Grid.Col>
           </Grid>
         </Stack>
-
-        <EvacuationsModal
-          opened={evacuationsModalOpen}
-          onClose={() => setEvacuationsModalOpen(false)}
-          evacuations={evacuations}
-        />
       </Stack>
     </Layout>
   );

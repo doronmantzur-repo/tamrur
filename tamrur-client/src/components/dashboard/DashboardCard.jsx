@@ -17,10 +17,11 @@ import { Box, Group, Paper, Stack, Title } from "@mantine/core";
  *   children: React.ReactNode,
  *   padding?: string,
  *   gap?: string,
+ *   fullHeight?: boolean,
  * }} props
  * @returns {JSX.Element} The dashboard card.
  */
-const DashboardCard = ({ title, headerExtra, children, padding = "lg", gap = "md" }) => {
+const DashboardCard = ({ title, headerExtra, children, padding = "lg", gap = "md", fullHeight = false }) => {
   return (
     <Paper
       radius="sm"
@@ -31,6 +32,7 @@ const DashboardCard = ({ title, headerExtra, children, padding = "lg", gap = "md
         overflow: "hidden",
         backgroundColor: "var(--app-color-surface)",
         borderColor: "var(--app-color-border)",
+        ...(fullHeight && { height: "100%", display: "flex", flexDirection: "column" }),
       }}
     >
       <Box
@@ -44,7 +46,7 @@ const DashboardCard = ({ title, headerExtra, children, padding = "lg", gap = "md
         }}
       />
 
-      <Stack gap={gap} pt="xs">
+      <Stack gap={gap} pt="xs" style={fullHeight ? { flex: 1, minHeight: 0 } : undefined}>
         <Group justify="space-between" wrap="wrap" gap="sm">
           <Title order={2} fz="lg" fw={700} c="var(--app-color-text)">
             {title}

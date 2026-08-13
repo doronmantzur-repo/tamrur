@@ -14,6 +14,7 @@
 
 const now = Date.now();
 const minutesAgo = (minutes) => new Date(now - minutes * 60 * 1000).toISOString();
+const minutesFromNow = (minutes) => new Date(now + minutes * 60 * 1000).toISOString();
 
 export const mockEvent = {
   id: "evt-1",
@@ -27,9 +28,17 @@ export const mockEvent = {
   "aerial-evac": "in_progress",
 };
 
-export const mockLandingPads = [
-  { id: "pad-1", location: { lat: 31.774, lng: 35.221 }, status: "available" },
-  { id: "pad-2", location: { lat: 31.768, lng: 35.209 }, status: "occupied" },
+/**
+ * Stand-in for the future locations table: landing pads, hospitals, and
+ * other named points (e.g. an Ambulance Exchange Point) that departure/
+ * destination fields can reference. `status` only applies to landing pads.
+ */
+export const mockLocations = [
+  { id: "pad-1", name: "משטח נחיתה 1", type: "landing_pad", location: { lat: 31.774, lng: 35.221 }, status: "available" },
+  { id: "pad-2", name: "משטח נחיתה 2", type: "landing_pad", location: { lat: 31.768, lng: 35.209 }, status: "occupied" },
+  { id: "hosp-1", name: "בי״ח סורוקה", type: "hospital", location: { lat: 31.2589, lng: 34.8009 } },
+  { id: "hosp-2", name: "בי״ח שיבא", type: "hospital", location: { lat: 32.0392, lng: 34.8443 } },
+  { id: "aep-1", name: "נקודת חילוף אריה", type: "other", location: { lat: 31.7736, lng: 35.2145 } },
 ];
 
 export const mockInjuries = [
@@ -105,29 +114,34 @@ export const mockInjuries = [
   },
 ];
 
+/**
+ * Fields mirror the real `evacuations` table (method, departure/destination
+ * point, radio callsign, start time, ETA, aerial mission id, status) — no
+ * link back to injuries, since the DB doesn't support that relationship.
+ * `evac-2` simulates a row freshly auto-created off an airforce approval:
+ * still missing the fields the brigade has to fill in by hand.
+ */
 export const mockEvacuations = [
   {
     id: "evac-1",
-    method: "vehicle",
-    departure: { lat: 31.7715, lng: 35.2172 },
-    destination: { lat: 31.768, lng: 35.209 },
-    eta: minutesAgo(22),
-    missionId: null,
-    radioSign: "אריה 3",
-    status: "approved",
-    createdAt: minutesAgo(35),
-    injuryIds: ["inj-5", "inj-6", "inj-3"],
+    method: "chopper",
+    departurePoint: "aep-1",
+    destinationPoint: "hosp-2",
+    forceRadioSign: "מטיף 21",
+    startTime: minutesAgo(18),
+    eta: minutesFromNow(4),
+    aerialMissionId: "עיט 4",
+    status: "in_progress",
   },
   {
     id: "evac-2",
     method: "chopper",
-    departure: { lat: 31.7715, lng: 35.2172 },
-    destination: { lat: 31.774, lng: 35.221 },
-    eta: minutesAgo(5),
-    missionId: "עיט 4",
-    radioSign: "מטיף 21",
-    status: "in_progress",
-    createdAt: minutesAgo(18),
-    injuryIds: ["inj-1", "inj-2", "inj-4"],
+    departurePoint: null,
+    destinationPoint: null,
+    forceRadioSign: "אריה 3",
+    startTime: null,
+    eta: null,
+    aerialMissionId: null,
+    status: "not_started",
   },
 ];

@@ -140,3 +140,35 @@ table {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Attention-drawing pulses */
+
+@keyframes app-pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 10px 3px currentColor;
+    opacity: 0.75;
+  }
+}
+
+@keyframes app-pulse-scale {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+}
+
+.app-pulse-glow {
+  animation: app-pulse-glow 1.6s ease-in-out infinite;
+}
+
+.app-pulse-scale {
+  animation: app-pulse-scale 1s ease-in-out infinite;
+}
