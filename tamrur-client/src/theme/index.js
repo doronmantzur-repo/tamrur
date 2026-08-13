@@ -14,7 +14,9 @@ export const colorTokens = {
     primaryHover: "#D6B56F",
     primaryText: "#0D1520",
     error: "#EF4444",
+    orange: "#F97316",
     warning: "#F59E0B",
+    successLight: "#84CC16",
     success: "#22C55E",
   },
 
@@ -29,7 +31,9 @@ export const colorTokens = {
     primaryHover: "#6F541E",
     primaryText: "#FFFFFF",
     error: "#DC2626",
+    orange: "#EA580C",
     warning: "#D97706",
+    successLight: "#65A30D",
     success: "#16A34A",
   },
 };
@@ -211,7 +215,9 @@ function createColorSchemeVariables(colors, effects) {
     "--app-color-primary-hover": colors.primaryHover,
     "--app-color-primary-text": colors.primaryText,
     "--app-color-error": colors.error,
+    "--app-color-orange": colors.orange,
     "--app-color-warning": colors.warning,
+    "--app-color-success-light": colors.successLight,
     "--app-color-success": colors.success,
 
     "--app-effect-hover-background": effects.hoverBackground,

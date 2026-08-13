@@ -2,40 +2,23 @@
 import { useState } from "react";
 
 // External libraries
-import { Box, Chip, Group, Stack, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
+import { Box, Chip, Group, Stack, Text, Tooltip } from "@mantine/core";
+import { IconAmbulance, IconBuildingHospital } from "@tabler/icons-react";
 import L from "leaflet";
-import { MapContainer, Marker, Polyline, Popup, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 
 // Internal application modules
-import { colorTokens } from "../../theme";
-import {
-  EVAC_METHOD_LABELS,
-  LANDING_PAD_STATUS_COLOR_VARS,
-  LANDING_PAD_STATUS_LABELS,
-} from "../../constants/evacuationMethod";
-import { AERIAL_EVAC_COLOR_VARS, AERIAL_EVAC_LABELS } from "../../constants/aerialEvacStatus";
+import { LANDING_PAD_STATUS_COLOR_VARS, LANDING_PAD_STATUS_LABELS } from "../../constants/evacuationMethod";
 
 // Styles
 import "leaflet/dist/leaflet.css";
 
 const DEFAULT_ZOOM = 14;
 
-/** Maps semantic status keys to theme color-token keys, since Leaflet's SVG renderer needs real hex values, not CSS vars. */
-const EVAC_STATUS_TOKEN_KEY = {
-  no_neede: "textMuted",
-  needed: "warning",
-  in_progress: "primary",
-  approved: "success",
-  denied: "error",
-};
-
-/** Route status keys shown in the legend / used for route coloring. */
-const ROUTE_STATUS_ORDER = ["needed", "in_progress", "approved", "denied"];
-
 /**
  * Builds a small circular div-icon marker. Colors are CSS vars, safe here
  * since Leaflet renders div-icons as real DOM elements (unlike its SVG path
- * renderer, which needs resolved hex — see EVAC_STATUS_TOKEN_KEY above).
+ * renderer, which needs resolved hex values).
  *
  * @param {{ label: string, background: string, size?: number, glow?: boolean }} options
  * @returns {L.DivIcon}
@@ -59,11 +42,41 @@ function buildDivIcon({ label, background, size = 26, glow = false }) {
   });
 }
 
+/** Inline-renders a Tabler icon's path data as raw SVG markup, for use inside a Leaflet div-icon. */
+function tablerSvg(paths, size = 16) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths.map((d) => `<path d="${d}" />`).join("")}</svg>`;
+}
+
+const HOSPITAL_ICON_PATHS = [
+  "M3 21l18 0",
+  "M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16",
+  "M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4",
+  "M10 9l4 0",
+  "M12 7l0 4",
+];
+
+const AMBULANCE_ICON_PATHS = [
+  "M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
+  "M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
+  "M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5",
+  "M6 10h4m-2 -2v4",
+];
+
 const EVENT_ICON = buildDivIcon({ label: "!", background: "var(--app-color-error)", size: 28, glow: true });
+const HOSPITAL_ICON = buildDivIcon({
+  label: tablerSvg(HOSPITAL_ICON_PATHS),
+  background: "var(--app-color-success)",
+  size: 26,
+});
+const OTHER_LOCATION_ICON = buildDivIcon({
+  label: tablerSvg(AMBULANCE_ICON_PATHS),
+  background: "var(--app-color-text-muted)",
+  size: 26,
+});
 
 /**
  * Small legend explaining the map's symbols: the event marker, landing pad
- * status colors, and evacuation route status colors.
+ * status colors, and the other location marker types.
  */
 function MapLegend() {
   return (
@@ -114,44 +127,46 @@ function MapLegend() {
         </Group>
       ))}
 
-      {ROUTE_STATUS_ORDER.map((key) => (
-        <Group key={key} gap={6} wrap="nowrap">
-          <Box
-            style={{
-              width: 16,
-              height: 3,
-              borderRadius: "2px",
-              backgroundColor: AERIAL_EVAC_COLOR_VARS[key],
-            }}
-          />
-          <Text fz="xs" c="var(--app-color-text-muted)">
-            מסלול פינוי {AERIAL_EVAC_LABELS[key]}
-          </Text>
-        </Group>
-      ))}
+      <Group gap={6} wrap="nowrap">
+        <IconBuildingHospital size={16} stroke={1.8} color="var(--app-color-success)" />
+        <Text fz="xs" c="var(--app-color-text-muted)">
+          בית חולים
+        </Text>
+      </Group>
+
+      <Group gap={6} wrap="nowrap">
+        <IconAmbulance size={16} stroke={1.8} color="var(--app-color-text-muted)" />
+        <Text fz="xs" c="var(--app-color-text-muted)">
+          נקודת חילוף / מיקום אחר
+        </Text>
+      </Group>
     </Group>
   );
 }
 
 /**
  * Renders the event map: the event location (exclamation marker), landing
- * pads (an "H" marker colored by pad status), and evacuation routes
- * (departure → destination), each toggleable via a layer chip row, plus a
- * legend explaining the symbols.
+ * pads (an "H" marker colored by pad status), hospitals, and other named
+ * locations (e.g. an ambulance exchange point), each toggleable via a layer
+ * chip row, plus a legend explaining the symbols. Evacuation routes and live
+ * force tracking aren't supported yet, so both stay as disabled placeholder
+ * chips until routing is available.
  *
- * @param {{ event: object, landingPads: Array<object>, evacuations: Array<object> }} props
+ * @param {{ event: object, locations: Array<object> }} props
  * @returns {JSX.Element} The evacuation map.
  */
-const EvacuationMap = ({ event, landingPads, evacuations }) => {
-  const { colorScheme } = useMantineColorScheme();
-  const tokens = colorScheme === "dark" ? colorTokens.dark : colorTokens.light;
-  const [visibleLayers, setVisibleLayers] = useState(["location", "pads", "routes"]);
+const EvacuationMap = ({ event, locations }) => {
+  const [visibleLayers, setVisibleLayers] = useState(["location", "pads", "hospitals", "other"]);
 
   const isLayerOn = (key) => visibleLayers.includes(key);
 
+  const landingPads = locations.filter((location) => location.type === "landing_pad");
+  const hospitals = locations.filter((location) => location.type === "hospital");
+  const otherLocations = locations.filter((location) => location.type === "other");
+
   return (
-    <Stack gap={0}>
-      <Group gap="xs" mb="xs" wrap="wrap">
+    <Stack gap={0} style={{ height: "100%", overflow: "auto" }}>
+      <Group gap="xs" mb="xs" wrap="wrap" style={{ flexShrink: 0 }}>
         <Chip.Group multiple value={visibleLayers} onChange={setVisibleLayers}>
           <Chip value="location" size="xs">
             מיקום אירוע
@@ -159,10 +174,18 @@ const EvacuationMap = ({ event, landingPads, evacuations }) => {
           <Chip value="pads" size="xs">
             משטחי נחיתה
           </Chip>
-          <Chip value="routes" size="xs">
-            מסלולי פינוי
+          <Chip value="hospitals" size="xs">
+            בתי חולים
+          </Chip>
+          <Chip value="other" size="xs">
+            מיקומים נוספים
           </Chip>
         </Chip.Group>
+        <Tooltip label="בקרוב, מסלולי פינוי טרם נתמכים">
+          <Chip value="routes" size="xs" disabled checked={false}>
+            מסלולי פינוי
+          </Chip>
+        </Tooltip>
         <Tooltip label="בקרוב, מעקב כוחות טרם נתמך">
           <Chip value="forces" size="xs" disabled checked={false}>
             כוחות
@@ -172,7 +195,8 @@ const EvacuationMap = ({ event, landingPads, evacuations }) => {
 
       <Box
         style={{
-          height: "26rem",
+          flex: "1 0 14rem",
+          minHeight: "14rem",
           borderRadius: "var(--mantine-radius-sm)",
           overflow: "hidden",
           border: "1px solid var(--app-color-border)",
@@ -204,27 +228,25 @@ const EvacuationMap = ({ event, landingPads, evacuations }) => {
                   background: LANDING_PAD_STATUS_COLOR_VARS[pad.status] || "var(--app-color-text-muted)",
                 })}
               >
-                <Popup>{LANDING_PAD_STATUS_LABELS[pad.status] || pad.status}</Popup>
+                <Popup>
+                  {pad.name} — {LANDING_PAD_STATUS_LABELS[pad.status] || pad.status}
+                </Popup>
               </Marker>
             ))}
 
-          {isLayerOn("routes") &&
-            evacuations.map((evac) => {
-              const color = tokens[EVAC_STATUS_TOKEN_KEY[evac.status]] || tokens.textMuted;
+          {isLayerOn("hospitals") &&
+            hospitals.map((hospital) => (
+              <Marker key={hospital.id} position={hospital.location} icon={HOSPITAL_ICON}>
+                <Popup>{hospital.name}</Popup>
+              </Marker>
+            ))}
 
-              return (
-                <Polyline
-                  key={evac.id}
-                  positions={[
-                    [evac.departure.lat, evac.departure.lng],
-                    [evac.destination.lat, evac.destination.lng],
-                  ]}
-                  pathOptions={{ color, weight: 3 }}
-                >
-                  <Popup>{EVAC_METHOD_LABELS[evac.method] || evac.method}</Popup>
-                </Polyline>
-              );
-            })}
+          {isLayerOn("other") &&
+            otherLocations.map((location) => (
+              <Marker key={location.id} position={location.location} icon={OTHER_LOCATION_ICON}>
+                <Popup>{location.name}</Popup>
+              </Marker>
+            ))}
         </MapContainer>
       </Box>
 

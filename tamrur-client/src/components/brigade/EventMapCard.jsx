@@ -13,13 +13,13 @@ import EvacuationMap from "./EvacuationMap";
  * routes) as its own full-width section. Not aerial-evac specific, it's the
  * general operational picture for the event.
  *
- * @param {{ event: object, landingPads: Array<object>, evacuations: Array<object> }} props
+ * @param {{ event: object, locations: Array<object> }} props
  * @returns {JSX.Element} The event map card.
  */
-const EventMapCard = ({ event, landingPads, evacuations }) => {
+const EventMapCard = ({ event, locations }) => {
   return (
-    <DashboardCard title="מפת אירוע" padding="md" gap="sm">
-      <EvacuationMap event={event} landingPads={landingPads} evacuations={evacuations} />
+    <DashboardCard title="מפת אירוע" padding="md" gap="sm" fullHeight>
+      <EvacuationMap event={event} locations={locations} />
     </DashboardCard>
   );
 };

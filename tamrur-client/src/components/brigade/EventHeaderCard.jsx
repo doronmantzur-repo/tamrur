@@ -1,11 +1,9 @@
 // React
-import { useState } from "react";
 
 // External libraries
-import { Badge, Button, Group, Stack, Text, UnstyledButton } from "@mantine/core";
+import { Badge, Button, Group, Stack, Text } from "@mantine/core";
 import {
   IconCheck,
-  IconChevronLeft,
   IconHelicopter,
   IconPlayerTrackNext,
   IconSend,
@@ -14,13 +12,17 @@ import {
 
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
-import RequestEvacuationModal from "./RequestEvacuationModal";
 import {
   COMPLETED_STATUS,
+  EVENT_STATUS_COLOR_VARS,
   EVENT_STATUS_LABELS,
   EVENT_TYPE_LABELS,
 } from "../../constants/eventStatus";
-import { AERIAL_EVAC_COLOR_VARS, AERIAL_EVAC_LABELS } from "../../constants/aerialEvacStatus";
+import {
+  AERIAL_EVAC_COLOR_VARS,
+  AERIAL_EVAC_LABELS,
+  PULSING_AERIAL_EVAC_STATUSES,
+} from "../../constants/aerialEvacStatus";
 import { URGENCY_COLOR_VARS, URGENCY_LABELS, URGENCY_ORDER } from "../../constants/injuryStatus";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
 import { formatDuration } from "../../utils/duration";
@@ -42,20 +44,13 @@ const EVAC_STATUS_ORDER = ["needed", "in_progress", "approved", "denied"];
 /** Plain (non-interactive) stat block: just the timer. */
 const plainStatStyles = { padding: "0.75rem 1rem" };
 
-/** Clickable stat blocks (injuries/evacuations): tile chrome + hover affordance. */
+/** Non-interactive stat tiles (injuries/evacuations): tile chrome, no hover/click affordance. */
 const tileStatStyles = {
-  root: {
-    display: "block",
-    borderRadius: "var(--mantine-radius-sm)",
-    border: "1px solid var(--app-color-border)",
-    backgroundColor: "var(--app-color-surface-high)",
-    padding: "0.75rem 1rem",
-    minWidth: "13rem",
-    "&:hover": {
-      borderColor: "var(--app-effect-hover-border)",
-      backgroundColor: "var(--app-effect-hover-background)",
-    },
-  },
+  borderRadius: "var(--mantine-radius-sm)",
+  border: "1px solid var(--app-color-border)",
+  backgroundColor: "var(--app-color-surface-high)",
+  padding: "0.75rem 1rem",
+  minWidth: "13rem",
 };
 
 const statNumberStyles = {
@@ -84,35 +79,19 @@ function countBy(items, order, getKey) {
 /**
  * Renders the brigade event dashboard's header: name, description, type/status/
  * aerial-evac badges, three large at-a-glance stats spaced across the row
- * (elapsed time, plus clickable injuries/evacuations tiles), and the event's
- * actions (advance status, request evacuation, close event).
+ * (elapsed time, injuries, evacuations), and the event's actions (advance
+ * status, request evacuation, close event).
  *
  * @param {{
  *   event: object,
  *   injuries: Array<object>,
  *   evacuations: Array<object>,
- *   landingPads: Array<object>,
  *   onAdvanceStatus: () => void,
  *   onCloseEvent: () => void,
- *   onCreateEvacuation: (evac: object) => void,
- *   onOpenInjuries: () => void,
- *   onOpenEvacuations: () => void,
  * }} props
  * @returns {JSX.Element} The event header card.
  */
-const EventHeaderCard = ({
-  event,
-  injuries,
-  evacuations,
-  landingPads,
-  onAdvanceStatus,
-  onCloseEvent,
-  onCreateEvacuation,
-  onOpenInjuries,
-  onOpenEvacuations,
-}) => {
-  const [requestModalOpen, setRequestModalOpen] = useState(false);
-
+const EventHeaderCard = ({ event, injuries, evacuations, onAdvanceStatus, onCloseEvent }) => {
   const isCompleted = event.status === COMPLETED_STATUS;
   const elapsedSeconds = useElapsedSeconds(isCompleted ? null : event.created_at);
 
@@ -133,8 +112,8 @@ const EventHeaderCard = ({
           <Badge
             styles={{
               root: {
-                backgroundColor: "color-mix(in srgb, var(--app-color-warning) 16%, transparent)",
-                color: "var(--app-color-warning)",
+                backgroundColor: `color-mix(in srgb, ${EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)"} 16%, transparent)`,
+                color: EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)",
               },
             }}
           >
@@ -155,6 +134,7 @@ const EventHeaderCard = ({
           </Badge>
           <Badge
             leftSection={<IconHelicopter size={12} />}
+            className={PULSING_AERIAL_EVAC_STATUSES.includes(event["aerial-evac"]) ? "app-pulse-glow" : undefined}
             styles={{
               root: {
                 backgroundColor: `color-mix(in srgb, ${aerialEvacColor} 16%, transparent)`,
@@ -179,57 +159,47 @@ const EventHeaderCard = ({
           <Text {...statNumberStyles}>{formatDuration(elapsedSeconds)}</Text>
         </Stack>
 
-        <UnstyledButton onClick={onOpenInjuries} styles={tileStatStyles}>
-          <Stack gap={2}>
-            <Group justify="space-between" wrap="nowrap" gap="xs">
-              <Text {...statLabelStyles}>נפגעים</Text>
-              <IconChevronLeft size={14} stroke={2} color="var(--app-color-text-muted)" />
-            </Group>
-            <Text {...statNumberStyles}>{injuries.length}</Text>
-            <Group gap={6} wrap="wrap">
-              {URGENCY_ORDER.map((key) => (
-                <Badge
-                  key={key}
-                  size="sm"
-                  styles={{
-                    root: {
-                      backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[key]} 16%, transparent)`,
-                      color: URGENCY_COLOR_VARS[key],
-                    },
-                  }}
-                >
-                  {urgencyCounts[key]} {URGENCY_LABELS[key]}
-                </Badge>
-              ))}
-            </Group>
-          </Stack>
-        </UnstyledButton>
+        <Stack gap={2} style={tileStatStyles}>
+          <Text {...statLabelStyles}>נפגעים</Text>
+          <Text {...statNumberStyles}>{injuries.length}</Text>
+          <Group gap={6} wrap="wrap">
+            {URGENCY_ORDER.map((key) => (
+              <Badge
+                key={key}
+                size="sm"
+                styles={{
+                  root: {
+                    backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[key]} 16%, transparent)`,
+                    color: URGENCY_COLOR_VARS[key],
+                  },
+                }}
+              >
+                {urgencyCounts[key]} {URGENCY_LABELS[key]}
+              </Badge>
+            ))}
+          </Group>
+        </Stack>
 
-        <UnstyledButton onClick={onOpenEvacuations} styles={tileStatStyles}>
-          <Stack gap={2}>
-            <Group justify="space-between" wrap="nowrap" gap="xs">
-              <Text {...statLabelStyles}>פינויים</Text>
-              <IconChevronLeft size={14} stroke={2} color="var(--app-color-text-muted)" />
-            </Group>
-            <Text {...statNumberStyles}>{evacuations.length}</Text>
-            <Group gap={6} wrap="wrap">
-              {EVAC_STATUS_ORDER.map((key) => (
-                <Badge
-                  key={key}
-                  size="sm"
-                  styles={{
-                    root: {
-                      backgroundColor: `color-mix(in srgb, ${AERIAL_EVAC_COLOR_VARS[key]} 16%, transparent)`,
-                      color: AERIAL_EVAC_COLOR_VARS[key],
-                    },
-                  }}
-                >
-                  {evacStatusCounts[key]} {AERIAL_EVAC_LABELS[key]}
-                </Badge>
-              ))}
-            </Group>
-          </Stack>
-        </UnstyledButton>
+        <Stack gap={2} style={tileStatStyles}>
+          <Text {...statLabelStyles}>פינויים</Text>
+          <Text {...statNumberStyles}>{evacuations.length}</Text>
+          <Group gap={6} wrap="wrap">
+            {EVAC_STATUS_ORDER.map((key) => (
+              <Badge
+                key={key}
+                size="sm"
+                styles={{
+                  root: {
+                    backgroundColor: `color-mix(in srgb, ${AERIAL_EVAC_COLOR_VARS[key]} 16%, transparent)`,
+                    color: AERIAL_EVAC_COLOR_VARS[key],
+                  },
+                }}
+              >
+                {evacStatusCounts[key]} {AERIAL_EVAC_LABELS[key]}
+              </Badge>
+            ))}
+          </Group>
+        </Stack>
       </Group>
 
       <Group gap="sm" wrap="wrap">
@@ -254,7 +224,6 @@ const EventHeaderCard = ({
           leftSection={<IconSend size={16} stroke={1.8} />}
           size="sm"
           mih="2.25rem"
-          onClick={() => setRequestModalOpen(true)}
           styles={{
             root: {
               backgroundColor: "var(--app-color-primary)",
@@ -286,14 +255,6 @@ const EventHeaderCard = ({
           סגור אירוע
         </Button>
       </Group>
-
-      <RequestEvacuationModal
-        opened={requestModalOpen}
-        onClose={() => setRequestModalOpen(false)}
-        onCreate={onCreateEvacuation}
-        event={event}
-        landingPads={landingPads}
-      />
     </DashboardCard>
   );
 };
