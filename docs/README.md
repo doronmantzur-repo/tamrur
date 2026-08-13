@@ -2,13 +2,13 @@
 
 ## Team
 
-| Name | Role |
-|---|---|
-| Hagai Hamami | Product / Client Lead |
-| Doron Mantzur | Server Lead |
-| Tuval Zitelbach | Integration Lead |
+| Name            | Role                  |
+| --------------- | --------------------- |
+| Hagai Hamami    | Product / Client Lead |
+| Doron Mantzur   | Server Lead           |
+| Tuval Zitelbach | Integration Lead      |
 
-## Product Description
+## Product Description.
 
 During a mass casualty event (MCE) deep behind enemy lines, the Brigade Tactical Operations Center (TOC) faces a chaotic, rapidly changing mix of information — fluctuating wounded counts, active threats, and uncoordinated evacuation efforts.
 
