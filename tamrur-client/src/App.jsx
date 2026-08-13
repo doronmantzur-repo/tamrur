@@ -6,6 +6,7 @@ import MedicPage from "./pages/medical/MedicPage";
 import AerialEvacuationPage from "./pages/airforce/AerialEvacuationPage";
 import CreateEventForm from "./components/events/CreateEventForm";
 import EventDashboardPage from "./pages/brigade/EventDashboardPage";
+import EventAnalystPage from "./pages/event-analyst/EventAnalystPage";
 const App = () => {
   return (
     <Routes>
@@ -16,6 +17,7 @@ const App = () => {
       <Route path="/medic" element={<MedicPage />} />
       <Route path="/airforce" element={<AerialEvacuationPage />} />
       <Route path="/brigade" element={<EventDashboardPage />} />
+      <Route path="/event-analyst" element={<EventAnalystPage />} />
       <Route path="*" element={<LoginPage />} />
     </Routes>
   );
