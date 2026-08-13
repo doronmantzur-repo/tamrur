@@ -8,6 +8,7 @@ import { IconMoon, IconSun } from "@tabler/icons-react";
 // Internal application modules
 import Layout from "../../components/layout/Layout";
 import EventSelector from "../../components/dashboard/EventSelector";
+import PdfQaCard from "../../components/analyst/PdfQaCard";
 
 // Styles
 
@@ -91,6 +92,8 @@ const EventAnalystPage = () => {
             </Title>
 
             <EventSelector value={selectedEventId} onChange={setSelectedEventId} />
+
+            <PdfQaCard />
           </Stack>
         </Box>
       </Stack>
