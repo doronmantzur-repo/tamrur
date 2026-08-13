@@ -1,5 +1,5 @@
 // React
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // External libraries
 import { ActionIcon, Box, Button, Grid, Group, Loader, Stack, Text, Title, useMantineColorScheme } from "@mantine/core";
@@ -17,8 +17,14 @@ import { COMPLETED_STATUS } from "../../constants/eventStatus";
 import { fetchLocations } from "../../features/locations/locationsSlice";
 import { fetchEventById, updateEvent } from "../../features/events/eventsSlice";
 import { fetchAerialMissionsByEvent } from "../../features/aerialMission/aerialMissionSlice";
+import {
+  fetchEvacuationsByEvent,
+  createEvacuation,
+  updateEvacuation,
+  deleteEvacuation,
+} from "../../features/evacuations/evacuationsSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
-import { mockEvacuations, mockInjuries } from "./mockEventDashboardData";
+import { mockInjuries } from "./mockEventDashboardData";
 
 // Styles
 
@@ -33,13 +39,17 @@ const STATUS_ORDER = [
 /** Row height shared by the map, injuries, and evacuations cards so the three stay level. */
 const DASHBOARD_ROW_HEIGHT = "32rem";
 
+/** Stable reference for "nothing fetched yet" so selector fallbacks don't create a new array every render. */
+const EMPTY_ARRAY = [];
+
 /**
  * Renders the brigade single-event dashboard: the event header (name, timer,
  * injury/evacuation summary, status controls), then one row split 1/5-2/5-2/5
  * between the event map, the injuries table, and the evacuation team table.
- * The event (by :eventId) and locations are fetched from the API; injuries
- * and evacuations are still hardcoded mock data, wired incrementally in
- * later parts.
+ * The event (by :eventId), locations, aerial missions, and evacuations are
+ * all fetched from the API; injuries are still hardcoded mock data, owned by
+ * a teammate's in-progress work elsewhere. An approved aerial mission with
+ * no evacuation row yet auto-creates one in the background.
  *
  * @returns {JSX.Element} The brigade event dashboard page.
  */
@@ -49,14 +59,19 @@ const EventDashboardPage = () => {
   const dispatch = useDispatch();
   const { eventId } = useParams();
 
-  const [evacuations, setEvacuations] = useState(mockEvacuations);
   const [injuries] = useState(mockInjuries);
+
+  // Tracks mission ids we've already dispatched an auto-create for, so a
+  // slow create request doesn't get triggered again by the next poll tick
+  // before the new row has landed back in state.
+  const autoCreatedMissionIds = useRef(new Set());
 
   const event = useSelector((state) => state.events.currentEvent);
   const currentEventStatus = useSelector((state) => state.events.currentEventStatus);
   const currentEventError = useSelector((state) => state.events.currentEventError);
   const locations = useSelector((state) => state.locations.locations);
-  const aerialMissions = useSelector((state) => state.aerialMission.byEventId[eventId]) || [];
+  const aerialMissions = useSelector((state) => state.aerialMission.byEventId[eventId]) || EMPTY_ARRAY;
+  const evacuations = useSelector((state) => state.evacuations.byEventId[eventId]) || EMPTY_ARRAY;
 
   // The airforce only ever writes the decision to the aerial_mission row,
   // never back onto the event — so once a mission exists for this event,
@@ -99,6 +114,46 @@ const EventDashboardPage = () => {
     return () => clearInterval(intervalId);
   }, [eventId, dispatch]);
 
+  useEffect(() => {
+    dispatch(fetchEvacuationsByEvent(eventId));
+
+    // The brigade edits rows inline, and an approval can auto-create one in
+    // the background, so keep polling instead of fetching once.
+    const intervalId = setInterval(() => {
+      dispatch(fetchEvacuationsByEvent(eventId));
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [eventId, dispatch]);
+
+  // Auto-creates an evacuation row for any approved aerial mission that
+  // doesn't have one yet, prefilled with whatever the airforce/event already
+  // gave us — the brigade fills in the rest. Guarded against both a mission
+  // that already has a row (checked against the fetched evacuations) and a
+  // create that's in flight but hasn't landed back in state yet (checked
+  // against the ref).
+  useEffect(() => {
+    aerialMissions
+      .filter((mission) => mission["request-status"] === "approved")
+      .forEach((mission) => {
+        const alreadyExists = evacuations.some((evac) => evac.aerialMissionId === mission.id);
+        if (alreadyExists || autoCreatedMissionIds.current.has(mission.id)) return;
+
+        autoCreatedMissionIds.current.add(mission.id);
+        const landingPad = locations.find((location) => location.id === mission.landing_pad_id);
+
+        dispatch(
+          createEvacuation({
+            eventId,
+            method: "aerial",
+            aerialMissionId: mission.id,
+            forceRadioSign: mission.radio_sign,
+            departurePoint: landingPad?.location,
+          }),
+        );
+      });
+  }, [aerialMissions, evacuations, locations, eventId, dispatch]);
+
   const isDark = colorScheme === "dark";
 
   const handleAdvanceStatus = () => {
@@ -123,13 +178,11 @@ const EventDashboardPage = () => {
   };
 
   const handleUpdateEvacuation = (evacId, changes) => {
-    setEvacuations((prev) => (
-      prev.map((evac) => (evac.id === evacId ? { ...evac, ...changes } : evac))
-    ));
+    dispatch(updateEvacuation({ id: evacId, changes }));
   };
 
   const handleDeleteEvacuation = (evacId) => {
-    setEvacuations((prev) => prev.filter((evac) => evac.id !== evacId));
+    dispatch(deleteEvacuation({ id: evacId, eventId }));
   };
 
   return (
@@ -255,6 +308,7 @@ const EventDashboardPage = () => {
                   <EvacuationsTable
                     evacuations={evacuations}
                     locations={locations}
+                    aerialMissions={aerialMissions}
                     onUpdateEvacuation={handleUpdateEvacuation}
                     onDeleteEvacuation={handleDeleteEvacuation}
                   />

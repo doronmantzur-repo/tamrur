@@ -7,9 +7,12 @@ import {
   IconAlertTriangle,
   IconCar,
   IconCheck,
+  IconFlagCheck,
   IconHelicopter,
   IconPencil,
+  IconPlayerPlay,
   IconTrash,
+  IconWalk,
   IconX,
 } from "@tabler/icons-react";
 
@@ -19,14 +22,16 @@ import ColumnHeader from "../dashboard/ColumnHeader";
 import { EVAC_TEAM_STATUS_COLOR_VARS, EVAC_TEAM_STATUS_LABELS } from "../../constants/aerialEvacStatus";
 import { EVAC_METHOD_LABELS } from "../../constants/evacuationMethod";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
+import { findLocationByPoint } from "../../utils/geo";
 
 // Styles
 
 const timeFormatter = new Intl.DateTimeFormat("he-IL", { timeStyle: "short" });
 
 const METHOD_ICONS = {
-  chopper: IconHelicopter,
-  vehicle: IconCar,
+  walk: IconWalk,
+  ride: IconCar,
+  aerial: IconHelicopter,
 };
 
 const METHOD_OPTIONS = Object.entries(EVAC_METHOD_LABELS).map(([value, label]) => ({ value, label }));
@@ -66,29 +71,53 @@ function fromLocalInputValue(value) {
   return new Date(value).toISOString();
 }
 
-function locationName(locations, id) {
-  return locations.find((location) => location.id === id)?.name || null;
+/**
+ * Labels a departure/destination point for display. The server stores a bare
+ * point with no reference back to the locations table, so this reverse-
+ * matches it against the fetched locations list — "טרם הוזן" if the field is
+ * empty, the matched location's name if found, or a fallback for a point
+ * that doesn't correspond to any known location (e.g. set outside this UI).
+ *
+ * @param {object | null | undefined} point
+ * @param {Array<object>} locations
+ * @returns {string}
+ */
+function describeLocationPoint(point, locations) {
+  if (!point) return "טרם הוזן";
+  return findLocationByPoint(point, locations)?.name || "מיקום מותאם אישית";
 }
 
 /**
  * Renders the event's evacuations as a full, inline-editable table (start
- * time, type, departure, destination, radio sign, ETA, mission id, status).
- * Covers every evacuation method (ground and aerial), not just aerial teams.
- * Fields mirror the real `evacuations` schema — no injury linkage, since the
- * DB doesn't support that relationship. A leading column pulses a warning
- * while a row is still missing brigade-entered fields. Every column but the
- * two time fields is sortable and filterable (searchable pick-list); every
- * column is sortable. Rows can be deleted via a confirm modal.
+ * time, type, departure, destination, radio sign, ETA, concluded time,
+ * aerial mission, status). Covers every evacuation method (walk/ride/
+ * aerial), not just aerial teams. Fields mirror the real `evacuations`
+ * schema — no injury linkage, since the DB doesn't support that
+ * relationship. Departure/destination are edited as a location picker but
+ * stored as raw points, since the DB has no location foreign key: picking a
+ * location resolves it to its coordinates on save, and displaying an
+ * existing point reverse-matches it back to a location name. A leading
+ * column pulses a warning while a row is still missing brigade-entered
+ * fields. Every column but the three time fields is sortable and filterable
+ * (searchable pick-list); every column is sortable. Rows can be deleted via
+ * a confirm modal.
  *
  * @param {{
  *   evacuations: Array<object>,
  *   locations: Array<object>,
+ *   aerialMissions: Array<object>,
  *   onUpdateEvacuation: (evacId: string, changes: object) => void,
  *   onDeleteEvacuation: (evacId: string) => void,
  * }} props
  * @returns {JSX.Element} The evacuations table.
  */
-const EvacuationsTable = ({ evacuations, locations, onUpdateEvacuation, onDeleteEvacuation }) => {
+const EvacuationsTable = ({
+  evacuations,
+  locations,
+  aerialMissions = [],
+  onUpdateEvacuation,
+  onDeleteEvacuation,
+}) => {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
@@ -96,30 +125,33 @@ const EvacuationsTable = ({ evacuations, locations, onUpdateEvacuation, onDelete
   const [filters, setFilters] = useState({});
 
   const locationOptions = locations.map((location) => ({ value: location.id, label: location.name }));
+  const missionOptions = aerialMissions.map((mission) => ({
+    value: mission.id,
+    label: mission.radio_sign || "מסוק ללא כינוי קריאה",
+  }));
 
   const columnAccessors = useMemo(
     () => ({
       method: (evac) => evac.method,
-      departurePoint: (evac) => locationName(locations, evac.departurePoint) || "טרם הוזן",
-      destinationPoint: (evac) => locationName(locations, evac.destinationPoint) || "טרם הוזן",
+      departurePoint: (evac) => describeLocationPoint(evac.departurePoint, locations),
+      destinationPoint: (evac) => describeLocationPoint(evac.destinationPoint, locations),
       forceRadioSign: (evac) => evac.forceRadioSign || "—",
       aerialMissionId: (evac) => evac.aerialMissionId || "—",
       status: (evac) => evac.status,
       startTime: (evac) => (evac.startTime ? new Date(evac.startTime).getTime() : null),
       eta: (evac) => (evac.eta ? new Date(evac.eta).getTime() : null),
+      concludedAt: (evac) => (evac.concludedAt ? new Date(evac.concludedAt).getTime() : null),
     }),
     [locations],
   );
 
   const departureOptions = useMemo(() => {
-    const values = [...new Set(evacuations.map((evac) => locationName(locations, evac.departurePoint) || "טרם הוזן"))];
+    const values = [...new Set(evacuations.map((evac) => describeLocationPoint(evac.departurePoint, locations)))];
     return values.map((value) => ({ value, label: value }));
   }, [evacuations, locations]);
 
   const destinationOptions = useMemo(() => {
-    const values = [
-      ...new Set(evacuations.map((evac) => locationName(locations, evac.destinationPoint) || "טרם הוזן")),
-    ];
+    const values = [...new Set(evacuations.map((evac) => describeLocationPoint(evac.destinationPoint, locations)))];
     return values.map((value) => ({ value, label: value }));
   }, [evacuations, locations]);
 
@@ -128,14 +160,13 @@ const EvacuationsTable = ({ evacuations, locations, onUpdateEvacuation, onDelete
     return values.map((value) => ({ value, label: value }));
   }, [evacuations]);
 
-  const missionIdOptions = useMemo(() => {
-    const values = [...new Set(evacuations.map((evac) => evac.aerialMissionId || "—"))];
-    return values.map((value) => ({ value, label: value }));
-  }, [evacuations]);
-
   const startEdit = (evac) => {
     setEditingId(evac.id);
-    setDraft({ ...evac });
+    setDraft({
+      ...evac,
+      departurePoint: findLocationByPoint(evac.departurePoint, locations)?.id || null,
+      destinationPoint: findLocationByPoint(evac.destinationPoint, locations)?.id || null,
+    });
   };
 
   const cancelEdit = () => {
@@ -144,13 +175,28 @@ const EvacuationsTable = ({ evacuations, locations, onUpdateEvacuation, onDelete
   };
 
   const saveEdit = () => {
-    onUpdateEvacuation?.(editingId, draft);
+    const departureLocation = locations.find((location) => location.id === draft.departurePoint);
+    const destinationLocation = locations.find((location) => location.id === draft.destinationPoint);
+
+    onUpdateEvacuation?.(editingId, {
+      ...draft,
+      departurePoint: departureLocation?.location || null,
+      destinationPoint: destinationLocation?.location || null,
+    });
     setEditingId(null);
     setDraft(null);
   };
 
   const updateDraft = (field, value) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const startNow = (evacId) => {
+    onUpdateEvacuation?.(evacId, { startTime: new Date().toISOString() });
+  };
+
+  const finishEvacuation = (evacId) => {
+    onUpdateEvacuation?.(evacId, { concludedAt: new Date().toISOString(), status: "completed" });
   };
 
   const handleSortClick = (key) => {
@@ -244,10 +290,11 @@ const EvacuationsTable = ({ evacuations, locations, onUpdateEvacuation, onDelete
                 {...filterProps("forceRadioSign", radioSignOptions)}
               />
               <ColumnHeader label="ETA" {...sortProps("eta")} />
+              <ColumnHeader label="זמן סיום" {...sortProps("concludedAt")} />
               <ColumnHeader
-                label="מספר משימה"
+                label="משימה אווירית"
                 {...sortProps("aerialMissionId")}
-                {...filterProps("aerialMissionId", missionIdOptions)}
+                {...filterProps("aerialMissionId", missionOptions)}
               />
               <ColumnHeader label="סטטוס" {...sortProps("status")} {...filterProps("status", STATUS_FILTER_OPTIONS)} />
               <Table.Th></Table.Th>
@@ -260,6 +307,7 @@ const EvacuationsTable = ({ evacuations, locations, onUpdateEvacuation, onDelete
               const MethodIcon = METHOD_ICONS[row.method] || IconHelicopter;
               const statusColor = EVAC_TEAM_STATUS_COLOR_VARS[row.status] || "var(--app-color-text-muted)";
               const incomplete = isIncomplete(evac);
+              const mission = aerialMissions.find((m) => m.id === evac.aerialMissionId);
 
               return (
                 <Table.Tr key={evac.id}>
@@ -285,13 +333,19 @@ const EvacuationsTable = ({ evacuations, locations, onUpdateEvacuation, onDelete
                         value={toLocalInputValue(draft.startTime)}
                         onChange={(e) => updateDraft("startTime", fromLocalInputValue(e.currentTarget.value))}
                       />
-                    ) : (
-                      <Text
-                        ff='ui-monospace, "SF Mono", "Consolas", monospace'
-                        c={row.startTime ? undefined : "var(--app-color-text-muted)"}
-                      >
-                        {row.startTime ? timeFormatter.format(new Date(row.startTime)) : "טרם הוזן"}
+                    ) : row.startTime ? (
+                      <Text ff='ui-monospace, "SF Mono", "Consolas", monospace'>
+                        {timeFormatter.format(new Date(row.startTime))}
                       </Text>
+                    ) : (
+                      <Button
+                        size="xs"
+                        variant="light"
+                        leftSection={<IconPlayerPlay size={14} stroke={1.8} />}
+                        onClick={() => startNow(evac.id)}
+                      >
+                        התחל עכשיו
+                      </Button>
                     )}
                   </Table.Td>
 
@@ -326,7 +380,7 @@ const EvacuationsTable = ({ evacuations, locations, onUpdateEvacuation, onDelete
                       />
                     ) : (
                       <Text c={row.departurePoint ? undefined : "var(--app-color-text-muted)"}>
-                        {locationName(locations, row.departurePoint) || "טרם הוזן"}
+                        {describeLocationPoint(row.departurePoint, locations)}
                       </Text>
                     )}
                   </Table.Td>
@@ -344,7 +398,7 @@ const EvacuationsTable = ({ evacuations, locations, onUpdateEvacuation, onDelete
                       />
                     ) : (
                       <Text c={row.destinationPoint ? undefined : "var(--app-color-text-muted)"}>
-                        {locationName(locations, row.destinationPoint) || "טרם הוזן"}
+                        {describeLocationPoint(row.destinationPoint, locations)}
                       </Text>
                     )}
                   </Table.Td>
@@ -384,13 +438,43 @@ const EvacuationsTable = ({ evacuations, locations, onUpdateEvacuation, onDelete
                   <Table.Td>
                     {isEditing ? (
                       <TextInput
+                        type="datetime-local"
                         size="xs"
                         styles={inputStyles}
-                        value={draft.aerialMissionId || ""}
-                        onChange={(e) => updateDraft("aerialMissionId", e.currentTarget.value)}
+                        value={toLocalInputValue(draft.concludedAt)}
+                        onChange={(e) => updateDraft("concludedAt", fromLocalInputValue(e.currentTarget.value))}
+                      />
+                    ) : row.concludedAt ? (
+                      <Text c="var(--app-color-text-muted)" ff='ui-monospace, "SF Mono", "Consolas", monospace'>
+                        {timeFormatter.format(new Date(row.concludedAt))}
+                      </Text>
+                    ) : (
+                      <Button
+                        size="xs"
+                        variant="light"
+                        color="green"
+                        leftSection={<IconFlagCheck size={14} stroke={1.8} />}
+                        onClick={() => finishEvacuation(evac.id)}
+                      >
+                        סיים פינוי
+                      </Button>
+                    )}
+                  </Table.Td>
+
+                  <Table.Td>
+                    {isEditing ? (
+                      <Select
+                        size="xs"
+                        styles={inputStyles}
+                        placeholder="בחר משימה"
+                        data={missionOptions}
+                        value={draft.aerialMissionId}
+                        onChange={(value) => updateDraft("aerialMissionId", value)}
+                        searchable
+                        clearable
                       />
                     ) : (
-                      <Text c="var(--app-color-text-muted)">{row.aerialMissionId || "—"}</Text>
+                      <Text c="var(--app-color-text-muted)">{mission?.radio_sign || "—"}</Text>
                     )}
                   </Table.Td>
 
@@ -464,7 +548,7 @@ const EvacuationsTable = ({ evacuations, locations, onUpdateEvacuation, onDelete
             })}
             {visibleEvacuations.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={10} c="var(--app-color-text-muted)" ta="center">
+                <Table.Td colSpan={11} c="var(--app-color-text-muted)" ta="center">
                   {evacuations.length === 0 ? "אין פינויים לאירוע זה" : "אין פינויים התואמים לסינון"}
                 </Table.Td>
               </Table.Tr>

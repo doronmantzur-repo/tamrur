@@ -24,6 +24,8 @@ import {
 import {
   AERIAL_EVAC_COLOR_VARS,
   AERIAL_EVAC_LABELS,
+  EVAC_TEAM_STATUS_COLOR_VARS,
+  EVAC_TEAM_STATUS_LABELS,
   PULSING_AERIAL_EVAC_STATUSES,
 } from "../../constants/aerialEvacStatus";
 import { URGENCY_COLOR_VARS, URGENCY_LABELS, URGENCY_ORDER } from "../../constants/injuryStatus";
@@ -41,8 +43,8 @@ const STATUS_ORDER = [
   "completed",
 ];
 
-/** Per-evacuation statuses tracked in the header summary (excludes the event-level "not needed" state). */
-const EVAC_STATUS_ORDER = ["needed", "in_progress", "approved", "denied"];
+/** Evacuation-team statuses tracked in the header summary. */
+const EVAC_STATUS_ORDER = ["not_started", "started", "completed"];
 
 /** Plain (non-interactive) stat block: just the timer. */
 const plainStatStyles = { padding: "0.75rem 1rem" };
@@ -276,12 +278,12 @@ const EventHeaderCard = ({
                 size="sm"
                 styles={{
                   root: {
-                    backgroundColor: `color-mix(in srgb, ${AERIAL_EVAC_COLOR_VARS[key]} 16%, transparent)`,
-                    color: AERIAL_EVAC_COLOR_VARS[key],
+                    backgroundColor: `color-mix(in srgb, ${EVAC_TEAM_STATUS_COLOR_VARS[key]} 16%, transparent)`,
+                    color: EVAC_TEAM_STATUS_COLOR_VARS[key],
                   },
                 }}
               >
-                {evacStatusCounts[key]} {AERIAL_EVAC_LABELS[key]}
+                {evacStatusCounts[key]} {EVAC_TEAM_STATUS_LABELS[key]}
               </Badge>
             ))}
           </Group>
