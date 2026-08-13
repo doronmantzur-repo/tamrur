@@ -7,8 +7,9 @@
 // Styles
 
 export const EVAC_METHOD_LABELS = {
-  chopper: "מסוק",
-  vehicle: "רכב",
+  walk: "הליכה",
+  ride: "רכב",
+  aerial: "אווירי",
 };
 
 export const LANDING_PAD_STATUS_LABELS = {

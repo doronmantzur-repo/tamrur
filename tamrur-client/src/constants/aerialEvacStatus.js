@@ -29,12 +29,12 @@ export const PULSING_AERIAL_EVAC_STATUSES = ["approved", "denied"];
 /** The evacuation *team's* own status, distinct from the event-level aerial-evac request status above. */
 export const EVAC_TEAM_STATUS_LABELS = {
   not_started: "טרם יצא",
-  in_progress: "בדרך",
+  started: "בדרך",
   completed: "הושלם",
 };
 
 export const EVAC_TEAM_STATUS_COLOR_VARS = {
   not_started: "var(--app-color-text-muted)",
-  in_progress: "var(--app-color-primary)",
+  started: "var(--app-color-primary)",
   completed: "var(--app-color-success)",
 };

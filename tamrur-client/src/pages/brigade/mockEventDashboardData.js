@@ -7,15 +7,15 @@
 // Styles
 
 /**
- * Hardcoded data for injuries and evacuations, still used until those pieces
- * are connected to Redux/the API. Timestamps are generated relative to "now"
- * so the evacuation times feel live when the page loads. The event itself
- * and locations are already API-backed — see eventsSlice and locationsSlice.
+ * Hardcoded injuries data, still used until that piece is connected to
+ * Redux/the API — owned by a teammate's in-progress work elsewhere.
+ * Timestamps are generated relative to "now". Everything else on the
+ * brigade dashboard (event, locations, aerial missions, evacuations) is
+ * already API-backed.
  */
 
 const now = Date.now();
 const minutesAgo = (minutes) => new Date(now - minutes * 60 * 1000).toISOString();
-const minutesFromNow = (minutes) => new Date(now + minutes * 60 * 1000).toISOString();
 
 export const mockInjuries = [
   {
@@ -87,37 +87,5 @@ export const mockInjuries = [
     "recommended-evac-dest": null,
     "evac-ready": false,
     created_at: minutesAgo(12),
-  },
-];
-
-/**
- * Fields mirror the real `evacuations` table (method, departure/destination
- * point, radio callsign, start time, ETA, aerial mission id, status) — no
- * link back to injuries, since the DB doesn't support that relationship.
- * `evac-2` simulates a row freshly auto-created off an airforce approval:
- * still missing the fields the brigade has to fill in by hand.
- */
-export const mockEvacuations = [
-  {
-    id: "evac-1",
-    method: "chopper",
-    departurePoint: "aep-1",
-    destinationPoint: "hosp-2",
-    forceRadioSign: "מטיף 21",
-    startTime: minutesAgo(18),
-    eta: minutesFromNow(4),
-    aerialMissionId: "עיט 4",
-    status: "in_progress",
-  },
-  {
-    id: "evac-2",
-    method: "chopper",
-    departurePoint: null,
-    destinationPoint: null,
-    forceRadioSign: "אריה 3",
-    startTime: null,
-    eta: null,
-    aerialMissionId: null,
-    status: "not_started",
   },
 ];
