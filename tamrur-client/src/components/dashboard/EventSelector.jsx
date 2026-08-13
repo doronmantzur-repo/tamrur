@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 
 // External libraries
-import { Badge, Group, Select, Text } from "@mantine/core";
+import { Badge, Group, Loader, Select, Text } from "@mantine/core";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
@@ -12,14 +12,19 @@ import { COMPLETED_STATUS, EVENT_STATUS_LABELS } from "../../constants/eventStat
 // Styles
 
 /**
- * Renders a dropdown listing every event, with completed events shown in a
- * muted color and active (non-completed) events highlighted in the app's
- * primary accent, so status reads at a glance.
+ * Renders a dropdown listing events, with completed events shown in a muted
+ * color and active (non-completed) events highlighted in the app's primary
+ * accent, so status reads at a glance.
  *
- * @param {{ value: string | null, onChange: (eventId: string | null) => void }} props
+ * @param {{
+ *   value: string | null,
+ *   onChange: (eventId: string | null) => void,
+ *   filterStatuses?: string[],
+ * }} props - `filterStatuses`, if given, restricts the list to events whose
+ *   status is in that array (e.g. `[COMPLETED_STATUS]` for a reports page).
  * @returns {JSX.Element} The event selector dropdown.
  */
-const EventSelector = ({ value, onChange }) => {
+const EventSelector = ({ value, onChange, filterStatuses }) => {
   const dispatch = useDispatch();
   const { events, status } = useSelector((state) => state.events);
 
@@ -27,7 +32,11 @@ const EventSelector = ({ value, onChange }) => {
     dispatch(fetchEvents());
   }, [dispatch]);
 
-  const data = events.map((event) => ({
+  const visibleEvents = filterStatuses
+    ? events.filter((event) => filterStatuses.includes(event.status))
+    : events;
+
+  const data = visibleEvents.map((event) => ({
     value: event.id,
     label: event.name || event.id,
     status: event.status,
@@ -43,6 +52,8 @@ const EventSelector = ({ value, onChange }) => {
       onChange={onChange}
       searchable
       clearable
+      disabled={status === "loading"}
+      rightSection={status === "loading" ? <Loader size="xs" color="var(--app-color-primary)" /> : undefined}
       checkIconPosition="right"
       dir="rtl"
       w={{ base: "100%", sm: 340 }}
