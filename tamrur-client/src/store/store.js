@@ -8,6 +8,7 @@ import injuriesReducer from "../features/injuries/injuriesSlice";
 import treatmentsReducer from "../features/treatments/treatmentsSlice";
 import vitalsReducer from "../features/vitals/vitalsSlice";
 import aerialMissionReducer from "../features/aerialMission/aerialMissionSlice";
+import locationsReducer from "../features/locations/locationsSlice";
 import { setTokenGetter } from "../api/TamrurAPI";
 
 /**
@@ -18,6 +19,7 @@ import { setTokenGetter } from "../api/TamrurAPI";
  * @see features/treatments/treatmentsSlice.js
  * @see features/vitals/vitalsSlice.js
  * @see features/aerialMission/aerialMissionSlice.js
+ * @see features/locations/locationsSlice.js
  */
 export const store = configureStore({
   reducer: {
@@ -27,6 +29,7 @@ export const store = configureStore({
     treatments: treatmentsReducer,
     vitals: vitalsReducer,
     aerialMission: aerialMissionReducer,
+    locations: locationsReducer,
   },
 });
 

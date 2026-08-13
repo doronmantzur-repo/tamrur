@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Box, Button, Select, Text, TextInput } from "@mantine/core";
 import { IconAlertTriangle, IconPlus, IconTag } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 // Internal application modules
 import AuthFormCard from "../auth/AuthFormCard";
@@ -42,10 +43,8 @@ const inputStyles = {
  * and a location picked by dropping a pin on a map (required). On submit,
  * dispatches the createEvent thunk with the exact fields the server reads
  * (name, type, location as a GeoJSON Point) — status and timestamps are
- * always server-generated and are never sent from this form.
- *
- * This is a standalone, embeddable component (not wired to a route) so it
- * can be dropped into a modal or a dedicated page.
+ * always server-generated and are never sent from this form. On success,
+ * navigates straight into the new event's brigade dashboard.
  *
  * @param {{ onCreated?: (event: Object) => void }} props
  * @returns {JSX.Element} The create event form.
@@ -57,6 +56,7 @@ const CreateEventForm = ({ onCreated }) => {
   const [locationError, setLocationError] = useState(null);
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { createStatus, createError } = useSelector((state) => state.events);
 
   /**
@@ -89,6 +89,7 @@ const CreateEventForm = ({ onCreated }) => {
         setType("");
         setPosition(null);
         onCreated?.(action.payload);
+        navigate(`/brigade/${action.payload.id}`);
       }
     });
   };

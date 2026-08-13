@@ -7,16 +7,16 @@
 // Styles
 
 export const AERIAL_EVAC_LABELS = {
-  no_neede: "לא נדרש",
+  no_needed: "לא נדרש",
   needed: "צריך פינוי אווירי",
   in_progress: "בטיפול",
   approved: "מאושר",
   denied: "נדחה",
 };
 
-/** In practice only needed/approved/denied are expected to be in real use; no_neede/in_progress get neutral placeholder colors until decided. */
+/** In practice only needed/approved/denied are expected to be in real use; no_needed/in_progress get neutral placeholder colors until decided. */
 export const AERIAL_EVAC_COLOR_VARS = {
-  no_neede: "var(--app-color-text-muted)",
+  no_needed: "var(--app-color-text-muted)",
   needed: "var(--app-color-warning)",
   in_progress: "var(--app-color-primary)",
   approved: "var(--app-color-success)",
