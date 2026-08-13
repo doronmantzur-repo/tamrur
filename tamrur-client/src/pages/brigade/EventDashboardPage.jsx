@@ -1,10 +1,11 @@
 // React
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // External libraries
-import { ActionIcon, Box, Button, Grid, Group, Stack, Title, useMantineColorScheme } from "@mantine/core";
+import { ActionIcon, Box, Button, Grid, Group, Loader, Stack, Text, Title, useMantineColorScheme } from "@mantine/core";
 import { IconMoon, IconPlus, IconSun } from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
@@ -13,7 +14,11 @@ import EventMapCard from "../../components/brigade/EventMapCard";
 import InjuriesTableCard from "../../components/brigade/InjuriesTableCard";
 import EvacuationsTable from "../../components/brigade/EvacuationsTable";
 import { COMPLETED_STATUS } from "../../constants/eventStatus";
-import { mockEvacuations, mockEvent, mockInjuries, mockLocations } from "./mockEventDashboardData";
+import { fetchLocations } from "../../features/locations/locationsSlice";
+import { fetchEventById, updateEvent } from "../../features/events/eventsSlice";
+import { fetchAerialMissionsByEvent } from "../../features/aerialMission/aerialMissionSlice";
+import { POLL_INTERVAL_MS } from "../../constants/polling";
+import { mockEvacuations, mockInjuries } from "./mockEventDashboardData";
 
 // Styles
 
@@ -32,34 +37,89 @@ const DASHBOARD_ROW_HEIGHT = "32rem";
  * Renders the brigade single-event dashboard: the event header (name, timer,
  * injury/evacuation summary, status controls), then one row split 1/5-2/5-2/5
  * between the event map, the injuries table, and the evacuation team table.
- * Currently backed by hardcoded mock data, no Redux/API wiring yet.
+ * The event (by :eventId) and locations are fetched from the API; injuries
+ * and evacuations are still hardcoded mock data, wired incrementally in
+ * later parts.
  *
  * @returns {JSX.Element} The brigade event dashboard page.
  */
 const EventDashboardPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { eventId } = useParams();
 
-  const [event, setEvent] = useState(mockEvent);
   const [evacuations, setEvacuations] = useState(mockEvacuations);
   const [injuries] = useState(mockInjuries);
+
+  const event = useSelector((state) => state.events.currentEvent);
+  const currentEventStatus = useSelector((state) => state.events.currentEventStatus);
+  const currentEventError = useSelector((state) => state.events.currentEventError);
+  const locations = useSelector((state) => state.locations.locations);
+  const aerialMissions = useSelector((state) => state.aerialMission.byEventId[eventId]) || [];
+
+  // The airforce only ever writes the decision to the aerial_mission row,
+  // never back onto the event — so once a mission exists for this event,
+  // its request-status is the true answer; before that, the event's own
+  // aerial-evac field (set by the brigade's request button) is all there is.
+  const latestMission = aerialMissions[0];
+  const aerialEvacStatus = latestMission ? latestMission["request-status"] : event?.["aerial-evac"];
+
+  // Derived, not stored: true on first load and when the route's eventId
+  // has changed but the fetch for it hasn't resolved yet — false during a
+  // background polling refresh of the event already on screen, so that
+  // doesn't flash the loader every poll interval.
+  const isShowingCurrentEvent = event?.id === eventId;
+  const isInitialLoad = currentEventStatus === "loading" && !isShowingCurrentEvent;
+
+  useEffect(() => {
+    dispatch(fetchLocations());
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchEventById(eventId));
+
+    // Other stakeholders (airforce approving a request, etc.) can change
+    // this event at any time, so keep polling instead of fetching once.
+    const intervalId = setInterval(() => {
+      dispatch(fetchEventById(eventId));
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [eventId, dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchAerialMissionsByEvent(eventId));
+
+    // Waiting on the airforce's decision, which can land at any time.
+    const intervalId = setInterval(() => {
+      dispatch(fetchAerialMissionsByEvent(eventId));
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [eventId, dispatch]);
 
   const isDark = colorScheme === "dark";
 
   const handleAdvanceStatus = () => {
-    setEvent((prev) => {
-      const currentIndex = STATUS_ORDER.indexOf(prev.status);
-      const nextStatus = STATUS_ORDER[currentIndex + 1];
-      return nextStatus ? { ...prev, status: nextStatus } : prev;
-    });
+    const currentIndex = STATUS_ORDER.indexOf(event.status);
+    const nextStatus = STATUS_ORDER[currentIndex + 1];
+    if (nextStatus) {
+      dispatch(updateEvent({ id: eventId, changes: { status: nextStatus } }));
+    }
   };
 
   const handleCloseEvent = () => {
-    setEvent((prev) => ({
-      ...prev,
-      status: COMPLETED_STATUS,
-      closure_at: new Date().toISOString(),
-    }));
+    dispatch(
+      updateEvent({
+        id: eventId,
+        changes: { status: COMPLETED_STATUS, closure_at: new Date().toISOString() },
+      }),
+    );
+  };
+
+  const handleRequestAerialEvac = () => {
+    dispatch(updateEvent({ id: eventId, changes: { aerialEvac: "needed" } }));
   };
 
   const handleUpdateEvacuation = (evacId, changes) => {
@@ -157,30 +217,51 @@ const EventDashboardPage = () => {
             </Group>
           </Group>
 
-          <EventHeaderCard
-            event={event}
-            injuries={injuries}
-            evacuations={evacuations}
-            onAdvanceStatus={handleAdvanceStatus}
-            onCloseEvent={handleCloseEvent}
-          />
+          {isInitialLoad && (
+            <Stack align="center" gap="sm" py="xl">
+              <Loader color="var(--app-color-primary)" />
+              <Text fz="sm" c="var(--app-color-text-muted)">
+                טוען נתוני אירוע...
+              </Text>
+            </Stack>
+          )}
 
-          <Grid gutter="sm" columns={10}>
-            <Grid.Col span={{ base: 10, md: 2 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
-              <EventMapCard event={event} locations={mockLocations} />
-            </Grid.Col>
-            <Grid.Col span={{ base: 10, md: 4 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
-              <InjuriesTableCard injuries={injuries} />
-            </Grid.Col>
-            <Grid.Col span={{ base: 10, md: 4 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
-              <EvacuationsTable
+          {!isInitialLoad && !isShowingCurrentEvent && currentEventStatus === "failed" && (
+            <Text fz="sm" c="var(--app-color-error)" ta="center" py="xl">
+              {currentEventError || "שגיאה בטעינת האירוע"}
+            </Text>
+          )}
+
+          {!isInitialLoad && isShowingCurrentEvent && (
+            <>
+              <EventHeaderCard
+                event={event}
+                injuries={injuries}
                 evacuations={evacuations}
-                locations={mockLocations}
-                onUpdateEvacuation={handleUpdateEvacuation}
-                onDeleteEvacuation={handleDeleteEvacuation}
+                aerialEvacStatus={aerialEvacStatus}
+                onAdvanceStatus={handleAdvanceStatus}
+                onCloseEvent={handleCloseEvent}
+                onRequestAerialEvac={handleRequestAerialEvac}
               />
-            </Grid.Col>
-          </Grid>
+
+              <Grid gutter="sm" columns={10}>
+                <Grid.Col span={{ base: 10, md: 2 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
+                  <EventMapCard event={event} locations={locations} />
+                </Grid.Col>
+                <Grid.Col span={{ base: 10, md: 4 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
+                  <InjuriesTableCard injuries={injuries} />
+                </Grid.Col>
+                <Grid.Col span={{ base: 10, md: 4 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
+                  <EvacuationsTable
+                    evacuations={evacuations}
+                    locations={locations}
+                    onUpdateEvacuation={handleUpdateEvacuation}
+                    onDeleteEvacuation={handleDeleteEvacuation}
+                  />
+                </Grid.Col>
+              </Grid>
+            </>
+          )}
         </Stack>
       </Stack>
     </Layout>

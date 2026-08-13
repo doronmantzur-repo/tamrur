@@ -9,11 +9,15 @@ import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 
 // Internal application modules
 import { LANDING_PAD_STATUS_COLOR_VARS, LANDING_PAD_STATUS_LABELS } from "../../constants/evacuationMethod";
+import { toLatLng } from "../../utils/geo";
 
 // Styles
 import "leaflet/dist/leaflet.css";
 
 const DEFAULT_ZOOM = 14;
+
+/** Used only if an event somehow has no location, so the map still has somewhere to center on. */
+const FALLBACK_CENTER = { lat: 31.7683, lng: 35.2137 };
 
 /**
  * Builds a small circular div-icon marker. Colors are CSS vars, safe here
@@ -160,9 +164,11 @@ const EvacuationMap = ({ event, locations }) => {
 
   const isLayerOn = (key) => visibleLayers.includes(key);
 
-  const landingPads = locations.filter((location) => location.type === "landing_pad");
-  const hospitals = locations.filter((location) => location.type === "hospital");
-  const otherLocations = locations.filter((location) => location.type === "other");
+  const withCoords = locations.filter((location) => location.location);
+  const landingPads = withCoords.filter((location) => location.type === "landing_pad");
+  const hospitals = withCoords.filter((location) => location.type === "hospital");
+  const otherLocations = withCoords.filter((location) => location.type === "exchange_point");
+  const eventLatLng = toLatLng(event.location);
 
   return (
     <Stack gap={0} style={{ height: "100%", overflow: "auto" }}>
@@ -203,7 +209,7 @@ const EvacuationMap = ({ event, locations }) => {
         }}
       >
         <MapContainer
-          center={event.location}
+          center={eventLatLng || FALLBACK_CENTER}
           zoom={DEFAULT_ZOOM}
           style={{ height: "100%", width: "100%" }}
         >
@@ -212,38 +218,41 @@ const EvacuationMap = ({ event, locations }) => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {isLayerOn("location") && (
-            <Marker position={event.location} icon={EVENT_ICON}>
+          {isLayerOn("location") && eventLatLng && (
+            <Marker position={eventLatLng} icon={EVENT_ICON}>
               <Popup>{event.name}</Popup>
             </Marker>
           )}
 
           {isLayerOn("pads") &&
-            landingPads.map((pad) => (
-              <Marker
-                key={pad.id}
-                position={pad.location}
-                icon={buildDivIcon({
-                  label: "H",
-                  background: LANDING_PAD_STATUS_COLOR_VARS[pad.status] || "var(--app-color-text-muted)",
-                })}
-              >
-                <Popup>
-                  {pad.name} — {LANDING_PAD_STATUS_LABELS[pad.status] || pad.status}
-                </Popup>
-              </Marker>
-            ))}
+            landingPads.map((pad) => {
+              const padStatus = pad.is_ok ? "available" : "occupied";
+              return (
+                <Marker
+                  key={pad.id}
+                  position={toLatLng(pad.location)}
+                  icon={buildDivIcon({
+                    label: "H",
+                    background: LANDING_PAD_STATUS_COLOR_VARS[padStatus],
+                  })}
+                >
+                  <Popup>
+                    {pad.name}, {LANDING_PAD_STATUS_LABELS[padStatus]}
+                  </Popup>
+                </Marker>
+              );
+            })}
 
           {isLayerOn("hospitals") &&
             hospitals.map((hospital) => (
-              <Marker key={hospital.id} position={hospital.location} icon={HOSPITAL_ICON}>
+              <Marker key={hospital.id} position={toLatLng(hospital.location)} icon={HOSPITAL_ICON}>
                 <Popup>{hospital.name}</Popup>
               </Marker>
             ))}
 
           {isLayerOn("other") &&
             otherLocations.map((location) => (
-              <Marker key={location.id} position={location.location} icon={OTHER_LOCATION_ICON}>
+              <Marker key={location.id} position={toLatLng(location.location)} icon={OTHER_LOCATION_ICON}>
                 <Popup>{location.name}</Popup>
               </Marker>
             ))}

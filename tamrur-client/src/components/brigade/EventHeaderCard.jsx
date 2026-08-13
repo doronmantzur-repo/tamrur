@@ -1,13 +1,16 @@
 // React
+import { useState } from "react";
 
 // External libraries
-import { Badge, Button, Group, Stack, Text } from "@mantine/core";
+import { ActionIcon, Badge, Button, Group, Stack, Text, Textarea } from "@mantine/core";
 import {
   IconCheck,
   IconHelicopter,
+  IconPencil,
   IconPlayerTrackNext,
   IconSend,
   IconTarget,
+  IconX,
 } from "@tabler/icons-react";
 
 // Internal application modules
@@ -77,21 +80,53 @@ function countBy(items, order, getKey) {
 }
 
 /**
- * Renders the brigade event dashboard's header: name, description, type/status/
- * aerial-evac badges, three large at-a-glance stats spaced across the row
- * (elapsed time, injuries, evacuations), and the event's actions (advance
- * status, request evacuation, close event).
+ * Renders the brigade event dashboard's header: name, a client-only note
+ * (edited via the pencil icon — the DB has no description column, so this
+ * never persists past the browser session), type/status/aerial-evac badges,
+ * three large at-a-glance stats spaced across the row (elapsed time,
+ * injuries, evacuations), and the event's actions (advance status, request
+ * evacuation, close event).
  *
  * @param {{
  *   event: object,
  *   injuries: Array<object>,
  *   evacuations: Array<object>,
+ *   aerialEvacStatus: string | null | undefined,
  *   onAdvanceStatus: () => void,
  *   onCloseEvent: () => void,
+ *   onRequestAerialEvac: () => void,
  * }} props
  * @returns {JSX.Element} The event header card.
  */
-const EventHeaderCard = ({ event, injuries, evacuations, onAdvanceStatus, onCloseEvent }) => {
+const EventHeaderCard = ({
+  event,
+  injuries,
+  evacuations,
+  aerialEvacStatus,
+  onAdvanceStatus,
+  onCloseEvent,
+  onRequestAerialEvac,
+}) => {
+  // Client-only note for the brigade's own reference — the DB has no
+  // description column, so this never leaves the browser.
+  const [description, setDescription] = useState("");
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState("");
+
+  const startEditingDescription = () => {
+    setDescriptionDraft(description);
+    setIsEditingDescription(true);
+  };
+
+  const saveDescription = () => {
+    setDescription(descriptionDraft.trim());
+    setIsEditingDescription(false);
+  };
+
+  const cancelEditingDescription = () => {
+    setIsEditingDescription(false);
+  };
+
   const isCompleted = event.status === COMPLETED_STATUS;
   const elapsedSeconds = useElapsedSeconds(isCompleted ? null : event.created_at);
 
@@ -100,7 +135,8 @@ const EventHeaderCard = ({ event, injuries, evacuations, onAdvanceStatus, onClos
 
   const urgencyCounts = countBy(injuries, URGENCY_ORDER, (injury) => injury.urgency);
   const evacStatusCounts = countBy(evacuations, EVAC_STATUS_ORDER, (evac) => evac.status);
-  const aerialEvacColor = AERIAL_EVAC_COLOR_VARS[event["aerial-evac"]] || "var(--app-color-text-muted)";
+  const showAerialEvacBadge = aerialEvacStatus && aerialEvacStatus !== "no_needed";
+  const aerialEvacColor = AERIAL_EVAC_COLOR_VARS[aerialEvacStatus] || "var(--app-color-text-muted)";
 
   return (
     <DashboardCard
@@ -132,25 +168,75 @@ const EventHeaderCard = ({ event, injuries, evacuations, onAdvanceStatus, onClos
           >
             {EVENT_TYPE_LABELS[event.type] || event.type}
           </Badge>
-          <Badge
-            leftSection={<IconHelicopter size={12} />}
-            className={PULSING_AERIAL_EVAC_STATUSES.includes(event["aerial-evac"]) ? "app-pulse-glow" : undefined}
-            styles={{
-              root: {
-                backgroundColor: `color-mix(in srgb, ${aerialEvacColor} 16%, transparent)`,
-                color: aerialEvacColor,
-              },
-            }}
-          >
-            {AERIAL_EVAC_LABELS[event["aerial-evac"]] || event["aerial-evac"]}
-          </Badge>
+          {showAerialEvacBadge && (
+            <Badge
+              leftSection={<IconHelicopter size={12} />}
+              className={PULSING_AERIAL_EVAC_STATUSES.includes(aerialEvacStatus) ? "app-pulse-glow" : undefined}
+              styles={{
+                root: {
+                  backgroundColor: `color-mix(in srgb, ${aerialEvacColor} 16%, transparent)`,
+                  color: aerialEvacColor,
+                },
+              }}
+            >
+              {AERIAL_EVAC_LABELS[aerialEvacStatus] || aerialEvacStatus}
+            </Badge>
+          )}
         </Group>
       }
     >
-      {event.description && (
-        <Text fz="sm" c="var(--app-color-text-muted)">
-          {event.description}
-        </Text>
+      {isEditingDescription ? (
+        <Group align="flex-start" gap="xs" wrap="nowrap">
+          <Textarea
+            autosize
+            minRows={1}
+            maxRows={4}
+            autoFocus
+            value={descriptionDraft}
+            onChange={(e) => setDescriptionDraft(e.currentTarget.value)}
+            placeholder="הערה פנימית לצוות (לא נשמרת במערכת)"
+            style={{ flex: 1 }}
+            styles={{
+              input: {
+                backgroundColor: "var(--app-color-background)",
+                color: "var(--app-color-text)",
+                borderColor: "var(--app-color-border)",
+              },
+            }}
+          />
+          <ActionIcon
+            variant="subtle"
+            aria-label="שמור תיאור"
+            onClick={saveDescription}
+            styles={{ root: { color: "var(--app-color-success)" } }}
+          >
+            <IconCheck size={18} stroke={1.8} />
+          </ActionIcon>
+          <ActionIcon
+            variant="subtle"
+            aria-label="בטל"
+            onClick={cancelEditingDescription}
+            styles={{ root: { color: "var(--app-color-text-muted)" } }}
+          >
+            <IconX size={18} stroke={1.8} />
+          </ActionIcon>
+        </Group>
+      ) : (
+        <Group gap="xs" wrap="nowrap" align="flex-start">
+          {description && (
+            <Text fz="sm" c="var(--app-color-text-muted)" style={{ flex: 1 }}>
+              {description}
+            </Text>
+          )}
+          <ActionIcon
+            variant="subtle"
+            aria-label={description ? "ערוך תיאור" : "הוסף תיאור"}
+            onClick={startEditingDescription}
+            styles={{ root: { color: "var(--app-color-text-muted)" } }}
+          >
+            <IconPencil size={14} stroke={1.8} />
+          </ActionIcon>
+        </Group>
       )}
 
       <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
@@ -224,6 +310,8 @@ const EventHeaderCard = ({ event, injuries, evacuations, onAdvanceStatus, onClos
           leftSection={<IconSend size={16} stroke={1.8} />}
           size="sm"
           mih="2.25rem"
+          disabled={isCompleted || aerialEvacStatus === "needed"}
+          onClick={onRequestAerialEvac}
           styles={{
             root: {
               backgroundColor: "var(--app-color-primary)",

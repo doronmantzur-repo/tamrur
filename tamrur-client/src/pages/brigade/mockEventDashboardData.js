@@ -7,39 +7,15 @@
 // Styles
 
 /**
- * Hardcoded data for the brigade event dashboard, used until it's connected
- * to Redux/the API. Timestamps are generated relative to "now" so the timer
- * and evacuation times feel live when the page loads.
+ * Hardcoded data for injuries and evacuations, still used until those pieces
+ * are connected to Redux/the API. Timestamps are generated relative to "now"
+ * so the evacuation times feel live when the page loads. The event itself
+ * and locations are already API-backed — see eventsSlice and locationsSlice.
  */
 
 const now = Date.now();
 const minutesAgo = (minutes) => new Date(now - minutes * 60 * 1000).toISOString();
 const minutesFromNow = (minutes) => new Date(now + minutes * 60 * 1000).toISOString();
-
-export const mockEvent = {
-  id: "evt-1",
-  name: "פיצוץ מטען בציר הראשי",
-  description: "פגיעה ממטען חבלה בסיור רגלי בציר הראשי, שלושה כלי רכב מעורבים.",
-  type: "explosive",
-  status: "ready_for_evacuation",
-  created_at: minutesAgo(42),
-  closure_at: null,
-  location: { lat: 31.7715, lng: 35.2172 },
-  "aerial-evac": "in_progress",
-};
-
-/**
- * Stand-in for the future locations table: landing pads, hospitals, and
- * other named points (e.g. an Ambulance Exchange Point) that departure/
- * destination fields can reference. `status` only applies to landing pads.
- */
-export const mockLocations = [
-  { id: "pad-1", name: "משטח נחיתה 1", type: "landing_pad", location: { lat: 31.774, lng: 35.221 }, status: "available" },
-  { id: "pad-2", name: "משטח נחיתה 2", type: "landing_pad", location: { lat: 31.768, lng: 35.209 }, status: "occupied" },
-  { id: "hosp-1", name: "בי״ח סורוקה", type: "hospital", location: { lat: 31.2589, lng: 34.8009 } },
-  { id: "hosp-2", name: "בי״ח שיבא", type: "hospital", location: { lat: 32.0392, lng: 34.8443 } },
-  { id: "aep-1", name: "נקודת חילוף אריה", type: "other", location: { lat: 31.7736, lng: 35.2145 } },
-];
 
 export const mockInjuries = [
   {
