@@ -8,17 +8,25 @@ import { IconMoon, IconSun } from "@tabler/icons-react";
 // Internal application modules
 import Layout from "../../components/layout/Layout";
 import EventSelector from "../../components/dashboard/EventSelector";
+import EventReportCard from "../../components/analyst/EventReportCard";
+import ReportsFolderCard from "../../components/analyst/ReportsFolderCard";
+import { COMPLETED_STATUS } from "../../constants/eventStatus";
 
 // Styles
 
+const REPORTABLE_STATUSES = [COMPLETED_STATUS];
+
 /**
- * Renders the event-analyst page.
+ * Renders the event-analyst page. Reports can only be generated for
+ * completed events, so the dropdown here is restricted to those.
  *
  * @returns {JSX.Element} The event-analyst page.
  */
 const EventAnalystPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const [folderHandle, setFolderHandle] = useState(null);
+  const [reportsRefreshSignal, setReportsRefreshSignal] = useState(0);
 
   const isDark = colorScheme === "dark";
 
@@ -90,7 +98,24 @@ const EventAnalystPage = () => {
               ניתוח אירוע
             </Title>
 
-            <EventSelector value={selectedEventId} onChange={setSelectedEventId} />
+            <EventSelector
+              value={selectedEventId}
+              onChange={setSelectedEventId}
+              filterStatuses={REPORTABLE_STATUSES}
+            />
+
+            <ReportsFolderCard
+              folderHandle={folderHandle}
+              onFolderChange={setFolderHandle}
+              refreshSignal={reportsRefreshSignal}
+            />
+
+            <EventReportCard
+              key={selectedEventId}
+              eventId={selectedEventId}
+              folderHandle={folderHandle}
+              onReportSaved={() => setReportsRefreshSignal((n) => n + 1)}
+            />
           </Stack>
         </Box>
       </Stack>
