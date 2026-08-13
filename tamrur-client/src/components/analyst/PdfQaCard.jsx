@@ -7,7 +7,7 @@ import { IconAlertCircle, IconSend } from "@tabler/icons-react";
 
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
-import PdfQaAPI from "../../api/PdfQaAPI";
+import TamrurAPI from "../../api/TamrurAPI";
 
 // Styles
 
@@ -15,10 +15,9 @@ import PdfQaAPI from "../../api/PdfQaAPI";
  * Lets the analyst ask a free-text question against the reference PDF
  * (currently the IDF combat casualty care manual) and shows Claude's answer.
  *
- * Talks directly to the standalone pdf-parse Q&A service (see
- * VITE_PDF_QA_URL) rather than going through TamrurAPI/tamrur-server — this
- * is a first check of the integration; a follow-up will proxy it through the
- * authenticated backend instead.
+ * Goes through the authenticated tamrur-server (/medic-query/ask), which
+ * embeds the question, retrieves the closest excerpts, and asks Claude to
+ * answer using only that context.
  *
  * @returns {JSX.Element} The PDF Q&A card.
  */
@@ -35,7 +34,7 @@ const PdfQaCard = () => {
     setIsAsking(true);
     setError(null);
 
-    PdfQaAPI.post("/ask", { question: question.trim() })
+    TamrurAPI.post("/medic-query/ask", { question: question.trim() })
       .then((response) => setAnswer(response.data.answer))
       .catch((err) => {
         setAnswer(null);
