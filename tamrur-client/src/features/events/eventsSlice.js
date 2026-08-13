@@ -41,26 +41,6 @@ export const createEvent = createAsyncThunk(
   },
 );
 
-/**
- * Sets an event's aerial-evac field, e.g. once the airforce page has
- * approved/denied its aerial mission request.
- * @param {{ id: string, aerialEvac: "approved" | "denied" }} params
- * @returns {Promise<Object>}
- */
-export const updateEventAerialEvac = createAsyncThunk(
-  "events/updateAerialEvac",
-  async ({ id, aerialEvac }, { rejectWithValue }) => {
-    try {
-      const response = await TamrurAPI.put(`/events/${id}`, { aerialEvac });
-      return response.data.event;
-    } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message ?? "Failed to update event",
-      );
-    }
-  },
-);
-
 /** @type {{events: Array<Object>, status: string, error: string|null, createStatus: string, createError: string|null}} */
 const initialState = {
   events: [],
@@ -102,15 +82,6 @@ const eventsSlice = createSlice({
       .addCase(createEvent.rejected, (state, action) => {
         state.createStatus = "failed";
         state.createError = action.payload;
-      })
-      .addCase(updateEventAerialEvac.fulfilled, (state, action) => {
-        // Patch just this field — update_event's response doesn't run the
-        // location column through ST_AsGeoJSON like fetchEvents does, so
-        // replacing the whole event would corrupt its coordinates.
-        const event = state.events.find((item) => item.id === action.payload.id);
-        if (event) {
-          event["aerial-evac"] = action.payload["aerial-evac"];
-        }
       });
   },
 });

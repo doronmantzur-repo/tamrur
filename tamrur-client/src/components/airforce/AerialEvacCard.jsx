@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 // External libraries
-import { Badge, Button, Group, TextInput } from "@mantine/core";
+import { Badge, Button, Group, Text, TextInput } from "@mantine/core";
 import { IconCheck, IconHelicopter, IconRadio, IconX } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 
@@ -10,7 +10,6 @@ import { useDispatch } from "react-redux";
 import DashboardCard from "../dashboard/DashboardCard";
 import { AERIAL_EVAC_COLOR_VARS, AERIAL_EVAC_LABELS } from "../../constants/aerialEvacStatus";
 import { createAerialMission, updateAerialMission } from "../../features/aerialMission/aerialMissionSlice";
-import { updateEventAerialEvac } from "../../features/events/eventsSlice";
 
 // Styles
 
@@ -37,15 +36,18 @@ const denyButtonStyles = {
 };
 
 /**
- * Renders a single event's aerial-evacuation request status. The event's own
- * aerial-evac field is the single trigger for whether this is actionable —
- * whenever it's "needed", this renders approve/deny controls, regardless of
- * what any past aerial_mission row says (a fresh "needed" always means a live
- * request). Denying is a single click. Approving is two steps: pressing "אשר"
- * first reveals the chopper's radio call-sign field, and only confirming that
- * actually sends the approval. Either decision creates the mission row if
- * this event doesn't have one yet, or updates it if it does, and writes the
- * decision back onto the event's aerial-evac field so it stops being "needed".
+ * Renders a single event's aerial-evacuation request status. The aerial_mission
+ * row's own request-status field is the trigger for whether this is
+ * actionable — whenever it's "needed", this renders approve/deny controls.
+ * Denying is a single click. Approving is two steps: pressing "אשר" first
+ * reveals the chopper's radio call-sign field, and only confirming that
+ * actually sends the approval. Either decision updates the mission row (a
+ * card only renders once one already exists for the event, per the parent
+ * page's mission-driven filter).
+ *
+ * The decision timestamp shown below the buttons is tracked in local state
+ * only, not persisted server-side — it reflects decisions made in this
+ * browser tab this session and is lost on refresh.
  *
  * @param {{ event: object, mission?: object }} props
  * @returns {JSX.Element} The aerial evacuation status card.
@@ -55,8 +57,9 @@ const AerialEvacCard = ({ event, mission }) => {
   const [radioSign, setRadioSign] = useState(mission?.radio_sign || "");
   const [isApproving, setIsApproving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [decidedAt, setDecidedAt] = useState(null);
 
-  const status = event["aerial-evac"];
+  const status = mission?.["request-status"];
   const color = AERIAL_EVAC_COLOR_VARS[status] || "var(--app-color-text-muted)";
   const isActionable = status === "needed";
 
@@ -75,7 +78,9 @@ const AerialEvacCard = ({ event, mission }) => {
         });
 
     dispatch(missionAction)
-      .then(() => dispatch(updateEventAerialEvac({ id: event.id, aerialEvac: requestStatus })))
+      .unwrap()
+      .then(() => setDecidedAt(new Date()))
+      .catch(() => {})
       .finally(() => {
         setIsSubmitting(false);
         setIsApproving(false);
@@ -99,6 +104,12 @@ const AerialEvacCard = ({ event, mission }) => {
         </Badge>
       }
     >
+      {!isActionable && decidedAt && (
+        <Text fz="sm" c="var(--app-color-text-muted)">
+          {`הוחלט ב-${decidedAt.toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}`}
+        </Text>
+      )}
+
       {isActionable && !isApproving && (
         <Group gap="sm">
           <Button
