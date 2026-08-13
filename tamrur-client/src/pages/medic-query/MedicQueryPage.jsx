@@ -1,5 +1,4 @@
 // React
-import { useState } from "react";
 
 // External libraries
 import { ActionIcon, Box, Stack, Title, useMantineColorScheme } from "@mantine/core";
@@ -7,18 +6,17 @@ import { IconMoon, IconSun } from "@tabler/icons-react";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
-import EventSelector from "../../components/dashboard/EventSelector";
+import PdfQaCard from "../../components/analyst/PdfQaCard";
 
 // Styles
 
 /**
- * Renders the event-analyst page.
+ * Renders the medic-query page.
  *
- * @returns {JSX.Element} The event-analyst page.
+ * @returns {JSX.Element} The medic-query page.
  */
-const EventAnalystPage = () => {
+const MedicQueryPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-  const [selectedEventId, setSelectedEventId] = useState(null);
 
   const isDark = colorScheme === "dark";
 
@@ -87,10 +85,10 @@ const EventAnalystPage = () => {
         <Box w="100%" maw={1240} style={{ marginInline: "auto" }}>
           <Stack align="stretch" gap="xl">
             <Title order={1} c="var(--app-color-primary)" fz="1.75rem" fw={700}>
-              ניתוח אירוע
+              שאילתת חובש
             </Title>
 
-            <EventSelector value={selectedEventId} onChange={setSelectedEventId} />
+            <PdfQaCard />
           </Stack>
         </Box>
       </Stack>
@@ -98,4 +96,4 @@ const EventAnalystPage = () => {
   );
 };
 
-export default EventAnalystPage;
+export default MedicQueryPage;
