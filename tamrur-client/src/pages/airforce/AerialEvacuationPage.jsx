@@ -30,8 +30,10 @@ const AerialEvacuationPage = () => {
   const events = useSelector((state) => state.events.events);
   const injuriesByEventId = useSelector((state) => state.injuries.byEventId);
   const missionsByEventId = useSelector((state) => state.aerialMission.byEventId);
+
+  // A card renders only for open events with a live aerial-evac request.
   const aerialEvacEvents = events.filter(
-    (event) => event["aerial-evac"] !== null && event.status !== "completed",
+    (event) => event.status !== "completed" && event["aerial-evac"] === "needed",
   );
 
   useEffect(() => {
