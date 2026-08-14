@@ -47,7 +47,7 @@ const PdfQaCard = () => {
     <DashboardCard title="שאל על החומר הרפואי">
       <Stack gap="sm" component="form" onSubmit={handleSubmit}>
         <Textarea
-          placeholder="לדוגמה: מהם התסמינים של התייבשות?"
+          placeholder="לדוגמא: מהם פעולות סקר ראשוני לפצוע?"
           value={question}
           onChange={(evt) => setQuestion(evt.currentTarget.value)}
           dir="rtl"
@@ -92,14 +92,23 @@ const PdfQaCard = () => {
           <Alert
             icon={<IconAlertCircle size={18} />}
             color="red"
-            styles={{ root: { backgroundColor: "color-mix(in srgb, var(--app-color-error) 12%, transparent)" } }}
+            styles={{
+              root: {
+                backgroundColor:
+                  "color-mix(in srgb, var(--app-color-error) 12%, transparent)",
+              },
+            }}
           >
             {error}
           </Alert>
         )}
 
         {answer && !isAsking && (
-          <Text dir="rtl" c="var(--app-color-text)" style={{ whiteSpace: "pre-wrap" }}>
+          <Text
+            dir="rtl"
+            c="var(--app-color-text)"
+            style={{ whiteSpace: "pre-wrap" }}
+          >
             {answer}
           </Text>
         )}
