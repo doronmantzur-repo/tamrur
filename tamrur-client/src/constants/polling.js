@@ -8,6 +8,6 @@
 
 /**
  * How often pages re-fetch data that other users may have changed
- * (e.g. injuries logged by another operator), in milliseconds.
+ * (e.g. casualties logged by another operator), in milliseconds.
  */
 export const POLL_INTERVAL_MS = 5000;

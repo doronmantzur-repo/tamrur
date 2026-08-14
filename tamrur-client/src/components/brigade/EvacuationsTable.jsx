@@ -92,7 +92,7 @@ function describeLocationPoint(point, locations) {
  * time, type, departure, destination, radio sign, ETA, concluded time,
  * aerial mission, status). Covers every evacuation method (walk/ride/
  * aerial), not just aerial teams. Fields mirror the real `evacuations`
- * schema — no injury linkage, since the DB doesn't support that
+ * schema — no casualty linkage, since the DB doesn't support that
  * relationship. Departure/destination are edited as a location picker but
  * stored as raw points, since the DB has no location foreign key: picking a
  * location resolves it to its coordinates on save, and displaying an

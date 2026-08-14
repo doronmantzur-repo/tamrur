@@ -11,9 +11,9 @@ import Layout from "../../components/layout/Layout";
 import AuthHeader from "../../components/auth/AuthHeader";
 import AuthFooter from "../../components/auth/AuthFooter";
 import AerialEvacCard from "../../components/airforce/AerialEvacCard";
-import InjuriesCard from "../../components/dashboard/InjuriesCard";
+import CasualtiesCard from "../../components/dashboard/CasualtiesCard";
 import { fetchEvents } from "../../features/events/eventsSlice";
-import { fetchInjuriesByEvent } from "../../features/injuries/injuriesSlice";
+import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { fetchAerialMissionsByEvent } from "../../features/aerialMission/aerialMissionSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
 
@@ -28,7 +28,7 @@ const AerialEvacuationPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const dispatch = useDispatch();
   const events = useSelector((state) => state.events.events);
-  const injuriesByEventId = useSelector((state) => state.injuries.byEventId);
+  const casualtiesByEventId = useSelector((state) => state.casualties.byEventId);
   const missionsByEventId = useSelector((state) => state.aerialMission.byEventId);
 
   // A card renders only for open events with a live aerial-evac request.
@@ -46,14 +46,14 @@ const AerialEvacuationPage = () => {
 
     const fetchAll = () => {
       eventIds.forEach((eventId) => {
-        dispatch(fetchInjuriesByEvent(eventId));
+        dispatch(fetchCasualtiesByEvent(eventId));
         dispatch(fetchAerialMissionsByEvent(eventId));
       });
     };
 
     fetchAll();
 
-    // Other operators can log injuries or act on mission requests at any
+    // Other operators can log casualties or act on mission requests at any
     // time, so keep polling instead of fetching once.
     const intervalId = setInterval(fetchAll, POLL_INTERVAL_MS);
 
@@ -138,7 +138,7 @@ const AerialEvacuationPage = () => {
                     event={event}
                     mission={missionsByEventId[event.id]?.[0]}
                   />
-                  <InjuriesCard injuries={injuriesByEventId[event.id] || []} />
+                  <CasualtiesCard casualties={casualtiesByEventId[event.id] || []} />
                 </Stack>
               ))}
             </Stack>

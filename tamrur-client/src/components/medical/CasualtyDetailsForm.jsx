@@ -21,47 +21,47 @@ import {
   EVAC_ABILITY_OPTIONS,
   EVAC_DEST_OPTIONS,
   URGENCY_OPTIONS,
-} from "../../constants/injuryStatus";
-import { createInjury, updateInjury } from "../../features/injuries/injuriesSlice";
+} from "../../constants/casualtyStatus";
+import { createCasualty, updateCasualty } from "../../features/casualties/casualtiesSlice";
 
 // Styles
 
 /**
  * Seeds the form from an existing casualty, or blank for a new one.
  *
- * @param {Object | null} injury - The injury row being edited, or null.
+ * @param {Object | null} casualty - The casualty row being edited, or null.
  * @returns {Object} The form's field values.
  */
-function toFormValues(injury) {
+function toFormValues(casualty) {
   return {
-    urgency: injury?.urgency ?? null,
-    evacAbility: injury?.["evac-ability"] ?? null,
-    evacPriority: injury?.["evac-priority"] ?? "",
-    evacDest: injury?.["recommended-evac-dest"] ?? null,
-    escort: injury?.escort ?? false,
-    evacReady: injury?.["evac-ready"] ?? false,
+    urgency: casualty?.urgency ?? null,
+    evacAbility: casualty?.["evac-ability"] ?? null,
+    evacPriority: casualty?.["evac-priority"] ?? "",
+    evacDest: casualty?.["recommended-evac-dest"] ?? null,
+    escort: casualty?.escort ?? false,
+    evacReady: casualty?.["evac-ready"] ?? false,
   };
 }
 
 /**
- * Renders the casualty's own details — the `injuries` row.
+ * Renders the casualty's own details — the `casualties` row.
  *
  * @param {{
  *   eventId: string,
- *   injury: Object | null,
- *   onSaved: (injury: Object) => void,
+ *   casualty: Object | null,
+ *   onSaved: (casualty: Object) => void,
  * }} props
  * @returns {JSX.Element} The casualty details form.
  */
-const InjuryDetailsForm = ({ eventId, injury, onSaved }) => {
+const CasualtyDetailsForm = ({ eventId, casualty, onSaved }) => {
   const dispatch = useDispatch();
-  const [values, setValues] = useState(() => toFormValues(injury));
+  const [values, setValues] = useState(() => toFormValues(casualty));
   const [errors, setErrors] = useState({});
 
-  const { saveStatus, saveError } = useSelector((state) => state.injuries);
+  const { saveStatus, saveError } = useSelector((state) => state.casualties);
 
   const isSaving = saveStatus === "loading";
-  const isEditing = Boolean(injury);
+  const isEditing = Boolean(casualty);
 
   /**
    * Updates one field and drops its validation error.
@@ -101,7 +101,7 @@ const InjuryDetailsForm = ({ eventId, injury, onSaved }) => {
   /**
    * Builds the request body.
    *
-   * The injuries controller destructures kebab-case keys, unlike the treatment
+   * The casualties controller destructures kebab-case keys, unlike the treatment
    * and vitals controllers which take camelCase — so the mapping happens here
    * rather than in the slice.
    *
@@ -146,13 +146,13 @@ const InjuryDetailsForm = ({ eventId, injury, onSaved }) => {
 
     const fields = buildFields();
     const action = isEditing
-      ? updateInjury({ id: injury.id, fields })
-      : createInjury({ eventId, fields });
+      ? updateCasualty({ id: casualty.id, fields })
+      : createCasualty({ eventId, fields });
 
     dispatch(action)
       .unwrap()
       .then((saved) => onSaved(saved))
-      // The rejection is already in state.injuries.saveError and rendered
+      // The rejection is already in state.casualties.saveError and rendered
       // above — swallow it here so it doesn't surface as an unhandled rejection.
       .catch(() => {});
   }
@@ -266,4 +266,4 @@ const InjuryDetailsForm = ({ eventId, injury, onSaved }) => {
   );
 };
 
-export default InjuryDetailsForm;
+export default CasualtyDetailsForm;

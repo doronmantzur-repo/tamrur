@@ -69,7 +69,7 @@ export const updateAerialMission = createAsyncThunk(
 );
 
 /**
- * Keyed by event id, mirroring the injuries slice — several events' mission
+ * Keyed by event id, mirroring the casualties slice — several events' mission
  * requests can be on screen at once on the airforce page.
  * @type {{byEventId: Object<string, Array<Object>>, status: string, error: string|null}}
  */

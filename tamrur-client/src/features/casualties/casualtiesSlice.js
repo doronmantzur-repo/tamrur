@@ -5,19 +5,19 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import TamrurAPI from "../../api/TamrurAPI";
 
 /**
- * Fetches all injuries recorded for an event.
+ * Fetches all casualties recorded for an event.
  * @param {string} eventId
- * @returns {Promise<{eventId: string, injuries: Array<Object>}>}
+ * @returns {Promise<{eventId: string, casualties: Array<Object>}>}
  */
-export const fetchInjuriesByEvent = createAsyncThunk(
-  "injuries/fetchByEvent",
+export const fetchCasualtiesByEvent = createAsyncThunk(
+  "casualties/fetchByEvent",
   async (eventId, { rejectWithValue }) => {
     try {
-      const response = await TamrurAPI.get(`/injuries/${eventId}`);
-      return { eventId, injuries: response.data.injuries };
+      const response = await TamrurAPI.get(`/casualties/${eventId}`);
+      return { eventId, casualties: response.data.casualties };
     } catch (err) {
       return rejectWithValue(
-        err.response?.data?.message ?? "Failed to load injuries",
+        err.response?.data?.message ?? "Failed to load casualties",
       );
     }
   },
@@ -28,20 +28,20 @@ export const fetchInjuriesByEvent = createAsyncThunk(
  *
  * `fields` uses the server's kebab-case body keys ("evac-priority",
  * "evac-ability", "recommended-evac-dest", "evac-ready") rather than camelCase,
- * because that's what the injuries controller destructures.
+ * because that's what the casualties controller destructures.
  *
  * @param {{ eventId: string, fields: Object }} params
- * @returns {Promise<Object>} The created injury row.
+ * @returns {Promise<Object>} The created casualty row.
  */
-export const createInjury = createAsyncThunk(
-  "injuries/create",
+export const createCasualty = createAsyncThunk(
+  "casualties/create",
   async ({ eventId, fields }, { rejectWithValue }) => {
     try {
-      const response = await TamrurAPI.post("/injuries", { eventId, ...fields });
-      return response.data.injury;
+      const response = await TamrurAPI.post("/casualties", { eventId, ...fields });
+      return response.data.casualty;
     } catch (err) {
       return rejectWithValue(
-        err.response?.data?.message ?? "Failed to create injury",
+        err.response?.data?.message ?? "Failed to create casualty",
       );
     }
   },
@@ -54,24 +54,24 @@ export const createInjury = createAsyncThunk(
  * but it also means a field can't be cleared back to null through this route.
  *
  * @param {{ id: string, fields: Object }} params
- * @returns {Promise<Object>} The updated injury row.
+ * @returns {Promise<Object>} The updated casualty row.
  */
-export const updateInjury = createAsyncThunk(
-  "injuries/update",
+export const updateCasualty = createAsyncThunk(
+  "casualties/update",
   async ({ id, fields }, { rejectWithValue }) => {
     try {
-      const response = await TamrurAPI.put(`/injuries/${id}`, fields);
-      return response.data.injury;
+      const response = await TamrurAPI.put(`/casualties/${id}`, fields);
+      return response.data.casualty;
     } catch (err) {
       return rejectWithValue(
-        err.response?.data?.message ?? "Failed to update injury",
+        err.response?.data?.message ?? "Failed to update casualty",
       );
     }
   },
 );
 
 /**
- * Keyed by event id, since more than one event's injuries can be on screen at
+ * Keyed by event id, since more than one event's casualties can be on screen at
  * once (e.g. the airforce page lists every event needing aerial evac).
  * @type {{byEventId: Object<string, Array<Object>>, status: string, error: string|null, saveStatus: string, saveError: string|null}}
  */
@@ -84,64 +84,64 @@ const initialState = {
 };
 
 /**
- * Injuries slice: holds each fetched event's injuries, keyed by event id.
+ * Casualties slice: holds each fetched event's casualties, keyed by event id.
  */
-const injuriesSlice = createSlice({
-  name: "injuries",
+const casualtiesSlice = createSlice({
+  name: "casualties",
   initialState,
   reducers: {
     /** Clears a failed save so a reopened form doesn't show a stale error. */
-    clearInjurySaveError(state) {
+    clearCasualtySaveError(state) {
       state.saveStatus = "idle";
       state.saveError = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchInjuriesByEvent.pending, (state) => {
+      .addCase(fetchCasualtiesByEvent.pending, (state) => {
         state.status = "loading";
         state.error = null;
       })
-      .addCase(fetchInjuriesByEvent.fulfilled, (state, action) => {
+      .addCase(fetchCasualtiesByEvent.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.byEventId[action.payload.eventId] = action.payload.injuries;
+        state.byEventId[action.payload.eventId] = action.payload.casualties;
       })
-      .addCase(fetchInjuriesByEvent.rejected, (state, action) => {
+      .addCase(fetchCasualtiesByEvent.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload;
       })
-      .addCase(createInjury.pending, (state) => {
+      .addCase(createCasualty.pending, (state) => {
         state.saveStatus = "loading";
         state.saveError = null;
       })
-      .addCase(createInjury.fulfilled, (state, action) => {
+      .addCase(createCasualty.fulfilled, (state, action) => {
         state.saveStatus = "succeeded";
         const eventId = action.payload["event-id"];
         state.byEventId[eventId] = [...(state.byEventId[eventId] || []), action.payload];
       })
-      .addCase(createInjury.rejected, (state, action) => {
+      .addCase(createCasualty.rejected, (state, action) => {
         state.saveStatus = "failed";
         state.saveError = action.payload;
       })
-      .addCase(updateInjury.pending, (state) => {
+      .addCase(updateCasualty.pending, (state) => {
         state.saveStatus = "loading";
         state.saveError = null;
       })
-      .addCase(updateInjury.fulfilled, (state, action) => {
+      .addCase(updateCasualty.fulfilled, (state, action) => {
         state.saveStatus = "succeeded";
-        const injuries = state.byEventId[action.payload["event-id"]] || [];
-        const index = injuries.findIndex((injury) => injury.id === action.payload.id);
+        const casualties = state.byEventId[action.payload["event-id"]] || [];
+        const index = casualties.findIndex((casualty) => casualty.id === action.payload.id);
         if (index !== -1) {
-          injuries[index] = action.payload;
+          casualties[index] = action.payload;
         }
       })
-      .addCase(updateInjury.rejected, (state, action) => {
+      .addCase(updateCasualty.rejected, (state, action) => {
         state.saveStatus = "failed";
         state.saveError = action.payload;
       });
   },
 });
 
-export const { clearInjurySaveError } = injuriesSlice.actions;
+export const { clearCasualtySaveError } = casualtiesSlice.actions;
 
-export default injuriesSlice.reducer;
+export default casualtiesSlice.reducer;

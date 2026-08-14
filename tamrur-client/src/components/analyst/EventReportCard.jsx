@@ -16,7 +16,7 @@ import { buildReportFilename, downloadBlob, writeReportFile } from "../../utils/
 
 /**
  * Lets the analyst generate a .docx event-summary report for the selected
- * event, filled from the event's own logged data (injuries, treatments,
+ * event, filled from the event's own logged data (casualties, treatments,
  * vitals, evacuations, aerial missions) into the fixed template layout in
  * utils/reportDocx.js — no AI involved, since every field in that template
  * is a literal DB value, not free text.

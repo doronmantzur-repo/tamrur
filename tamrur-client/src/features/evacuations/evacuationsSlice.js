@@ -81,7 +81,7 @@ export const deleteEvacuation = createAsyncThunk(
 );
 
 /**
- * Keyed by event id, mirroring the injuries/aerialMission slices.
+ * Keyed by event id, mirroring the casualties/aerialMission slices.
  * @type {{byEventId: Object<string, Array<Object>>, status: string, error: string|null, saveStatus: string, saveError: string|null}}
  */
 const initialState = {

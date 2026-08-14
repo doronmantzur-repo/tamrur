@@ -12,7 +12,7 @@ import {
   URGENCY_COLOR_VARS,
   URGENCY_LABELS,
   URGENCY_ORDER,
-} from "../../constants/injuryStatus";
+} from "../../constants/casualtyStatus";
 
 // Styles
 
@@ -27,14 +27,14 @@ function YesNo({ value }) {
 }
 
 /**
- * Renders the selected event's injuries: an urgency-breakdown stat row plus a per-injury table.
+ * Renders the selected event's casualties: an urgency-breakdown stat row plus a per-casualty table.
  *
- * @param {{ injuries: Array<object> }} props
- * @returns {JSX.Element} The injuries card.
+ * @param {{ casualties: Array<object> }} props
+ * @returns {JSX.Element} The casualties card.
  */
-const InjuriesCard = ({ injuries }) => {
+const CasualtiesCard = ({ casualties }) => {
   const countsByUrgency = URGENCY_ORDER.reduce((acc, key) => {
-    acc[key] = injuries.filter((injury) => injury.urgency === key).length;
+    acc[key] = casualties.filter((casualty) => casualty.urgency === key).length;
     return acc;
   }, {});
 
@@ -53,7 +53,7 @@ const InjuriesCard = ({ injuries }) => {
             },
           }}
         >
-          {injuries.length} סה״כ
+          {casualties.length} סה״כ
         </Badge>
       }
     >
@@ -94,39 +94,39 @@ const InjuriesCard = ({ injuries }) => {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {injuries.map((injury) => (
-              <Table.Tr key={injury.id}>
+            {casualties.map((casualty) => (
+              <Table.Tr key={casualty.id}>
                 <Table.Td>
                   <Badge
                     styles={{
                       root: {
-                        backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[injury.urgency]} 16%, transparent)`,
-                        color: URGENCY_COLOR_VARS[injury.urgency],
+                        backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[casualty.urgency]} 16%, transparent)`,
+                        color: URGENCY_COLOR_VARS[casualty.urgency],
                       },
                     }}
                   >
-                    {URGENCY_LABELS[injury.urgency] || injury.urgency || "—"}
+                    {URGENCY_LABELS[casualty.urgency] || casualty.urgency || "—"}
                   </Badge>
                 </Table.Td>
-                <Table.Td>{EVAC_ABILITY_LABELS[injury["evac-ability"]] || "—"}</Table.Td>
+                <Table.Td>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>
                 <Table.Td ff='ui-monospace, "SF Mono", "Consolas", monospace'>
-                  {injury["evac-priority"] ?? "—"}
+                  {casualty["evac-priority"] ?? "—"}
                 </Table.Td>
                 <Table.Td>
-                  <YesNo value={injury.escort} />
+                  <YesNo value={casualty.escort} />
                 </Table.Td>
                 <Table.Td c="var(--app-color-text-muted)">
-                  {EVAC_DEST_LABELS[injury["recommended-evac-dest"]] || injury["recommended-evac-dest"] || "—"}
+                  {EVAC_DEST_LABELS[casualty["recommended-evac-dest"]] || casualty["recommended-evac-dest"] || "—"}
                 </Table.Td>
                 <Table.Td>
-                  <YesNo value={injury["evac-ready"]} />
+                  <YesNo value={casualty["evac-ready"]} />
                 </Table.Td>
                 <Table.Td c="var(--app-color-text-muted)" ff='ui-monospace, "SF Mono", "Consolas", monospace'>
-                  {injury.created_at ? timeFormatter.format(new Date(injury.created_at)) : "—"}
+                  {casualty.created_at ? timeFormatter.format(new Date(casualty.created_at)) : "—"}
                 </Table.Td>
               </Table.Tr>
             ))}
-            {injuries.length === 0 && (
+            {casualties.length === 0 && (
               <Table.Tr>
                 <Table.Td colSpan={7} c="var(--app-color-text-muted)" ta="center">
                   לא נרשמו נפגעים באירוע זה
@@ -140,4 +140,4 @@ const InjuriesCard = ({ injuries }) => {
   );
 };
 
-export default InjuriesCard;
+export default CasualtiesCard;
