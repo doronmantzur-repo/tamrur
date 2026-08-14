@@ -99,7 +99,7 @@ export const deleteTreatment = createAsyncThunk(
 );
 
 /**
- * Keyed by event id, mirroring the injuries slice — components derive a single
+ * Keyed by event id, mirroring the casualties slice — components derive a single
  * casualty's treatments by filtering on "injury-id", so there's one copy of
  * each row to keep in sync rather than two indexes to patch on every write.
  * @type {{byEventId: Object<string, Array<Object>>, status: string, error: string|null, saveStatus: string, saveError: string|null}}

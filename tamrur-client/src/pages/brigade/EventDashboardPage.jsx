@@ -11,7 +11,7 @@ import { useDispatch, useSelector } from "react-redux";
 import Layout from "../../components/layout/Layout";
 import EventHeaderCard from "../../components/brigade/EventHeaderCard";
 import EventMapCard from "../../components/brigade/EventMapCard";
-import InjuriesTableCard from "../../components/brigade/InjuriesTableCard";
+import CasualtiesTableCard from "../../components/brigade/CasualtiesTableCard";
 import EvacuationsTable from "../../components/brigade/EvacuationsTable";
 import { COMPLETED_STATUS } from "../../constants/eventStatus";
 import { fetchLocations } from "../../features/locations/locationsSlice";
@@ -24,7 +24,7 @@ import {
   deleteEvacuation,
 } from "../../features/evacuations/evacuationsSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
-import { mockInjuries } from "./mockEventDashboardData";
+import { mockCasualties } from "./mockEventDashboardData";
 
 // Styles
 
@@ -36,7 +36,7 @@ const STATUS_ORDER = [
   "completed",
 ];
 
-/** Row height shared by the map, injuries, and evacuations cards so the three stay level. */
+/** Row height shared by the map, casualties, and evacuations cards so the three stay level. */
 const DASHBOARD_ROW_HEIGHT = "32rem";
 
 /** Stable reference for "nothing fetched yet" so selector fallbacks don't create a new array every render. */
@@ -44,10 +44,10 @@ const EMPTY_ARRAY = [];
 
 /**
  * Renders the brigade single-event dashboard: the event header (name, timer,
- * injury/evacuation summary, status controls), then one row split 1/5-2/5-2/5
- * between the event map, the injuries table, and the evacuation team table.
+ * casualty/evacuation summary, status controls), then one row split 1/5-2/5-2/5
+ * between the event map, the casualties table, and the evacuation team table.
  * The event (by :eventId), locations, aerial missions, and evacuations are
- * all fetched from the API; injuries are still hardcoded mock data, owned by
+ * all fetched from the API; casualties are still hardcoded mock data, owned by
  * a teammate's in-progress work elsewhere. An approved aerial mission with
  * no evacuation row yet auto-creates one in the background.
  *
@@ -59,7 +59,7 @@ const EventDashboardPage = () => {
   const dispatch = useDispatch();
   const { eventId } = useParams();
 
-  const [injuries] = useState(mockInjuries);
+  const [casualties] = useState(mockCasualties);
 
   // Tracks mission ids we've already dispatched an auto-create for, so a
   // slow create request doesn't get triggered again by the next poll tick
@@ -289,7 +289,7 @@ const EventDashboardPage = () => {
             <>
               <EventHeaderCard
                 event={event}
-                injuries={injuries}
+                casualties={casualties}
                 evacuations={evacuations}
                 aerialEvacStatus={aerialEvacStatus}
                 onAdvanceStatus={handleAdvanceStatus}
@@ -302,7 +302,7 @@ const EventDashboardPage = () => {
                   <EventMapCard event={event} locations={locations} />
                 </Grid.Col>
                 <Grid.Col span={{ base: 10, md: 4 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
-                  <InjuriesTableCard injuries={injuries} />
+                  <CasualtiesTableCard casualties={casualties} />
                 </Grid.Col>
                 <Grid.Col span={{ base: 10, md: 4 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
                   <EvacuationsTable

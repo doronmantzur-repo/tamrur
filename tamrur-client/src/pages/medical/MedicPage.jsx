@@ -10,9 +10,9 @@ import { useDispatch, useSelector } from "react-redux";
 import Layout from "../../components/layout/Layout";
 import EventSelector from "../../components/dashboard/EventSelector";
 import EventDetailsCard from "../../components/dashboard/EventDetailsCard";
-import MedicInjuriesCard from "../../components/medical/MedicInjuriesCard";
-import InjuryFormModal from "../../components/medical/InjuryFormModal";
-import { fetchInjuriesByEvent } from "../../features/injuries/injuriesSlice";
+import MedicCasualtiesCard from "../../components/medical/MedicCasualtiesCard";
+import CasualtyFormModal from "../../components/medical/CasualtyFormModal";
+import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { fetchTreatmentsByEvent } from "../../features/treatments/treatmentsSlice";
 import { fetchVitalsByEvent } from "../../features/vitals/vitalsSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
@@ -32,22 +32,22 @@ const MedicPage = () => {
   // the selection derives the loading flag, so a background poll — which
   // doesn't touch it — can't flash the spinner over a populated table.
   const [loadedEventId, setLoadedEventId] = useState(null);
-  // null = closed. { injury: null } opens a blank form, { injury } edits one.
+  // null = closed. { casualty: null } opens a blank form, { casualty } edits one.
   const [editing, setEditing] = useState(null);
   const dispatch = useDispatch();
 
   const selectedEvent = useSelector((state) =>
     state.events.events.find((event) => event.id === selectedEventId),
   );
-  const injuries = useSelector((state) => state.injuries.byEventId[selectedEventId] || []);
+  const casualties = useSelector((state) => state.casualties.byEventId[selectedEventId] || []);
   const loadError = useSelector(
-    (state) => state.injuries.error || state.treatments.error || state.vitals.error,
+    (state) => state.casualties.error || state.treatments.error || state.vitals.error,
   );
 
   const loadEventRecords = useCallback(
     (eventId) =>
       Promise.all([
-        dispatch(fetchInjuriesByEvent(eventId)),
+        dispatch(fetchCasualtiesByEvent(eventId)),
         dispatch(fetchTreatmentsByEvent(eventId)),
         dispatch(fetchVitalsByEvent(eventId)),
       ]),
@@ -177,11 +177,11 @@ const MedicPage = () => {
             {selectedEvent && !isLoadingEvent && (
               <>
                 <EventDetailsCard event={selectedEvent} />
-                <MedicInjuriesCard
+                <MedicCasualtiesCard
                   eventId={selectedEventId}
-                  injuries={injuries}
-                  onAddCasualty={() => setEditing({ injury: null })}
-                  onEditCasualty={(injury) => setEditing({ injury })}
+                  casualties={casualties}
+                  onAddCasualty={() => setEditing({ casualty: null })}
+                  onEditCasualty={(casualty) => setEditing({ casualty })}
                 />
               </>
             )}
@@ -196,14 +196,14 @@ const MedicPage = () => {
       </Stack>
 
       {selectedEventId && (
-        <InjuryFormModal
+        <CasualtyFormModal
           eventId={selectedEventId}
-          injury={editing?.injury ?? null}
+          casualty={editing?.casualty ?? null}
           opened={isEditorOpen}
           onClose={() => setEditing(null)}
           // Keep editing the casualty that was just created, now that it has an
           // id — the modal switches itself to the treatments tab.
-          onCreated={(injury) => setEditing({ injury })}
+          onCreated={(casualty) => setEditing({ casualty })}
         />
       )}
     </Layout>

@@ -4,7 +4,7 @@ import { configureStore } from "@reduxjs/toolkit";
 // Internal
 import authReducer from "../features/auth/authSlice";
 import eventsReducer from "../features/events/eventsSlice";
-import injuriesReducer from "../features/injuries/injuriesSlice";
+import casualtiesReducer from "../features/casualties/casualtiesSlice";
 import treatmentsReducer from "../features/treatments/treatmentsSlice";
 import vitalsReducer from "../features/vitals/vitalsSlice";
 import aerialMissionReducer from "../features/aerialMission/aerialMissionSlice";
@@ -16,7 +16,7 @@ import { setTokenGetter } from "../api/TamrurAPI";
  * Root Redux store. Combines all feature reducers.
  * @see features/auth/authSlice.js
  * @see features/events/eventsSlice.js
- * @see features/injuries/injuriesSlice.js
+ * @see features/casualties/casualtiesSlice.js
  * @see features/treatments/treatmentsSlice.js
  * @see features/vitals/vitalsSlice.js
  * @see features/aerialMission/aerialMissionSlice.js
@@ -27,7 +27,7 @@ export const store = configureStore({
   reducer: {
     auth: authReducer,
     events: eventsReducer,
-    injuries: injuriesReducer,
+    casualties: casualtiesReducer,
     treatments: treatmentsReducer,
     vitals: vitalsReducer,
     aerialMission: aerialMissionReducer,

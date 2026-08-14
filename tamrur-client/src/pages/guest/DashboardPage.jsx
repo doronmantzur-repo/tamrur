@@ -10,8 +10,8 @@ import { useDispatch, useSelector } from "react-redux";
 import Layout from "../../components/layout/Layout";
 import EventSelector from "../../components/dashboard/EventSelector";
 import EventDetailsCard from "../../components/dashboard/EventDetailsCard";
-import InjuriesCard from "../../components/dashboard/InjuriesCard";
-import { fetchInjuriesByEvent } from "../../features/injuries/injuriesSlice";
+import CasualtiesCard from "../../components/dashboard/CasualtiesCard";
+import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
 
 // Styles
@@ -29,7 +29,7 @@ const DashboardPage = () => {
   const selectedEvent = useSelector((state) =>
     state.events.events.find((event) => event.id === selectedEventId),
   );
-  const injuries = useSelector((state) => state.injuries.byEventId[selectedEventId] || []);
+  const casualties = useSelector((state) => state.casualties.byEventId[selectedEventId] || []);
 
   useEffect(() => {
     if (!selectedEventId) return undefined;
@@ -37,12 +37,12 @@ const DashboardPage = () => {
     // Only show the loading indicator for the initial fetch of a newly
     // selected event — background polling refreshes should stay silent.
     setIsLoadingEvent(true);
-    dispatch(fetchInjuriesByEvent(selectedEventId)).finally(() => setIsLoadingEvent(false));
+    dispatch(fetchCasualtiesByEvent(selectedEventId)).finally(() => setIsLoadingEvent(false));
 
-    // Other operators can log injuries for this event at any time, so keep
+    // Other operators can log casualties for this event at any time, so keep
     // polling instead of fetching once.
     const intervalId = setInterval(() => {
-      dispatch(fetchInjuriesByEvent(selectedEventId));
+      dispatch(fetchCasualtiesByEvent(selectedEventId));
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
@@ -132,7 +132,7 @@ const DashboardPage = () => {
             {selectedEvent && !isLoadingEvent && (
               <>
                 <EventDetailsCard event={selectedEvent} />
-                <InjuriesCard injuries={injuries} />
+                <CasualtiesCard casualties={casualties} />
               </>
             )}
           </Stack>
