@@ -28,7 +28,7 @@ import {
   EVAC_TEAM_STATUS_LABELS,
   PULSING_AERIAL_EVAC_STATUSES,
 } from "../../constants/aerialEvacStatus";
-import { URGENCY_COLOR_VARS, URGENCY_LABELS, URGENCY_ORDER } from "../../constants/injuryStatus";
+import { URGENCY_COLOR_VARS, URGENCY_LABELS, URGENCY_ORDER } from "../../constants/casualtyStatus";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
 import { formatDuration } from "../../utils/duration";
 
@@ -49,7 +49,7 @@ const EVAC_STATUS_ORDER = ["not_started", "started", "completed"];
 /** Plain (non-interactive) stat block: just the timer. */
 const plainStatStyles = { padding: "0.75rem 1rem" };
 
-/** Non-interactive stat tiles (injuries/evacuations): tile chrome, no hover/click affordance. */
+/** Non-interactive stat tiles (casualties/evacuations): tile chrome, no hover/click affordance. */
 const tileStatStyles = {
   borderRadius: "var(--mantine-radius-sm)",
   border: "1px solid var(--app-color-border)",
@@ -86,12 +86,12 @@ function countBy(items, order, getKey) {
  * (edited via the pencil icon — the DB has no description column, so this
  * never persists past the browser session), type/status/aerial-evac badges,
  * three large at-a-glance stats spaced across the row (elapsed time,
- * injuries, evacuations), and the event's actions (advance status, request
+ * casualties, evacuations), and the event's actions (advance status, request
  * evacuation, close event).
  *
  * @param {{
  *   event: object,
- *   injuries: Array<object>,
+ *   casualties: Array<object>,
  *   evacuations: Array<object>,
  *   aerialEvacStatus: string | null | undefined,
  *   onAdvanceStatus: () => void,
@@ -102,7 +102,7 @@ function countBy(items, order, getKey) {
  */
 const EventHeaderCard = ({
   event,
-  injuries,
+  casualties,
   evacuations,
   aerialEvacStatus,
   onAdvanceStatus,
@@ -135,7 +135,7 @@ const EventHeaderCard = ({
   const currentIndex = STATUS_ORDER.indexOf(event.status);
   const nextStatus = currentIndex >= 0 ? STATUS_ORDER[currentIndex + 1] : null;
 
-  const urgencyCounts = countBy(injuries, URGENCY_ORDER, (injury) => injury.urgency);
+  const urgencyCounts = countBy(casualties, URGENCY_ORDER, (casualty) => casualty.urgency);
   const evacStatusCounts = countBy(evacuations, EVAC_STATUS_ORDER, (evac) => evac.status);
   const showAerialEvacBadge = aerialEvacStatus && aerialEvacStatus !== "no_needed";
   const aerialEvacColor = AERIAL_EVAC_COLOR_VARS[aerialEvacStatus] || "var(--app-color-text-muted)";
@@ -249,7 +249,7 @@ const EventHeaderCard = ({
 
         <Stack gap={2} style={tileStatStyles}>
           <Text {...statLabelStyles}>נפגעים</Text>
-          <Text {...statNumberStyles}>{injuries.length}</Text>
+          <Text {...statNumberStyles}>{casualties.length}</Text>
           <Group gap={6} wrap="wrap">
             {URGENCY_ORDER.map((key) => (
               <Badge

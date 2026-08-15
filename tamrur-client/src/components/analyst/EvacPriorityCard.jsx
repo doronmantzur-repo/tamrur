@@ -8,16 +8,16 @@ import { IconAlertCircle, IconArrowsSort } from "@tabler/icons-react";
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
 import TamrurAPI from "../../api/TamrurAPI";
-import { URGENCY_LABELS, EVAC_ABILITY_LABELS } from "../../constants/injuryStatus";
+import { URGENCY_LABELS, EVAC_ABILITY_LABELS } from "../../constants/casualtyStatus";
 
 // Styles
 
 /**
  * Lets the medic ask Claude to rank the selected event's casualties by
- * evacuation priority, based on each casualty's injury record and the
+ * evacuation priority, based on each casualty's record and the
  * treatments logged for them (tamrur-server gathers both server-side —
  * only the event id is sent from the client). The AI's ranking is written
- * straight onto each injury's evac-priority column; the result list below
+ * straight onto each casualty's evac-priority column; the result list below
  * the button is what actually got saved, not a preview.
  *
  * The parent should remount this (e.g. `key={eventId}`) when the selected
@@ -29,7 +29,7 @@ import { URGENCY_LABELS, EVAC_ABILITY_LABELS } from "../../constants/injuryStatu
 const EvacPriorityCard = ({ eventId }) => {
   const [isSetting, setIsSetting] = useState(false);
   const [error, setError] = useState(null);
-  const [injuries, setInjuries] = useState(null);
+  const [casualties, setCasualties] = useState(null);
 
   function handleClick() {
     if (!eventId || isSetting) return;
@@ -38,16 +38,16 @@ const EvacPriorityCard = ({ eventId }) => {
     setError(null);
 
     TamrurAPI.post(`/medic-query/priority/${eventId}`)
-      .then((response) => setInjuries(response.data.injuries))
+      .then((response) => setCasualties(response.data.casualties))
       .catch((err) => {
-        setInjuries(null);
+        setCasualties(null);
         setError(err.response?.data?.message ?? "קביעת העדיפויות נכשלה, נסה שוב");
       })
       .finally(() => setIsSetting(false));
   }
 
-  const sortedInjuries = injuries
-    ? [...injuries].sort((a, b) => (a["evac-priority"] ?? Infinity) - (b["evac-priority"] ?? Infinity))
+  const sortedCasualties = casualties
+    ? [...casualties].sort((a, b) => (a["evac-priority"] ?? Infinity) - (b["evac-priority"] ?? Infinity))
     : [];
 
   return (
@@ -95,15 +95,15 @@ const EvacPriorityCard = ({ eventId }) => {
           </Alert>
         )}
 
-        {injuries && !isSetting && (
+        {casualties && !isSetting && (
           <Stack gap={6}>
-            {sortedInjuries.length === 0 ? (
+            {sortedCasualties.length === 0 ? (
               <Text fz="sm" c="var(--app-color-text-muted)">
                 לא נמצאו נפגעים לאירוע זה
               </Text>
             ) : (
-              sortedInjuries.map((injury) => (
-                <Group key={injury.id} gap="sm" wrap="nowrap">
+              sortedCasualties.map((casualty) => (
+                <Group key={casualty.id} gap="sm" wrap="nowrap">
                   <Badge
                     styles={{
                       root: {
@@ -113,14 +113,14 @@ const EvacPriorityCard = ({ eventId }) => {
                       },
                     }}
                   >
-                    {`עדיפות ${injury["evac-priority"] ?? "-"}`}
+                    {`עדיפות ${casualty["evac-priority"] ?? "-"}`}
                   </Badge>
                   <Text fz="sm" fw={600} c="var(--app-color-text)" style={{ flexShrink: 0 }}>
-                    {injury["casualty-number"] != null ? `נפגע #${injury["casualty-number"]}` : "ללא מספר נפגע"}
+                    {casualty["casualty-number"] != null ? `נפגע #${casualty["casualty-number"]}` : "ללא מספר נפגע"}
                   </Text>
                   <Text fz="sm" c="var(--app-color-text)" truncate>
-                    {`${URGENCY_LABELS[injury.urgency] || injury.urgency || "-"} · ${
-                      EVAC_ABILITY_LABELS[injury["evac-ability"]] || injury["evac-ability"] || "-"
+                    {`${URGENCY_LABELS[casualty.urgency] || casualty.urgency || "-"} · ${
+                      EVAC_ABILITY_LABELS[casualty["evac-ability"]] || casualty["evac-ability"] || "-"
                     }`}
                   </Text>
                 </Group>

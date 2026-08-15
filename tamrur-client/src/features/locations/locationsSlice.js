@@ -6,7 +6,7 @@ import TamrurAPI from "../../api/TamrurAPI";
 
 /**
  * Fetches the full locations list (landing pads, hospitals, exchange
- * points). Unlike events/injuries/evacuations, this isn't scoped per event —
+ * points). Unlike events/casualties/evacuations, this isn't scoped per event —
  * it's one global reference list.
  * @returns {Promise<Array<Object>>}
  */

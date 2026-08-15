@@ -8,7 +8,7 @@ import { IconBandage, IconCheck, IconX } from "@tabler/icons-react";
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
 import ColumnHeader from "../dashboard/ColumnHeader";
-import { EVAC_ABILITY_LABELS, URGENCY_COLOR_VARS, URGENCY_LABELS, URGENCY_ORDER } from "../../constants/injuryStatus";
+import { EVAC_ABILITY_LABELS, URGENCY_COLOR_VARS, URGENCY_LABELS, URGENCY_ORDER } from "../../constants/casualtyStatus";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
 
 // Styles
@@ -36,40 +36,40 @@ const ABILITY_FILTER_OPTIONS = Object.keys(EVAC_ABILITY_LABELS).map((key) => ({
 
 /** Accessors used for both sorting and filter-value matching (filter matching always compares as strings). */
 const COLUMN_ACCESSORS = {
-  urgency: (injury) => injury.urgency,
-  "evac-ability": (injury) => injury["evac-ability"],
-  "evac-priority": (injury) => injury["evac-priority"],
-  escort: (injury) => Boolean(injury.escort),
-  "recommended-evac-dest": (injury) => injury["recommended-evac-dest"] || "—",
-  "evac-ready": (injury) => Boolean(injury["evac-ready"]),
-  created_at: (injury) => injury.created_at,
+  urgency: (casualty) => casualty.urgency,
+  "evac-ability": (casualty) => casualty["evac-ability"],
+  "evac-priority": (casualty) => casualty["evac-priority"],
+  escort: (casualty) => Boolean(casualty.escort),
+  "recommended-evac-dest": (casualty) => casualty["recommended-evac-dest"] || "—",
+  "evac-ready": (casualty) => Boolean(casualty["evac-ready"]),
+  created_at: (casualty) => casualty.created_at,
 };
 
 /**
- * Renders the full injuries table as its own card, meant to sit beside the
- * event map and the evacuations table. The DB has no link between an injury
- * and an evacuation, so this only shows the injury's own fields. Every
+ * Renders the full casualties table as its own card, meant to sit beside the
+ * event map and the evacuations table. The DB has no link between a casualty
+ * and an evacuation, so this only shows the casualty's own fields. Every
  * column is sortable (click header, one active column at a time); every
  * column but the creation time also has a searchable filter pick-list.
  *
- * @param {{ injuries: Array<object> }} props
- * @returns {JSX.Element} The injuries table card.
+ * @param {{ casualties: Array<object> }} props
+ * @returns {JSX.Element} The casualties table card.
  */
-const InjuriesTableCard = ({ injuries }) => {
+const CasualtiesTableCard = ({ casualties }) => {
   const [sort, setSort] = useState({ key: null, direction: null });
   const [filters, setFilters] = useState({});
 
   const priorityOptions = useMemo(() => {
-    const values = [...new Set(injuries.map((injury) => injury["evac-priority"]).filter((v) => v != null))].sort(
+    const values = [...new Set(casualties.map((casualty) => casualty["evac-priority"]).filter((v) => v != null))].sort(
       (a, b) => a - b,
     );
     return values.map((value) => ({ value: String(value), label: String(value) }));
-  }, [injuries]);
+  }, [casualties]);
 
   const destOptions = useMemo(() => {
-    const values = [...new Set(injuries.map((injury) => injury["recommended-evac-dest"] || "—"))];
+    const values = [...new Set(casualties.map((casualty) => casualty["recommended-evac-dest"] || "—"))];
     return values.map((value) => ({ value, label: value }));
-  }, [injuries]);
+  }, [casualties]);
 
   const handleSortClick = (key) => {
     setSort((prev) => ({ key, direction: prev.key === key ? nextSortDirection(prev.direction) : "asc" }));
@@ -87,11 +87,11 @@ const InjuriesTableCard = ({ injuries }) => {
     });
   };
 
-  const visibleInjuries = useMemo(() => {
-    let rows = injuries.filter((injury) =>
+  const visibleCasualties = useMemo(() => {
+    let rows = casualties.filter((casualty) =>
       Object.entries(filters).every(([key, values]) => {
         if (!values || values.size === 0) return true;
-        return values.has(String(COLUMN_ACCESSORS[key](injury)));
+        return values.has(String(COLUMN_ACCESSORS[key](casualty)));
       }),
     );
 
@@ -102,7 +102,7 @@ const InjuriesTableCard = ({ injuries }) => {
     }
 
     return rows;
-  }, [injuries, filters, sort]);
+  }, [casualties, filters, sort]);
 
   const sortProps = (key) => ({
     sortDirection: sort.key === key ? sort.direction : null,
@@ -134,7 +134,7 @@ const InjuriesTableCard = ({ injuries }) => {
             },
           }}
         >
-          {visibleInjuries.length} מתוך {injuries.length}
+          {visibleCasualties.length} מתוך {casualties.length}
         </Badge>
       }
     >
@@ -172,45 +172,45 @@ const InjuriesTableCard = ({ injuries }) => {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {visibleInjuries.map((injury) => (
-              <Table.Tr key={injury.id}>
+            {visibleCasualties.map((casualty) => (
+              <Table.Tr key={casualty.id}>
                 <Table.Td>
                   <Badge
                     styles={{
                       root: {
-                        backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[injury.urgency]} 16%, transparent)`,
-                        color: URGENCY_COLOR_VARS[injury.urgency],
+                        backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[casualty.urgency]} 16%, transparent)`,
+                        color: URGENCY_COLOR_VARS[casualty.urgency],
                       },
                     }}
                   >
-                    {URGENCY_LABELS[injury.urgency] || injury.urgency || "—"}
+                    {URGENCY_LABELS[casualty.urgency] || casualty.urgency || "—"}
                   </Badge>
                 </Table.Td>
-                <Table.Td>{EVAC_ABILITY_LABELS[injury["evac-ability"]] || "—"}</Table.Td>
+                <Table.Td>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>
                 <Table.Td ff='ui-monospace, "SF Mono", "Consolas", monospace'>
-                  {injury["evac-priority"] ?? "—"}
+                  {casualty["evac-priority"] ?? "—"}
                 </Table.Td>
                 <Table.Td>
-                  <YesNo value={injury.escort} />
+                  <YesNo value={casualty.escort} />
                 </Table.Td>
                 <Table.Td c="var(--app-color-text-muted)">
-                  {injury["recommended-evac-dest"] || "—"}
+                  {casualty["recommended-evac-dest"] || "—"}
                 </Table.Td>
                 <Table.Td>
-                  <YesNo value={injury["evac-ready"]} />
+                  <YesNo value={casualty["evac-ready"]} />
                 </Table.Td>
                 <Table.Td
                   c="var(--app-color-text-muted)"
                   ff='ui-monospace, "SF Mono", "Consolas", monospace'
                 >
-                  {injury.created_at ? timeFormatter.format(new Date(injury.created_at)) : "—"}
+                  {casualty.created_at ? timeFormatter.format(new Date(casualty.created_at)) : "—"}
                 </Table.Td>
               </Table.Tr>
             ))}
-            {visibleInjuries.length === 0 && (
+            {visibleCasualties.length === 0 && (
               <Table.Tr>
                 <Table.Td colSpan={7} c="var(--app-color-text-muted)" ta="center">
-                  {injuries.length === 0 ? "לא נרשמו נפגעים באירוע זה" : "אין נפגעים התואמים לסינון"}
+                  {casualties.length === 0 ? "לא נרשמו נפגעים באירוע זה" : "אין נפגעים התואמים לסינון"}
                 </Table.Td>
               </Table.Tr>
             )}
@@ -221,4 +221,4 @@ const InjuriesTableCard = ({ injuries }) => {
   );
 };
 
-export default InjuriesTableCard;
+export default CasualtiesTableCard;

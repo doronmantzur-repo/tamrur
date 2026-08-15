@@ -15,7 +15,7 @@ import {
   URGENCY_COLOR_VARS,
   URGENCY_LABELS,
   URGENCY_ORDER,
-} from "../../constants/injuryStatus";
+} from "../../constants/casualtyStatus";
 
 // Styles
 
@@ -34,17 +34,17 @@ function YesNo({ value }) {
  * last touched — so the medic can see at a glance who hasn't been reassessed.
  *
  * @param {Array<Object>} records - Treatment or vitals rows for the event.
- * @returns {Record<string, {count: number, lastRecordedAt: string | null}>} Keyed by injury id.
+ * @returns {Record<string, {count: number, lastRecordedAt: string | null}>} Keyed by casualty id.
  */
-function summarizeByInjury(records) {
+function summarizeByCasualty(records) {
   return (records || []).reduce((acc, record) => {
-    const injuryId = record["injury-id"];
-    if (!injuryId) return acc;
+    const casualtyId = record["injury-id"];
+    if (!casualtyId) return acc;
 
-    const current = acc[injuryId] ?? { count: 0, lastRecordedAt: null };
+    const current = acc[casualtyId] ?? { count: 0, lastRecordedAt: null };
     const recordedAt = record["recorded-at"] ?? null;
 
-    acc[injuryId] = {
+    acc[casualtyId] = {
       count: current.count + 1,
       lastRecordedAt:
         recordedAt && (!current.lastRecordedAt || recordedAt > current.lastRecordedAt)
@@ -57,42 +57,42 @@ function summarizeByInjury(records) {
 
 /**
  * Renders the medic interface's casualty table: the same urgency breakdown and
- * columns as the dashboard's `InjuriesCard`, plus per-casualty record counts
+ * columns as the dashboard's `CasualtiesCard`, plus per-casualty record counts
  * and the controls for adding and editing casualties.
  *
  * @param {{
  *   eventId: string,
- *   injuries: Array<Object>,
+ *   casualties: Array<Object>,
  *   onAddCasualty: () => void,
- *   onEditCasualty: (injury: Object) => void,
+ *   onEditCasualty: (casualty: Object) => void,
  * }} props
  * @returns {JSX.Element} The medic casualties card.
  */
-const MedicInjuriesCard = ({ eventId, injuries, onAddCasualty, onEditCasualty }) => {
+const MedicCasualtiesCard = ({ eventId, casualties, onAddCasualty, onEditCasualty }) => {
   const eventTreatments = useSelector((state) => state.treatments.byEventId[eventId]);
   const eventVitals = useSelector((state) => state.vitals.byEventId[eventId]);
 
-  const treatmentsByInjury = useMemo(
-    () => summarizeByInjury(eventTreatments),
+  const treatmentsByCasualty = useMemo(
+    () => summarizeByCasualty(eventTreatments),
     [eventTreatments],
   );
-  const vitalsByInjury = useMemo(() => summarizeByInjury(eventVitals), [eventVitals]);
+  const vitalsByCasualty = useMemo(() => summarizeByCasualty(eventVitals), [eventVitals]);
 
   const countsByUrgency = URGENCY_ORDER.reduce((acc, key) => {
-    acc[key] = injuries.filter((injury) => injury.urgency === key).length;
+    acc[key] = casualties.filter((casualty) => casualty.urgency === key).length;
     return acc;
   }, {});
 
   /**
    * The most recent moment anything was logged for a casualty.
    *
-   * @param {string} injuryId
+   * @param {string} casualtyId
    * @returns {string} A short local time, or an em dash when nothing is logged.
    */
-  function lastUpdatedLabel(injuryId) {
+  function lastUpdatedLabel(casualtyId) {
     const candidates = [
-      treatmentsByInjury[injuryId]?.lastRecordedAt,
-      vitalsByInjury[injuryId]?.lastRecordedAt,
+      treatmentsByCasualty[casualtyId]?.lastRecordedAt,
+      vitalsByCasualty[casualtyId]?.lastRecordedAt,
     ].filter(Boolean);
 
     if (candidates.length === 0) return "—";
@@ -115,7 +115,7 @@ const MedicInjuriesCard = ({ eventId, injuries, onAddCasualty, onEditCasualty })
               },
             }}
           >
-            {injuries.length} סה״כ
+            {casualties.length} סה״כ
           </Badge>
           <Button
             size="xs"
@@ -170,51 +170,51 @@ const MedicInjuriesCard = ({ eventId, injuries, onAddCasualty, onEditCasualty })
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {injuries.map((injury) => (
-              <Table.Tr key={injury.id}>
+            {casualties.map((casualty) => (
+              <Table.Tr key={casualty.id}>
                 <Table.Td>
                   <Badge
                     styles={{
                       root: {
-                        backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[injury.urgency]} 16%, transparent)`,
-                        color: URGENCY_COLOR_VARS[injury.urgency],
+                        backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[casualty.urgency]} 16%, transparent)`,
+                        color: URGENCY_COLOR_VARS[casualty.urgency],
                       },
                     }}
                   >
-                    {URGENCY_LABELS[injury.urgency] || injury.urgency || "—"}
+                    {URGENCY_LABELS[casualty.urgency] || casualty.urgency || "—"}
                   </Badge>
                 </Table.Td>
-                <Table.Td>{EVAC_ABILITY_LABELS[injury["evac-ability"]] || "—"}</Table.Td>
-                <Table.Td ff={MONO_FONT}>{injury["evac-priority"] ?? "—"}</Table.Td>
+                <Table.Td>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>
+                <Table.Td ff={MONO_FONT}>{casualty["evac-priority"] ?? "—"}</Table.Td>
                 <Table.Td>
-                  <YesNo value={injury.escort} />
+                  <YesNo value={casualty.escort} />
                 </Table.Td>
                 <Table.Td c="var(--app-color-text-muted)">
-                  {EVAC_DEST_LABELS[injury["recommended-evac-dest"]] ||
-                    injury["recommended-evac-dest"] ||
+                  {EVAC_DEST_LABELS[casualty["recommended-evac-dest"]] ||
+                    casualty["recommended-evac-dest"] ||
                     "—"}
                 </Table.Td>
                 <Table.Td>
-                  <YesNo value={injury["evac-ready"]} />
+                  <YesNo value={casualty["evac-ready"]} />
                 </Table.Td>
-                <Table.Td ff={MONO_FONT}>{treatmentsByInjury[injury.id]?.count ?? 0}</Table.Td>
-                <Table.Td ff={MONO_FONT}>{vitalsByInjury[injury.id]?.count ?? 0}</Table.Td>
+                <Table.Td ff={MONO_FONT}>{treatmentsByCasualty[casualty.id]?.count ?? 0}</Table.Td>
+                <Table.Td ff={MONO_FONT}>{vitalsByCasualty[casualty.id]?.count ?? 0}</Table.Td>
                 <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
-                  {lastUpdatedLabel(injury.id)}
+                  {lastUpdatedLabel(casualty.id)}
                 </Table.Td>
                 <Table.Td>
                   <ActionIcon
                     aria-label="עריכת נפגע"
                     title="עריכת נפגע"
                     variant="subtle"
-                    onClick={() => onEditCasualty(injury)}
+                    onClick={() => onEditCasualty(casualty)}
                   >
                     <IconPencil size={18} color="var(--app-color-primary)" />
                   </ActionIcon>
                 </Table.Td>
               </Table.Tr>
             ))}
-            {injuries.length === 0 && (
+            {casualties.length === 0 && (
               <Table.Tr>
                 <Table.Td colSpan={10} c="var(--app-color-text-muted)" ta="center">
                   לא נרשמו נפגעים באירוע זה
@@ -228,4 +228,4 @@ const MedicInjuriesCard = ({ eventId, injuries, onAddCasualty, onEditCasualty })
   );
 };
 
-export default MedicInjuriesCard;
+export default MedicCasualtiesCard;

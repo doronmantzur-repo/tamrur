@@ -7,14 +7,14 @@ import { IconActivityHeartbeat, IconInfoCircle, IconStethoscope, IconUser } from
 import { useDispatch } from "react-redux";
 
 // Internal application modules
-import InjuryDetailsForm from "./InjuryDetailsForm";
+import CasualtyDetailsForm from "./CasualtyDetailsForm";
 import TreatmentsSection from "./TreatmentsSection";
 import VitalsSection from "./VitalsSection";
 import { MONO_FONT } from "./formStyles";
-import { clearInjurySaveError } from "../../features/injuries/injuriesSlice";
+import { clearCasualtySaveError } from "../../features/casualties/casualtiesSlice";
 import { clearTreatmentSaveError } from "../../features/treatments/treatmentsSlice";
 import { clearVitalsSaveError } from "../../features/vitals/vitalsSlice";
-import { URGENCY_COLOR_VARS, URGENCY_LABELS } from "../../constants/injuryStatus";
+import { URGENCY_COLOR_VARS, URGENCY_LABELS } from "../../constants/casualtyStatus";
 
 // Styles
 
@@ -23,29 +23,29 @@ import { URGENCY_COLOR_VARS, URGENCY_LABELS } from "../../constants/injuryStatus
  * tab: the `casualties` row itself, its `injuries-treatment` rows, and its
  * `vitals` rows.
  *
- * Treatments and vitals are foreign-keyed to an injury, so for a casualty that
+ * Treatments and vitals are foreign-keyed to a casualty, so for a casualty that
  * hasn't been created yet those tabs stay locked until the details tab saves
  * and returns an id.
  *
- * @param {{ eventId: string, injury: Object | null, onCreated: (injury: Object) => void }} props
+ * @param {{ eventId: string, casualty: Object | null, onCreated: (casualty: Object) => void }} props
  * @returns {JSX.Element} The casualty editor.
  */
-const CasualtyEditor = ({ eventId, injury, onCreated }) => {
-  const [savedInjury, setSavedInjury] = useState(injury);
+const CasualtyEditor = ({ eventId, casualty, onCreated }) => {
+  const [savedCasualty, setSavedCasualty] = useState(casualty);
   const [activeTab, setActiveTab] = useState("details");
 
-  const injuryId = savedInjury?.id ?? null;
+  const injuryId = savedCasualty?.id ?? null;
 
   /**
    * Keeps the freshly created casualty in local state so the record tabs
    * unlock, and lets the page know it can select the new row.
    *
-   * @param {Object} saved - The injury row returned by the server.
+   * @param {Object} saved - The casualty row returned by the server.
    * @returns {void}
    */
   function handleSaved(saved) {
-    const isNew = !savedInjury;
-    setSavedInjury(saved);
+    const isNew = !savedCasualty;
+    setSavedCasualty(saved);
 
     if (isNew) {
       onCreated(saved);
@@ -100,7 +100,7 @@ const CasualtyEditor = ({ eventId, injury, onCreated }) => {
         </Tabs.List>
 
         <Tabs.Panel value="details" pt="md">
-          <InjuryDetailsForm eventId={eventId} injury={savedInjury} onSaved={handleSaved} />
+          <CasualtyDetailsForm eventId={eventId} casualty={savedCasualty} onSaved={handleSaved} />
         </Tabs.Panel>
 
         <Tabs.Panel value="treatments" pt="md">
@@ -120,14 +120,14 @@ const CasualtyEditor = ({ eventId, injury, onCreated }) => {
  *
  * @param {{
  *   eventId: string,
- *   injury: Object | null,
+ *   casualty: Object | null,
  *   opened: boolean,
  *   onClose: () => void,
- *   onCreated: (injury: Object) => void,
+ *   onCreated: (casualty: Object) => void,
  * }} props
  * @returns {JSX.Element} The casualty editing modal.
  */
-const InjuryFormModal = ({ eventId, injury, opened, onClose, onCreated }) => {
+const CasualtyFormModal = ({ eventId, casualty, opened, onClose, onCreated }) => {
   const dispatch = useDispatch();
 
   // A save that failed on the last casualty shouldn't greet the medic when the
@@ -135,7 +135,7 @@ const InjuryFormModal = ({ eventId, injury, opened, onClose, onCreated }) => {
   useEffect(() => {
     if (!opened) return;
 
-    dispatch(clearInjurySaveError());
+    dispatch(clearCasualtySaveError());
     dispatch(clearTreatmentSaveError());
     dispatch(clearVitalsSaveError());
   }, [opened, dispatch]);
@@ -149,22 +149,22 @@ const InjuryFormModal = ({ eventId, injury, opened, onClose, onCreated }) => {
       title={
         <Group gap="sm">
           <Text fz="lg" fw={700} c="var(--app-color-text)">
-            {injury ? "עדכון נפגע" : "נפגע חדש"}
+            {casualty ? "עדכון נפגע" : "נפגע חדש"}
           </Text>
-          {injury && (
+          {casualty && (
             <>
               <Badge
                 styles={{
                   root: {
-                    backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[injury.urgency]} 16%, transparent)`,
-                    color: URGENCY_COLOR_VARS[injury.urgency],
+                    backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[casualty.urgency]} 16%, transparent)`,
+                    color: URGENCY_COLOR_VARS[casualty.urgency],
                   },
                 }}
               >
-                {URGENCY_LABELS[injury.urgency] || injury.urgency || "—"}
+                {URGENCY_LABELS[casualty.urgency] || casualty.urgency || "—"}
               </Badge>
               <Text fz="xs" c="var(--app-color-text-muted)" ff={MONO_FONT}>
-                {String(injury.id).slice(0, 8)}
+                {String(casualty.id).slice(0, 8)}
               </Text>
             </>
           )}
@@ -181,12 +181,12 @@ const InjuryFormModal = ({ eventId, injury, opened, onClose, onCreated }) => {
     >
       {/* Mounted only while open, so every casualty's editor starts from that
           casualty's own values rather than the previously opened one's. It
-          deliberately isn't keyed on the injury id: creating a casualty gives
+          deliberately isn't keyed on the casualty id: creating a casualty gives
           it one, and remounting there would throw away the form the medic is
           still working in. */}
-      {opened && <CasualtyEditor eventId={eventId} injury={injury} onCreated={onCreated} />}
+      {opened && <CasualtyEditor eventId={eventId} casualty={casualty} onCreated={onCreated} />}
     </Modal>
   );
 };
 
-export default InjuryFormModal;
+export default CasualtyFormModal;

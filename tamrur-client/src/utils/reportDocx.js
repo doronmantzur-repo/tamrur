@@ -4,7 +4,7 @@ import { AlignmentType, Document, Packer, Paragraph, TextRun } from "docx";
 // Internal application modules
 import { EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../constants/eventStatus";
 import { AERIAL_EVAC_LABELS } from "../constants/aerialEvacStatus";
-import { URGENCY_LABELS, EVAC_ABILITY_LABELS } from "../constants/injuryStatus";
+import { URGENCY_LABELS, EVAC_ABILITY_LABELS } from "../constants/casualtyStatus";
 
 /**
  * Mirrors "event report template.docx": a fixed Hebrew RTL form — title,
@@ -95,10 +95,10 @@ function formatEvacuationTeam(evacuation, index) {
   return `${index + 1}. ${parts.join(", ") || "לא צוינו פרטים"}`;
 }
 
-function injuryDescription(injury) {
-  if (injury.description) return injury.description;
-  const urgency = URGENCY_LABELS[injury.urgency] || injury.urgency;
-  const ability = EVAC_ABILITY_LABELS[injury["evac-ability"]] || injury["evac-ability"];
+function casualtyDescription(casualty) {
+  if (casualty.description) return casualty.description;
+  const urgency = URGENCY_LABELS[casualty.urgency] || casualty.urgency;
+  const ability = EVAC_ABILITY_LABELS[casualty["evac-ability"]] || casualty["evac-ability"];
   const parts = [urgency && `דחיפות: ${urgency}`, ability && `יכולת פינוי: ${ability}`].filter(Boolean);
   return parts.length > 0 ? parts.join(", ") : "לא צוין";
 }
@@ -130,14 +130,14 @@ function formatVitalsReading(reading) {
  *
  * @param {{
  *   event: object,
- *   injuries: object[],
+ *   casualties: object[],
  *   treatments: object[],
  *   vitalsRecords: object[],
  *   evacuations: object[],
  * }} data
  * @returns {Promise<Blob>}
  */
-export async function buildEventReportDocx({ event, injuries, treatments, vitalsRecords, evacuations }) {
+export async function buildEventReportDocx({ event, casualties, treatments, vitalsRecords, evacuations }) {
   const children = [];
 
   children.push(
@@ -174,10 +174,10 @@ export async function buildEventReportDocx({ event, injuries, treatments, vitals
   }
 
   children.push(sectionHeader("נפגעים:"));
-  if (injuries.length === 0) {
+  if (casualties.length === 0) {
     children.push(plainParagraph("לא דווחו נפגעים"));
   } else {
-    injuries.forEach((injury, index) => {
+    casualties.forEach((casualty, index) => {
       children.push(
         new Paragraph({
           alignment: AlignmentType.RIGHT,
@@ -187,18 +187,18 @@ export async function buildEventReportDocx({ event, injuries, treatments, vitals
         }),
       );
 
-      children.push(labeledParagraph("תיאור פציעה:", injuryDescription(injury)));
+      children.push(labeledParagraph("תיאור פציעה:", casualtyDescription(casualty)));
 
-      const injuryTreatments = treatments.filter((t) => t["injury-id"] === injury.id);
+      const treatmentsForCasualty = treatments.filter((t) => t["injury-id"] === casualty.id);
       const treatmentText =
-        injuryTreatments.length > 0
-          ? injuryTreatments.map((t) => `${formatTime(t["recorded-at"])} - ${t.treatment}`).join("; ")
+        treatmentsForCasualty.length > 0
+          ? treatmentsForCasualty.map((t) => `${formatTime(t["recorded-at"])} - ${t.treatment}`).join("; ")
           : "לא תועד טיפול";
       children.push(labeledParagraph("טיפול:", treatmentText));
 
-      const injuryVitals = vitalsRecords.filter((v) => v["injury-id"] === injury.id);
+      const vitalsForCasualty = vitalsRecords.filter((v) => v["injury-id"] === casualty.id);
       const vitalsText =
-        injuryVitals.length > 0 ? injuryVitals.map(formatVitalsReading).join("; ") : "לא תועדו מדדים";
+        vitalsForCasualty.length > 0 ? vitalsForCasualty.map(formatVitalsReading).join("; ") : "לא תועדו מדדים";
       children.push(labeledParagraph("מדדים:", vitalsText));
     });
   }
