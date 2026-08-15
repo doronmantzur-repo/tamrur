@@ -20,7 +20,7 @@ import { URGENCY_COLOR_VARS, URGENCY_LABELS } from "../../constants/injuryStatus
 
 /**
  * Renders the three record types belonging to one casualty, each on its own
- * tab: the `injuries` row itself, its `injuries-treatment` rows, and its
+ * tab: the `casualties` row itself, its `injuries-treatment` rows, and its
  * `vitals` rows.
  *
  * Treatments and vitals are foreign-keyed to an injury, so for a casualty that

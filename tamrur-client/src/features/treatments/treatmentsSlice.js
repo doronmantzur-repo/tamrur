@@ -17,8 +17,8 @@ export const fetchTreatmentsByEvent = createAsyncThunk(
   "treatments/fetchByEvent",
   async (eventId, { rejectWithValue }) => {
     try {
-      const response = await TamrurAPI.get(`/injuries-treatment/by-event/${eventId}`);
-      return { eventId, treatments: response.data.injuryTreatments };
+      const response = await TamrurAPI.get(`/casualties-treatment/by-event/${eventId}`);
+      return { eventId, treatments: response.data.casualtyTreatments };
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message ?? "Failed to load treatments",
@@ -37,13 +37,13 @@ export const createTreatment = createAsyncThunk(
   "treatments/create",
   async ({ eventId, injuryId, treatment, recordedAt }, { rejectWithValue }) => {
     try {
-      const response = await TamrurAPI.post("/injuries-treatment", {
+      const response = await TamrurAPI.post("/casualties-treatment", {
         eventId,
         injuryId,
         treatment,
         recordedAt,
       });
-      return response.data.injuryTreatment;
+      return response.data.casualtyTreatment;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message ?? "Failed to create treatment",
@@ -55,7 +55,7 @@ export const createTreatment = createAsyncThunk(
 /**
  * Updates one treatment row, addressed by its own id.
  *
- * `/injuries-treatment/:eventId` addresses every row belonging to the event,
+ * `/casualties-treatment/:eventId` addresses every row belonging to the event,
  * so per-record edits go through the `/record/:id` route instead.
  *
  * @param {{ id: string, treatment: string, recordedAt: string }} params
@@ -65,11 +65,11 @@ export const updateTreatment = createAsyncThunk(
   "treatments/update",
   async ({ id, treatment, recordedAt }, { rejectWithValue }) => {
     try {
-      const response = await TamrurAPI.put(`/injuries-treatment/record/${id}`, {
+      const response = await TamrurAPI.put(`/casualties-treatment/record/${id}`, {
         treatment,
         recordedAt,
       });
-      return response.data.injuryTreatment;
+      return response.data.casualtyTreatment;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message ?? "Failed to update treatment",
@@ -88,8 +88,8 @@ export const deleteTreatment = createAsyncThunk(
   "treatments/delete",
   async ({ id }, { rejectWithValue }) => {
     try {
-      const response = await TamrurAPI.delete(`/injuries-treatment/record/${id}`);
-      return response.data.injuryTreatment;
+      const response = await TamrurAPI.delete(`/casualties-treatment/record/${id}`);
+      return response.data.casualtyTreatment;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message ?? "Failed to delete treatment",
@@ -120,7 +120,7 @@ function sortByRecordedAtDesc(records) {
 }
 
 /**
- * Treatments slice: holds each event's `injuries-treatment` rows.
+ * Treatments slice: holds each event's `casualties-treatment` rows.
  */
 const treatmentsSlice = createSlice({
   name: "treatments",
