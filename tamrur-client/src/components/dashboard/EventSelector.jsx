@@ -16,15 +16,19 @@ import { COMPLETED_STATUS, EVENT_STATUS_LABELS } from "../../constants/eventStat
  * color and active (non-completed) events highlighted in the app's primary
  * accent, so status reads at a glance.
  *
+ * `compact` drops the field label and shortens the control, for pages that sit
+ * it in a toolbar rather than giving it a row of its own.
+ *
  * @param {{
  *   value: string | null,
  *   onChange: (eventId: string | null) => void,
  *   filterStatuses?: string[],
+ *   compact?: boolean,
  * }} props - `filterStatuses`, if given, restricts the list to events whose
  *   status is in that array (e.g. `[COMPLETED_STATUS]` for a reports page).
  * @returns {JSX.Element} The event selector dropdown.
  */
-const EventSelector = ({ value, onChange, filterStatuses }) => {
+const EventSelector = ({ value, onChange, filterStatuses, compact = false }) => {
   const dispatch = useDispatch();
   const { events, status } = useSelector((state) => state.events);
 
@@ -44,7 +48,7 @@ const EventSelector = ({ value, onChange, filterStatuses }) => {
 
   return (
     <Select
-      label="אירוע"
+      label={compact ? undefined : "אירוע"}
       placeholder={status === "loading" ? "טוען אירועים..." : "בחר אירוע מהרשימה"}
       nothingFoundMessage="לא נמצאו אירועים"
       data={data}
@@ -56,7 +60,11 @@ const EventSelector = ({ value, onChange, filterStatuses }) => {
       rightSection={status === "loading" ? <Loader size="xs" color="var(--app-color-primary)" /> : undefined}
       checkIconPosition="right"
       dir="rtl"
-      w={{ base: "100%", sm: 340 }}
+      // Compact trims the label and the width, but deliberately NOT the height:
+      // the theme pins every Input at 3rem to match its own `minTouchTarget`
+      // token, and overriding that here left the wrapper at 3rem while the input
+      // shrank — which is what pushed the clear button below the visible border.
+      w={compact ? { base: "100%", xs: 260 } : { base: "100%", sm: 340 }}
       comboboxProps={{ shadow: "md" }}
       renderOption={({ option, checked }) => {
         const isCompleted = option.status === COMPLETED_STATUS;

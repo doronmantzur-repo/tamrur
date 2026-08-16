@@ -47,6 +47,35 @@ export const primaryButtonStyles = {
 };
 
 /**
+ * Compact styling for the inputs that replace a casualty-table cell while it is
+ * being edited. Shorter than `inputStyles` so a row stays one line tall.
+ * @type {Record<string, React.CSSProperties>}
+ */
+export const cellInputStyles = {
+  input: {
+    minHeight: "2.25rem",
+    height: "2.25rem",
+    backgroundColor: "var(--app-color-background)",
+    color: "var(--app-color-text)",
+    borderColor: "var(--app-color-primary)",
+    fontFamily: MONO_FONT,
+  },
+};
+
+/**
+ * The same, for the cell inputs holding Hebrew text rather than figures.
+ * @type {Record<string, React.CSSProperties>}
+ */
+export const cellTextStyles = {
+  input: {
+    minHeight: "2.25rem",
+    backgroundColor: "var(--app-color-background)",
+    color: "var(--app-color-text)",
+    borderColor: "var(--app-color-primary)",
+  },
+};
+
+/**
  * A quieter surface-colored button, for secondary actions sitting next to the
  * gold primary one.
  * @type {Record<string, React.CSSProperties>}

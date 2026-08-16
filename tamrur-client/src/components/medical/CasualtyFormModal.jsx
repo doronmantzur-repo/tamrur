@@ -1,13 +1,12 @@
 // React
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 // External libraries
-import { Alert, Badge, Group, Modal, Stack, Tabs, Text } from "@mantine/core";
-import { IconActivityHeartbeat, IconInfoCircle, IconStethoscope, IconUser } from "@tabler/icons-react";
+import { Badge, Group, Modal, Tabs, Text } from "@mantine/core";
+import { IconActivityHeartbeat, IconStethoscope } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 
 // Internal application modules
-import CasualtyDetailsForm from "./CasualtyDetailsForm";
 import TreatmentsSection from "./TreatmentsSection";
 import VitalsSection from "./VitalsSection";
 import { MONO_FONT } from "./formStyles";
@@ -19,115 +18,21 @@ import { URGENCY_COLOR_VARS, URGENCY_LABELS } from "../../constants/casualtyStat
 // Styles
 
 /**
- * Renders the three record types belonging to one casualty, each on its own
- * tab: the `casualties` row itself, its `casualties-treatment` rows, and its
- * `vitals` rows.
+ * Hosts one casualty's timestamped records — the `casualties-treatment` and
+ * `vitals` rows logged against them over the course of the incident.
  *
- * Treatments and vitals are foreign-keyed to a casualty, so for a casualty that
- * hasn't been created yet those tabs stay locked until the details tab saves
- * and returns an id.
- *
- * @param {{ eventId: string, casualty: Object | null, onCreated: (casualty: Object) => void }} props
- * @returns {JSX.Element} The casualty editor.
- */
-const CasualtyEditor = ({ eventId, casualty, onCreated }) => {
-  const [savedCasualty, setSavedCasualty] = useState(casualty);
-  const [activeTab, setActiveTab] = useState("details");
-
-  const injuryId = savedCasualty?.id ?? null;
-
-  /**
-   * Keeps the freshly created casualty in local state so the record tabs
-   * unlock, and lets the page know it can select the new row.
-   *
-   * @param {Object} saved - The casualty row returned by the server.
-   * @returns {void}
-   */
-  function handleSaved(saved) {
-    const isNew = !savedCasualty;
-    setSavedCasualty(saved);
-
-    if (isNew) {
-      onCreated(saved);
-      setActiveTab("treatments");
-    }
-  }
-
-  return (
-    <Stack gap="md">
-      {!injuryId && (
-        <Alert
-          icon={<IconInfoCircle size={18} />}
-          styles={{
-            root: {
-              backgroundColor: "var(--app-color-surface-high)",
-              borderInlineStart: "3px solid var(--app-color-primary)",
-            },
-            body: { color: "var(--app-color-text-muted)" },
-          }}
-        >
-          שמור את פרטי הנפגע כדי לרשום לו טיפולים ומדדים
-        </Alert>
-      )}
-
-      <Tabs
-        value={activeTab}
-        onChange={setActiveTab}
-        color="var(--app-color-primary)"
-        styles={{
-          tab: { color: "var(--app-color-text-muted)" },
-          tabLabel: { fontWeight: 500 },
-        }}
-      >
-        <Tabs.List>
-          <Tabs.Tab value="details" leftSection={<IconUser size={16} stroke={1.8} />}>
-            פרטי נפגע
-          </Tabs.Tab>
-          <Tabs.Tab
-            value="treatments"
-            leftSection={<IconStethoscope size={16} stroke={1.8} />}
-            disabled={!injuryId}
-          >
-            טיפולים
-          </Tabs.Tab>
-          <Tabs.Tab
-            value="vitals"
-            leftSection={<IconActivityHeartbeat size={16} stroke={1.8} />}
-            disabled={!injuryId}
-          >
-            מדדים ובדיקות
-          </Tabs.Tab>
-        </Tabs.List>
-
-        <Tabs.Panel value="details" pt="md">
-          <CasualtyDetailsForm eventId={eventId} casualty={savedCasualty} onSaved={handleSaved} />
-        </Tabs.Panel>
-
-        <Tabs.Panel value="treatments" pt="md">
-          {injuryId && <TreatmentsSection eventId={eventId} injuryId={injuryId} />}
-        </Tabs.Panel>
-
-        <Tabs.Panel value="vitals" pt="md">
-          {injuryId && <VitalsSection eventId={eventId} injuryId={injuryId} />}
-        </Tabs.Panel>
-      </Tabs>
-    </Stack>
-  );
-};
-
-/**
- * Hosts the casualty editor in a modal.
+ * The casualty's own fields are edited inline in the triage table instead, so
+ * there's a single place each column is written from.
  *
  * @param {{
  *   eventId: string,
  *   casualty: Object | null,
  *   opened: boolean,
  *   onClose: () => void,
- *   onCreated: (casualty: Object) => void,
  * }} props
- * @returns {JSX.Element} The casualty editing modal.
+ * @returns {JSX.Element} The casualty records modal.
  */
-const CasualtyFormModal = ({ eventId, casualty, opened, onClose, onCreated }) => {
+const CasualtyFormModal = ({ eventId, casualty, opened, onClose }) => {
   const dispatch = useDispatch();
 
   // A save that failed on the last casualty shouldn't greet the medic when the
@@ -149,7 +54,7 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose, onCreated }) =>
       title={
         <Group gap="sm">
           <Text fz="lg" fw={700} c="var(--app-color-text)">
-            {casualty ? "עדכון נפגע" : "נפגע חדש"}
+            טיפולים ומדדים
           </Text>
           {casualty && (
             <>
@@ -163,8 +68,10 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose, onCreated }) =>
               >
                 {URGENCY_LABELS[casualty.urgency] || casualty.urgency || "—"}
               </Badge>
-              <Text fz="xs" c="var(--app-color-text-muted)" ff={MONO_FONT}>
-                {String(casualty.id).slice(0, 8)}
+              <Text fz="sm" c="var(--app-color-text-muted)" ff={MONO_FONT}>
+                {casualty["casualty-number"] != null
+                  ? `פצוע ${casualty["casualty-number"]}`
+                  : String(casualty.id).slice(0, 8)}
               </Text>
             </>
           )}
@@ -179,12 +86,40 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose, onCreated }) =>
         body: { paddingTop: "var(--mantine-spacing-md)" },
       }}
     >
-      {/* Mounted only while open, so every casualty's editor starts from that
-          casualty's own values rather than the previously opened one's. It
-          deliberately isn't keyed on the casualty id: creating a casualty gives
-          it one, and remounting there would throw away the form the medic is
-          still working in. */}
-      {opened && <CasualtyEditor eventId={eventId} casualty={casualty} onCreated={onCreated} />}
+      {/* Mounted only while open, so each casualty's sections start from that
+          casualty's own records rather than the previously opened one's. The
+          treatment and vitals rows are still foreign-keyed by "injury-id", which
+          the casualties rename deliberately left alone. */}
+      {opened && casualty && (
+        <Tabs
+          defaultValue="treatments"
+          color="var(--app-color-primary)"
+          styles={{
+            tab: { color: "var(--app-color-text-muted)" },
+            tabLabel: { fontWeight: 500 },
+          }}
+        >
+          <Tabs.List>
+            <Tabs.Tab value="treatments" leftSection={<IconStethoscope size={16} stroke={1.8} />}>
+              טיפולים
+            </Tabs.Tab>
+            <Tabs.Tab
+              value="vitals"
+              leftSection={<IconActivityHeartbeat size={16} stroke={1.8} />}
+            >
+              מדדים ובדיקות
+            </Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="treatments" pt="md">
+            <TreatmentsSection eventId={eventId} injuryId={casualty.id} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="vitals" pt="md">
+            <VitalsSection eventId={eventId} injuryId={casualty.id} />
+          </Tabs.Panel>
+        </Tabs>
+      )}
     </Modal>
   );
 };
