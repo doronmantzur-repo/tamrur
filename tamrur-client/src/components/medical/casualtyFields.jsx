@@ -18,9 +18,11 @@ import {
   ESCORT_TYPE_OPTIONS,
   EVAC_ABILITY_LABELS,
   EVAC_ABILITY_OPTIONS,
-  URGENCY_COLOR_VARS,
   URGENCY_LABELS,
+  URGENCY_NONE_PLACEHOLDER,
   URGENCY_OPTIONS,
+  urgencyBadgeColors,
+  urgencyLabel,
   VENTILATION_LABELS,
   VENTILATION_OPTIONS,
 } from "../../constants/casualtyStatus";
@@ -49,12 +51,22 @@ function renderUrgencyBadge(value) {
     <Badge
       styles={{
         root: {
-          backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[value]} 16%, transparent)`,
-          color: URGENCY_COLOR_VARS[value],
+          ...urgencyBadgeColors(value),
+          // Mantine caps a Badge at 100% of its container and ellipsises the
+          // overflow, which inside a fixed-layout table cell clipped "לא דחוף"
+          // to "לא ...". The column is sized for the longest label, so let the
+          // badge size to its own content instead.
+          maxWidth: "none",
+          whiteSpace: "nowrap",
+        },
+        label: {
+          overflow: "visible",
+          textOverflow: "clip",
+          whiteSpace: "nowrap",
         },
       }}
     >
-      {URGENCY_LABELS[value] || value || "—"}
+      {urgencyLabel(value)}
     </Badge>
   );
 }
@@ -81,7 +93,7 @@ export const CASUALTY_FIELDS = [
     header: "מס' פצוע",
     short: "מס'",
     group: "collect",
-    width: 56,
+    width: 48,
     core: true,
     cell: "number",
   },
@@ -99,7 +111,7 @@ export const CASUALTY_FIELDS = [
     key: "treatments",
     header: "טיפולים",
     group: "triage",
-    width: 140,
+    width: 120,
     core: false,
     cell: "treatments",
   },
@@ -108,15 +120,14 @@ export const CASUALTY_FIELDS = [
     header: "דחיפות",
     short: "דחיפות",
     group: "summary",
-    width: 78,
+    width: 96,
     core: true,
     cell: "select",
     options: URGENCY_OPTIONS,
     labels: URGENCY_LABELS,
-    // Urgency drives the triage counts above the table and on the TOC
-    // dashboard, so it can be changed but not blanked back out.
-    clearable: false,
-    required: true,
+    // Optional: a casualty can be recorded before anyone has triaged them, so
+    // this clears back to "not yet triaged" like any other select.
+    placeholder: URGENCY_NONE_PLACEHOLDER,
     renderValue: renderUrgencyBadge,
   },
   {
@@ -124,7 +135,7 @@ export const CASUALTY_FIELDS = [
     header: "קדימות לפינוי",
     short: "קד' פינוי",
     group: "summary",
-    width: 56,
+    width: 52,
     core: true,
     cell: "number",
   },
@@ -132,7 +143,7 @@ export const CASUALTY_FIELDS = [
     key: "treatment-priority",
     header: "קדימות לטיפול",
     group: "summary",
-    width: 56,
+    width: 52,
     core: false,
     cell: "number",
   },
@@ -150,7 +161,7 @@ export const CASUALTY_FIELDS = [
     key: "ventilation",
     header: "מונשם",
     group: "evac",
-    width: 72,
+    width: 84,
     core: false,
     cell: "select",
     options: VENTILATION_OPTIONS,
@@ -160,26 +171,26 @@ export const CASUALTY_FIELDS = [
     key: "escort-type",
     header: "ליווי",
     group: "evac",
-    width: 60,
+    width: 56,
     core: false,
     cell: "select",
     options: ESCORT_TYPE_OPTIONS,
     labels: ESCORT_TYPE_LABELS,
   },
-  { key: "helivac", header: "מוסק", group: "evac", width: 52, core: false, cell: "toggle" },
+  { key: "helivac", header: "מוסק", group: "evac", width: 48, core: false, cell: "toggle" },
   {
     key: "evac-ready",
     header: "מוכן לפינוי",
     short: "מוכן",
     group: "evac",
-    width: 56,
+    width: 52,
     core: true,
     cell: "toggle",
   },
 ];
 
 /** Width of the trailing actions column, which has no field descriptor. */
-export const ACTIONS_WIDTH = 64;
+export const ACTIONS_WIDTH = 60;
 
 /** Width of the tablet tier's disclosure-chevron column. */
 export const EXPANDER_WIDTH = 44;
@@ -191,7 +202,7 @@ export const EXPANDER_WIDTH = 44;
  * form's four groups, it splits the table into two rather than being edited in
  * place, and it must stay outside the grouped header's colSpan arithmetic.
  */
-export const EVACUATED_WIDTH = 64;
+export const EVACUATED_WIDTH = 56;
 
 /**
  * The fields shown for a tier: everything on the full table, the `core` subset
@@ -263,6 +274,7 @@ export function renderCell(field, casualty, save) {
           value={value}
           column={field.key}
           label={field.header}
+          placeholder={field.placeholder}
           options={field.options}
           labels={field.labels}
           clearable={field.clearable !== false}
@@ -367,7 +379,7 @@ export function renderDraftInput(field, value, onChange, hasError = false) {
       return (
         <Select
           aria-label={field.header}
-          placeholder={field.header}
+          placeholder={field.placeholder ?? field.header}
           data={field.options}
           value={value}
           onChange={onChange}

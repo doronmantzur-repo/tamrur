@@ -8,7 +8,13 @@ import { IconBandage, IconCheck, IconX } from "@tabler/icons-react";
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
 import ColumnHeader from "../dashboard/ColumnHeader";
-import { EVAC_ABILITY_LABELS, URGENCY_COLOR_VARS, URGENCY_LABELS, URGENCY_ORDER } from "../../constants/casualtyStatus";
+import {
+  EVAC_ABILITY_LABELS,
+  URGENCY_LABELS,
+  URGENCY_ORDER,
+  urgencyBadgeColors,
+  urgencyLabel,
+} from "../../constants/casualtyStatus";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
 
 // Styles
@@ -178,12 +184,11 @@ const CasualtiesTableCard = ({ casualties }) => {
                   <Badge
                     styles={{
                       root: {
-                        backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[casualty.urgency]} 16%, transparent)`,
-                        color: URGENCY_COLOR_VARS[casualty.urgency],
+                        ...urgencyBadgeColors(casualty.urgency),
                       },
                     }}
                   >
-                    {URGENCY_LABELS[casualty.urgency] || casualty.urgency || "—"}
+                    {urgencyLabel(casualty.urgency)}
                   </Badge>
                 </Table.Td>
                 <Table.Td>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>

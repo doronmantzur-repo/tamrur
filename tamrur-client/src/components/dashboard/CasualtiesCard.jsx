@@ -12,6 +12,8 @@ import {
   URGENCY_COLOR_VARS,
   URGENCY_LABELS,
   URGENCY_ORDER,
+  urgencyBadgeColors,
+  urgencyLabel,
 } from "../../constants/casualtyStatus";
 
 // Styles
@@ -102,12 +104,11 @@ const CasualtiesCard = ({ casualties }) => {
                   <Badge
                     styles={{
                       root: {
-                        backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[casualty.urgency]} 16%, transparent)`,
-                        color: URGENCY_COLOR_VARS[casualty.urgency],
+                        ...urgencyBadgeColors(casualty.urgency),
                       },
                     }}
                   >
-                    {URGENCY_LABELS[casualty.urgency] || casualty.urgency || "—"}
+                    {urgencyLabel(casualty.urgency)}
                   </Badge>
                 </Table.Td>
                 <Table.Td>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>

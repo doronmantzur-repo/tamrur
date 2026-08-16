@@ -13,7 +13,7 @@ import { MONO_FONT } from "./formStyles";
 import { clearCasualtySaveError } from "../../features/casualties/casualtiesSlice";
 import { clearTreatmentSaveError } from "../../features/treatments/treatmentsSlice";
 import { clearVitalsSaveError } from "../../features/vitals/vitalsSlice";
-import { URGENCY_COLOR_VARS, URGENCY_LABELS } from "../../constants/casualtyStatus";
+import { urgencyBadgeColors, urgencyLabel } from "../../constants/casualtyStatus";
 
 // Styles
 
@@ -60,13 +60,10 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose }) => {
             <>
               <Badge
                 styles={{
-                  root: {
-                    backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[casualty.urgency]} 16%, transparent)`,
-                    color: URGENCY_COLOR_VARS[casualty.urgency],
-                  },
+                  root: urgencyBadgeColors(casualty.urgency),
                 }}
               >
-                {URGENCY_LABELS[casualty.urgency] || casualty.urgency || "—"}
+                {urgencyLabel(casualty.urgency)}
               </Badge>
               <Text fz="sm" c="var(--app-color-text-muted)" ff={MONO_FONT}>
                 {casualty["casualty-number"] != null
