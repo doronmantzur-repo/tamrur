@@ -2,34 +2,43 @@
 import { useState } from "react";
 
 // External libraries
-import { Alert, Button, Loader, Stack, Text } from "@mantine/core";
-import { IconAlertCircle, IconFileText } from "@tabler/icons-react";
+import { Alert, Button, Divider, Loader, Stack, Text } from "@mantine/core";
+import { IconAlertCircle, IconDeviceFloppy, IconFileText } from "@tabler/icons-react";
 import { useSelector } from "react-redux";
 
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
+import ReportPreview from "./ReportPreview";
 import TamrurAPI from "../../api/TamrurAPI";
+import { buildReportViewModel } from "../../utils/reportData";
 import { buildEventReportDocx } from "../../utils/reportDocx";
 import { buildReportFilename, downloadBlob, writeReportFile } from "../../utils/reportsFolder";
 
 // Styles
 
+const saveButtonStyles = {
+  root: {
+    backgroundColor: "var(--app-color-surface-high)",
+    color: "var(--app-color-text)",
+    border: "1px solid var(--app-color-border)",
+    "&:hover": { backgroundColor: "var(--app-color-surface)" },
+  },
+};
+
 /**
- * Lets the analyst generate a .docx event-summary report for the selected
- * event, filled from the event's own logged data (casualties, treatments,
- * vitals, evacuations, aerial missions) into the fixed template layout in
- * utils/reportDocx.js — no AI involved, since every field in that template
- * is a literal DB value, not free text.
+ * Lets the analyst generate a preview of the event-summary report for the
+ * selected event (filled from the event's own logged data — casualties,
+ * treatments, vitals, evacuations — via tamrur-server's
+ * /event-report/:eventId; no AI involved, since every field is a literal DB
+ * value) and review it on screen before deciding whether to save it.
  *
- * tamrur-server (/event-report/:eventId) only gathers and returns that raw
- * data; the .docx itself is built entirely client-side.
- *
- * When a reports folder is selected (see ReportsFolderCard), the file is
- * written straight into it; otherwise it's offered as a normal browser
- * download (typically landing in Downloads).
+ * Generating no longer writes a file by itself — it only fetches the data
+ * and renders the preview. Saving as .docx is a separate, explicit step: if
+ * a reports folder is selected (see ReportsFolderCard) it's written straight
+ * into it, otherwise it's offered as a normal browser download.
  *
  * The parent should remount this (e.g. `key={eventId}`) when the selected
- * event changes, so state from a previous event doesn't linger.
+ * event changes, so a preview from a previous event doesn't linger.
  *
  * @param {{
  *   eventId: string | null,
@@ -40,20 +49,36 @@ import { buildReportFilename, downloadBlob, writeReportFile } from "../../utils/
  */
 const EventReportCard = ({ eventId, folderHandle, onReportSaved }) => {
   const event = useSelector((state) => state.events.events.find((item) => item.id === eventId));
+  const [viewModel, setViewModel] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [saveNote, setSaveNote] = useState(null);
 
-  function handleClick() {
+  function handleGenerate() {
     if (!eventId || isGenerating) return;
 
     setIsGenerating(true);
     setError(null);
     setSaveNote(null);
+    setViewModel(null);
 
     TamrurAPI.get(`/event-report/${eventId}`)
-      .then(async (response) => {
-        const blob = await buildEventReportDocx(response.data);
+      .then((response) => setViewModel(buildReportViewModel(response.data)))
+      .catch((err) => {
+        setError(err.response?.data?.message ?? "יצירת הדוח נכשלה, נסה שוב");
+      })
+      .finally(() => setIsGenerating(false));
+  }
+
+  function handleSave() {
+    if (!viewModel || isSaving) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    buildEventReportDocx(viewModel)
+      .then(async (blob) => {
         const filename = buildReportFilename(event?.name, eventId);
 
         if (folderHandle) {
@@ -65,10 +90,8 @@ const EventReportCard = ({ eventId, folderHandle, onReportSaved }) => {
           setSaveNote(`הדוח הורד כ-${filename}`);
         }
       })
-      .catch((err) => {
-        setError(err.response?.data?.message ?? "יצירת הדוח נכשלה, נסה שוב");
-      })
-      .finally(() => setIsGenerating(false));
+      .catch(() => setError("שמירת הדוח נכשלה, נסה שוב"))
+      .finally(() => setIsSaving(false));
   }
 
   return (
@@ -78,7 +101,7 @@ const EventReportCard = ({ eventId, folderHandle, onReportSaved }) => {
           leftSection={<IconFileText size={18} stroke={1.8} />}
           loading={isGenerating}
           disabled={!eventId}
-          onClick={handleClick}
+          onClick={handleGenerate}
           style={{ alignSelf: "flex-start" }}
           styles={{
             root: {
@@ -116,10 +139,28 @@ const EventReportCard = ({ eventId, folderHandle, onReportSaved }) => {
           </Alert>
         )}
 
-        {saveNote && !isGenerating && (
-          <Text fz="sm" c="var(--app-color-text-muted)">
-            {saveNote}
-          </Text>
+        {viewModel && !isGenerating && (
+          <>
+            <Divider color="var(--app-color-border)" />
+
+            <ReportPreview viewModel={viewModel} />
+
+            <Button
+              leftSection={<IconDeviceFloppy size={18} stroke={1.8} />}
+              loading={isSaving}
+              onClick={handleSave}
+              style={{ alignSelf: "flex-start" }}
+              styles={saveButtonStyles}
+            >
+              שמור כקובץ Word
+            </Button>
+
+            {saveNote && !isSaving && (
+              <Text fz="sm" c="var(--app-color-text-muted)">
+                {saveNote}
+              </Text>
+            )}
+          </>
         )}
       </Stack>
     </DashboardCard>
