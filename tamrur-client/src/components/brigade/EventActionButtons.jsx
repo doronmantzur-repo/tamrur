@@ -2,7 +2,7 @@
 
 // External libraries
 import { Button, Group } from "@mantine/core";
-import { IconCheck, IconPlayerTrackNext, IconSend } from "@tabler/icons-react";
+import { IconCheck, IconPlayerTrackNext } from "@tabler/icons-react";
 
 // Internal application modules
 import { EVENT_STATUS_LABELS } from "../../constants/eventStatus";
@@ -26,29 +26,21 @@ const interactiveScaleStyles = {
 };
 
 /**
- * Renders the event's 3 action buttons (advance status, request aerial evac,
- * close event) for the dashboard's top bar. Each swaps its label once the
- * action's already been taken (or the event is closed), on top of the usual
- * disabled state.
+ * Renders the event's 2 status action buttons (advance status, close event)
+ * for the dashboard's top bar. Each swaps its label once the event is
+ * closed, on top of the usual disabled state. The aerial-evac request
+ * button lives in the evacuations table instead, since requesting one
+ * results in a row there.
  *
  * @param {{
  *   event: object,
  *   isCompleted: boolean,
- *   aerialEvacStatus: string | null | undefined,
  *   onAdvanceStatus: () => void,
  *   onCloseEvent: () => void,
- *   onRequestAerialEvac: () => void,
  * }} props
  * @returns {JSX.Element} The action button group.
  */
-const EventActionButtons = ({
-  event,
-  isCompleted,
-  aerialEvacStatus,
-  onAdvanceStatus,
-  onCloseEvent,
-  onRequestAerialEvac,
-}) => {
+const EventActionButtons = ({ event, isCompleted, onAdvanceStatus, onCloseEvent }) => {
   const currentIndex = STATUS_ORDER.indexOf(event.status);
   const nextStatus = currentIndex >= 0 ? STATUS_ORDER[currentIndex + 1] : null;
 
@@ -74,30 +66,6 @@ const EventActionButtons = ({
           : nextStatus
             ? `קדם סטטוס ל${EVENT_STATUS_LABELS[nextStatus]}`
             : "קדם סטטוס"}
-      </Button>
-
-      <Button
-        leftSection={
-          aerialEvacStatus === "needed" ? (
-            <IconCheck size={16} stroke={1.8} />
-          ) : (
-            <IconSend size={16} stroke={1.8} />
-          )
-        }
-        size="sm"
-        mih="2.25rem"
-        disabled={isCompleted || aerialEvacStatus === "needed"}
-        onClick={onRequestAerialEvac}
-        styles={{
-          root: {
-            backgroundColor: "var(--app-color-primary)",
-            color: "var(--app-color-primary-text)",
-            "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
-            ...interactiveScaleStyles,
-          },
-        }}
-      >
-        {aerialEvacStatus === "needed" ? "פינוי אווירי התבקש" : "בקש פינוי אווירי"}
       </Button>
 
       <Button

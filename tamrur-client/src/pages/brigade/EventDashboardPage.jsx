@@ -311,10 +311,8 @@ const EventDashboardPage = () => {
                 <EventActionButtons
                   event={event}
                   isCompleted={isEventCompleted}
-                  aerialEvacStatus={aerialEvacStatus}
                   onAdvanceStatus={handleAdvanceStatus}
                   onCloseEvent={handleCloseEvent}
-                  onRequestAerialEvac={handleRequestAerialEvac}
                 />
               )}
             </Group>
@@ -384,8 +382,11 @@ const EventDashboardPage = () => {
                     evacuations={evacuations}
                     locations={locations}
                     aerialMissions={aerialMissions}
+                    isCompleted={isEventCompleted}
+                    aerialEvacStatus={aerialEvacStatus}
                     onUpdateEvacuation={handleUpdateEvacuation}
                     onDeleteEvacuation={handleDeleteEvacuation}
+                    onRequestAerialEvac={handleRequestAerialEvac}
                   />
                 </Grid.Col>
               </Grid>

@@ -11,6 +11,7 @@ import {
   IconHelicopter,
   IconPencil,
   IconPlayerPlay,
+  IconSend,
   IconTrash,
   IconWalk,
   IconX,
@@ -41,6 +42,13 @@ const METHOD_FILTER_OPTIONS = METHOD_OPTIONS;
 
 /** Fields the brigade must still fill in before the evacuation is actionable. */
 const REQUIRED_FIELDS = ["departurePoint", "destinationPoint", "startTime", "eta"];
+
+/** Subtle hover/tap feedback for the request-aerial-evac button, matching the top bar's action buttons. */
+const interactiveScaleStyles = {
+  transition: "transform 0.15s ease",
+  "&:hover:not(:disabled)": { transform: "scale(1.03)" },
+  "&:active:not(:disabled)": { transform: "scale(0.97)" },
+};
 
 const inputStyles = {
   input: {
@@ -100,14 +108,20 @@ function describeLocationPoint(point, locations) {
  * column pulses a warning while a row is still missing brigade-entered
  * fields. Every column but the three time fields is sortable and filterable
  * (searchable pick-list); every column is sortable. Rows can be deleted via
- * a confirm modal.
+ * a confirm modal. The card header also carries the "request aerial evac"
+ * action — requesting one, once approved, is what auto-creates a row here
+ * in the first place, so it lives with this table rather than the page's
+ * other event-level actions.
  *
  * @param {{
  *   evacuations: Array<object>,
  *   locations: Array<object>,
  *   aerialMissions: Array<object>,
+ *   isCompleted: boolean,
+ *   aerialEvacStatus: string | null | undefined,
  *   onUpdateEvacuation: (evacId: string, changes: object) => void,
  *   onDeleteEvacuation: (evacId: string) => void,
+ *   onRequestAerialEvac: () => void,
  * }} props
  * @returns {JSX.Element} The evacuations table.
  */
@@ -115,8 +129,11 @@ const EvacuationsTable = ({
   evacuations,
   locations,
   aerialMissions = [],
+  isCompleted,
+  aerialEvacStatus,
   onUpdateEvacuation,
   onDeleteEvacuation,
+  onRequestAerialEvac,
 }) => {
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -199,6 +216,10 @@ const EvacuationsTable = ({
     onUpdateEvacuation?.(evacId, { concludedAt: new Date().toISOString(), status: "completed" });
   };
 
+  const handleRequestRideEvac = () => {
+    // TODO: wire up ride evacuation request once there's a backend flow for it (mirrors onRequestAerialEvac).
+  };
+
   const handleSortClick = (key) => {
     setSort((prev) => ({ key, direction: prev.key === key ? nextSortDirection(prev.direction) : "asc" }));
   };
@@ -253,18 +274,61 @@ const EvacuationsTable = ({
       gap="sm"
       fullHeight
       headerExtra={
-        <Badge
-          variant="outline"
-          styles={{
-            root: {
-              backgroundColor: "var(--app-color-surface-high)",
-              borderColor: "var(--app-color-border)",
-              color: "var(--app-color-text-muted)",
-            },
-          }}
-        >
-          {visibleEvacuations.length} מתוך {evacuations.length}
-        </Badge>
+        <Group gap="xs" wrap="wrap">
+          <Badge
+            variant="outline"
+            styles={{
+              root: {
+                backgroundColor: "var(--app-color-surface-high)",
+                borderColor: "var(--app-color-border)",
+                color: "var(--app-color-text-muted)",
+              },
+            }}
+          >
+            {visibleEvacuations.length} מתוך {evacuations.length}
+          </Badge>
+
+          <Button
+            leftSection={
+              aerialEvacStatus === "needed" ? (
+                <IconCheck size={16} stroke={1.8} />
+              ) : (
+                <IconSend size={16} stroke={1.8} />
+              )
+            }
+            size="xs"
+            mih="2rem"
+            disabled={isCompleted || aerialEvacStatus === "needed"}
+            onClick={onRequestAerialEvac}
+            styles={{
+              root: {
+                backgroundColor: "var(--app-color-primary)",
+                color: "var(--app-color-primary-text)",
+                "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
+                ...interactiveScaleStyles,
+              },
+            }}
+          >
+            {aerialEvacStatus === "needed" ? "פינוי אווירי התבקש" : "בקש פינוי אווירי"}
+          </Button>
+
+          <Button
+            leftSection={<IconCar size={16} stroke={1.8} />}
+            variant="outline"
+            size="xs"
+            mih="2rem"
+            onClick={handleRequestRideEvac}
+            styles={{
+              root: {
+                borderColor: "var(--app-color-border)",
+                color: "var(--app-color-text)",
+                ...interactiveScaleStyles,
+              },
+            }}
+          >
+            בקש פינוי רכב
+          </Button>
+        </Group>
       }
     >
       <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
