@@ -138,7 +138,10 @@ const AerialEvacuationPage = () => {
                     event={event}
                     mission={missionsByEventId[event.id]?.[0]}
                   />
-                  <CasualtiesCard casualties={casualtiesByEventId[event.id] || []} />
+                  {/* Airforce only needs to see who's actually waiting on them. */}
+                  <CasualtiesCard
+                    casualties={(casualtiesByEventId[event.id] || []).filter((casualty) => casualty.helivac)}
+                  />
                 </Stack>
               ))}
             </Stack>

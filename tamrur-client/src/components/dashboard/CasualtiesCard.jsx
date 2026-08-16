@@ -84,7 +84,9 @@ const CasualtiesCard = ({ casualties }) => {
         <Table verticalSpacing="sm" fz="sm">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>דחיפות</Table.Th>
+              <Table.Th miw={92} style={{ whiteSpace: "nowrap" }}>
+                דחיפות
+              </Table.Th>
               <Table.Th>יכולת פינוי</Table.Th>
               <Table.Th>עדיפות</Table.Th>
               <Table.Th>ליווי</Table.Th>
