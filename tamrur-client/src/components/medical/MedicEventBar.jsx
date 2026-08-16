@@ -41,9 +41,9 @@ const dateTimeFormatter = new Intl.DateTimeFormat("he-IL", {
  */
 const MedicEventBar = ({ selectedEventId, onSelectEvent, event }) => {
   const isCompleted = event?.status === COMPLETED_STATUS;
-  // A finished event has nothing left to count, and an unselected one has
-  // nothing to count from.
-  const elapsedSeconds = useElapsedSeconds(!event || isCompleted ? null : event.created_at);
+  // An unselected event has nothing to count from; a completed one freezes
+  // at its closure time instead of ticking against now.
+  const elapsedSeconds = useElapsedSeconds(event?.created_at, isCompleted ? event.closure_at : null);
 
   return (
     <Group justify="space-between" align="center" wrap="wrap" gap="sm">
