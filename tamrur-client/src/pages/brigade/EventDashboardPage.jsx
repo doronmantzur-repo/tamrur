@@ -2,17 +2,40 @@
 import { useEffect, useRef, useState } from "react";
 
 // External libraries
-import { ActionIcon, Box, Button, Grid, Group, Loader, Stack, Text, Title, useMantineColorScheme } from "@mantine/core";
-import { IconMoon, IconPlus, IconSun } from "@tabler/icons-react";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Grid,
+  Group,
+  Loader,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+  useMantineColorScheme,
+} from "@mantine/core";
+import {
+  IconAlertTriangle,
+  IconAmbulance,
+  IconMoon,
+  IconPlus,
+  IconShieldHalfFilled,
+  IconSun,
+  IconTruck,
+  IconUsers,
+} from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
 import EventHeaderCard from "../../components/brigade/EventHeaderCard";
+import EventActionButtons from "../../components/brigade/EventActionButtons";
 import EventMapCard from "../../components/brigade/EventMapCard";
 import CasualtiesTableCard from "../../components/brigade/CasualtiesTableCard";
 import EvacuationsTable from "../../components/brigade/EvacuationsTable";
+import StatTile from "../../components/brigade/StatTile";
 import { COMPLETED_STATUS } from "../../constants/eventStatus";
 import { fetchLocations } from "../../features/locations/locationsSlice";
 import { fetchEventById, updateEvent } from "../../features/events/eventsSlice";
@@ -36,20 +59,22 @@ const STATUS_ORDER = [
   "completed",
 ];
 
-/** Row height shared by the map, casualties, and evacuations cards so the three stay level. */
-const DASHBOARD_ROW_HEIGHT = "32rem";
-
 /** Stable reference for "nothing fetched yet" so selector fallbacks don't create a new array every render. */
 const EMPTY_ARRAY = [];
 
 /**
- * Renders the brigade single-event dashboard: the event header (name, timer,
- * casualty/evacuation summary, status controls), then one row split 1/5-2/5-2/5
- * between the event map, the casualties table, and the evacuation team table.
- * The event (by :eventId), locations, aerial missions, and evacuations are
- * all fetched from the API; casualties are still hardcoded mock data, owned by
- * a teammate's in-progress work elsewhere. An approved aerial mission with
- * no evacuation row yet auto-creates one in the background.
+ * Renders the brigade single-event dashboard: a top bar (title, theme
+ * toggle, open-event button, and the event's action buttons), the event
+ * header (name, timer), a 4-tile stat row (total casualties, critical count,
+ * evacuated count, active evacuation teams), then one row split 1/5-2/5-2/5
+ * between the event map, the casualties table, and the evacuation team
+ * table. The whole page is pinned to the viewport height with no page-level
+ * scroll; the bottom row fills whatever space is left and each of its three
+ * cards scrolls its own content internally instead. The event (by
+ * :eventId), locations, aerial missions, and evacuations are all fetched
+ * from the API; casualties are still hardcoded mock data, owned by a
+ * teammate's in-progress work elsewhere. An approved aerial mission with no
+ * evacuation row yet auto-creates one in the background.
  *
  * @returns {JSX.Element} The brigade event dashboard page.
  */
@@ -185,6 +210,11 @@ const EventDashboardPage = () => {
     dispatch(deleteEvacuation({ id: evacId, eventId }));
   };
 
+  const isEventCompleted = event?.status === COMPLETED_STATUS;
+  const criticalCount = casualties.filter((casualty) => casualty.urgency === "urgent").length;
+  const evacuatedCount = evacuations.filter((evac) => evac.status === "completed").length;
+  const activeTeamsCount = evacuations.filter((evac) => evac.status === "started").length;
+
   return (
     <Layout>
       <Box
@@ -215,19 +245,28 @@ const EventDashboardPage = () => {
 
       <Stack
         align="stretch"
-        mih="100vh"
+        h="100vh"
         px="var(--app-page-padding)"
         py="md"
         pos="relative"
         style={{
           zIndex: 10,
+          overflow: "hidden",
         }}
       >
-        <Stack align="stretch" gap="sm">
+        <Stack align="stretch" gap="sm" style={{ flex: 1, minHeight: 0 }}>
           <Group justify="space-between" wrap="wrap" gap="sm">
-            <Title order={1} c="var(--app-color-primary)" fz="1.5rem" fw={700}>
-              לוח בקרה: חטיבה
-            </Title>
+            <Group gap="xs" wrap="nowrap">
+              <IconShieldHalfFilled
+                aria-hidden="true"
+                size={28}
+                stroke={1.6}
+                color="var(--app-color-primary)"
+              />
+              <Title order={1} c="var(--app-color-primary)" fz="1.5rem" fw={700}>
+                לוח בקרה: חטיבה
+              </Title>
+            </Group>
 
             <Group gap="xs" wrap="nowrap">
               <ActionIcon
@@ -267,6 +306,17 @@ const EventDashboardPage = () => {
               >
                 פתח אירוע
               </Button>
+
+              {!isInitialLoad && isShowingCurrentEvent && event && (
+                <EventActionButtons
+                  event={event}
+                  isCompleted={isEventCompleted}
+                  aerialEvacStatus={aerialEvacStatus}
+                  onAdvanceStatus={handleAdvanceStatus}
+                  onCloseEvent={handleCloseEvent}
+                  onRequestAerialEvac={handleRequestAerialEvac}
+                />
+              )}
             </Group>
           </Group>
 
@@ -287,24 +337,49 @@ const EventDashboardPage = () => {
 
           {!isInitialLoad && isShowingCurrentEvent && (
             <>
-              <EventHeaderCard
-                event={event}
-                casualties={casualties}
-                evacuations={evacuations}
-                aerialEvacStatus={aerialEvacStatus}
-                onAdvanceStatus={handleAdvanceStatus}
-                onCloseEvent={handleCloseEvent}
-                onRequestAerialEvac={handleRequestAerialEvac}
-              />
+              <EventHeaderCard event={event} aerialEvacStatus={aerialEvacStatus} />
 
-              <Grid gutter="sm" columns={10}>
-                <Grid.Col span={{ base: 10, md: 2 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
+              <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
+                <StatTile
+                  label="סך נפגעים"
+                  value={casualties.length}
+                  icon={IconUsers}
+                  accentColor="var(--app-color-primary)"
+                />
+                <StatTile
+                  label="דחוף"
+                  value={criticalCount}
+                  sub="פינוי מיידי"
+                  icon={IconAlertTriangle}
+                  accentColor="var(--app-color-error)"
+                />
+                <StatTile
+                  label="פונו"
+                  value={evacuatedCount}
+                  icon={IconAmbulance}
+                  accentColor="var(--app-color-success)"
+                />
+                <StatTile
+                  label="צוותים פעילים"
+                  value={`${activeTeamsCount}/${evacuations.length}`}
+                  icon={IconTruck}
+                  accentColor="var(--app-color-warning)"
+                />
+              </SimpleGrid>
+
+              <Grid
+                gutter="sm"
+                columns={10}
+                style={{ flex: 1, minHeight: 0 }}
+                styles={{ root: { height: "100%" }, inner: { height: "100%" } }}
+              >
+                <Grid.Col span={{ base: 10, md: 2 }} style={{ height: "100%" }}>
                   <EventMapCard event={event} locations={locations} />
                 </Grid.Col>
-                <Grid.Col span={{ base: 10, md: 4 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
+                <Grid.Col span={{ base: 10, md: 4 }} style={{ height: "100%" }}>
                   <CasualtiesTableCard casualties={casualties} />
                 </Grid.Col>
-                <Grid.Col span={{ base: 10, md: 4 }} style={{ height: DASHBOARD_ROW_HEIGHT }}>
+                <Grid.Col span={{ base: 10, md: 4 }} style={{ height: "100%" }}>
                   <EvacuationsTable
                     evacuations={evacuations}
                     locations={locations}

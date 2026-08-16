@@ -2,113 +2,81 @@
 import { useState } from "react";
 
 // External libraries
-import { ActionIcon, Badge, Button, Group, Stack, Text, Textarea } from "@mantine/core";
-import {
-  IconCheck,
-  IconHelicopter,
-  IconPencil,
-  IconPlayerTrackNext,
-  IconSend,
-  IconTarget,
-  IconX,
-} from "@tabler/icons-react";
+import { ActionIcon, Badge, Box, Group, Stack, Text, Textarea } from "@mantine/core";
+import { IconCheck, IconClockPause, IconHelicopter, IconPencil, IconStopwatch, IconTarget, IconX } from "@tabler/icons-react";
 
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
-import {
-  COMPLETED_STATUS,
-  EVENT_STATUS_COLOR_VARS,
-  EVENT_STATUS_LABELS,
-  EVENT_TYPE_LABELS,
-} from "../../constants/eventStatus";
-import {
-  AERIAL_EVAC_COLOR_VARS,
-  AERIAL_EVAC_LABELS,
-  EVAC_TEAM_STATUS_COLOR_VARS,
-  EVAC_TEAM_STATUS_LABELS,
-  PULSING_AERIAL_EVAC_STATUSES,
-} from "../../constants/aerialEvacStatus";
-import { URGENCY_COLOR_VARS, URGENCY_LABELS, URGENCY_ORDER } from "../../constants/casualtyStatus";
+import { COMPLETED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
+import { AERIAL_EVAC_COLOR_VARS, AERIAL_EVAC_LABELS, PULSING_AERIAL_EVAC_STATUSES } from "../../constants/aerialEvacStatus";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
 import { formatDuration } from "../../utils/duration";
 
 // Styles
 
-/** Order events progress through; "advance status" moves one step forward. */
-const STATUS_ORDER = [
-  "evaluated",
-  "controlled",
-  "ready_for_evacuation",
-  "evacuation_started",
-  "completed",
-];
-
-/** Evacuation-team statuses tracked in the header summary. */
-const EVAC_STATUS_ORDER = ["not_started", "started", "completed"];
-
-/** Plain (non-interactive) stat block: just the timer. */
-const plainStatStyles = { padding: "0.75rem 1rem" };
-
-/** Non-interactive stat tiles (casualties/evacuations): tile chrome, no hover/click affordance. */
-const tileStatStyles = {
+/**
+ * Chrome for the elapsed-time chip: gold-tinted gradient + ring border,
+ * matching the stat tiles' treatment. Stretched to fill the header's full
+ * height by `DashboardCard`'s `aside` slot, so its own content centers
+ * vertically inside whatever height that ends up being.
+ */
+const timerChipStyles = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  height: "100%",
+  minWidth: "11rem",
   borderRadius: "var(--mantine-radius-sm)",
-  border: "1px solid var(--app-color-border)",
-  backgroundColor: "var(--app-color-surface-high)",
-  padding: "0.75rem 1rem",
-  minWidth: "13rem",
+  border: "1px solid color-mix(in srgb, var(--app-color-primary) 30%, transparent)",
+  background:
+    "linear-gradient(135deg, color-mix(in srgb, var(--app-color-primary) 20%, transparent), color-mix(in srgb, var(--app-color-primary) 5%, transparent))",
+  padding: "0.75rem 1.25rem",
+};
+
+/** Tinted circular badge the timer icon sits in, instead of floating bare next to the text. */
+const timerIconWrapperStyles = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "2.5rem",
+  height: "2.5rem",
+  flexShrink: 0,
+  borderRadius: "9999px",
+  backgroundColor: "color-mix(in srgb, var(--app-color-primary) 18%, transparent)",
+  color: "var(--app-color-primary)",
 };
 
 const statNumberStyles = {
-  fz: "2rem",
-  fw: 700,
+  fz: "2.25rem",
+  fw: 800,
   lh: 1.1,
   c: "var(--app-color-primary)",
   ff: 'ui-monospace, "SF Mono", "Consolas", monospace',
 };
 
 const statLabelStyles = {
-  fz: "0.68rem",
+  fz: "0.72rem",
+  fw: 600,
   tt: "uppercase",
   lts: "0.04em",
   c: "var(--app-color-text-muted)",
 };
 
-/** Counts items by a key, against a fixed set of possible values. */
-function countBy(items, order, getKey) {
-  return order.reduce((acc, key) => {
-    acc[key] = items.filter((item) => getKey(item) === key).length;
-    return acc;
-  }, {});
-}
-
 /**
  * Renders the brigade event dashboard's header: name, a client-only note
  * (edited via the pencil icon — the DB has no description column, so this
  * never persists past the browser session), type/status/aerial-evac badges,
- * three large at-a-glance stats spaced across the row (elapsed time,
- * casualties, evacuations), and the event's actions (advance status, request
- * evacuation, close event).
+ * and the elapsed-time chip. The chip sits to the left (per the app's RTL
+ * layout) of the title/description column, stretched to exactly match that
+ * column's height, whether the description is showing or not, rather than a
+ * fixed size. Casualty/evacuation counts and the event's action buttons live
+ * elsewhere on the dashboard (the stat-tile row and the top bar) instead of
+ * here.
  *
- * @param {{
- *   event: object,
- *   casualties: Array<object>,
- *   evacuations: Array<object>,
- *   aerialEvacStatus: string | null | undefined,
- *   onAdvanceStatus: () => void,
- *   onCloseEvent: () => void,
- *   onRequestAerialEvac: () => void,
- * }} props
+ * @param {{ event: object, aerialEvacStatus: string | null | undefined }} props
  * @returns {JSX.Element} The event header card.
  */
-const EventHeaderCard = ({
-  event,
-  casualties,
-  evacuations,
-  aerialEvacStatus,
-  onAdvanceStatus,
-  onCloseEvent,
-  onRequestAerialEvac,
-}) => {
+const EventHeaderCard = ({ event, aerialEvacStatus }) => {
   // Client-only note for the brigade's own reference — the DB has no
   // description column, so this never leaves the browser.
   const [description, setDescription] = useState("");
@@ -132,19 +100,29 @@ const EventHeaderCard = ({
   const isCompleted = event.status === COMPLETED_STATUS;
   const elapsedSeconds = useElapsedSeconds(isCompleted ? null : event.created_at);
 
-  const currentIndex = STATUS_ORDER.indexOf(event.status);
-  const nextStatus = currentIndex >= 0 ? STATUS_ORDER[currentIndex + 1] : null;
-
-  const urgencyCounts = countBy(casualties, URGENCY_ORDER, (casualty) => casualty.urgency);
-  const evacStatusCounts = countBy(evacuations, EVAC_STATUS_ORDER, (evac) => evac.status);
   const showAerialEvacBadge = aerialEvacStatus && aerialEvacStatus !== "no_needed";
   const aerialEvacColor = AERIAL_EVAC_COLOR_VARS[aerialEvacStatus] || "var(--app-color-text-muted)";
+
+  const timer = (
+    <Box style={timerChipStyles}>
+      <Group gap="sm" wrap="nowrap">
+        <Box style={timerIconWrapperStyles} className={isCompleted ? undefined : "app-pulse-glow"}>
+          {isCompleted ? <IconClockPause size={22} stroke={1.8} /> : <IconStopwatch size={22} stroke={1.8} />}
+        </Box>
+        <Stack gap={0}>
+          <Text {...statLabelStyles}>{isCompleted ? "אירוע הסתיים" : "זמן שחלף"}</Text>
+          <Text {...statNumberStyles}>{formatDuration(elapsedSeconds)}</Text>
+        </Stack>
+      </Group>
+    </Box>
+  );
 
   return (
     <DashboardCard
       title={event.name || "אירוע ללא שם"}
       padding="md"
       gap="sm"
+      aside={timer}
       headerExtra={
         <Group gap="xs">
           <Badge
@@ -240,111 +218,6 @@ const EventHeaderCard = ({
           </ActionIcon>
         </Group>
       )}
-
-      <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
-        <Stack gap={2} style={plainStatStyles}>
-          <Text {...statLabelStyles}>זמן שחלף מאז פתיחת האירוע</Text>
-          <Text {...statNumberStyles}>{formatDuration(elapsedSeconds)}</Text>
-        </Stack>
-
-        <Stack gap={2} style={tileStatStyles}>
-          <Text {...statLabelStyles}>נפגעים</Text>
-          <Text {...statNumberStyles}>{casualties.length}</Text>
-          <Group gap={6} wrap="wrap">
-            {URGENCY_ORDER.map((key) => (
-              <Badge
-                key={key}
-                size="sm"
-                styles={{
-                  root: {
-                    backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[key]} 16%, transparent)`,
-                    color: URGENCY_COLOR_VARS[key],
-                  },
-                }}
-              >
-                {urgencyCounts[key]} {URGENCY_LABELS[key]}
-              </Badge>
-            ))}
-          </Group>
-        </Stack>
-
-        <Stack gap={2} style={tileStatStyles}>
-          <Text {...statLabelStyles}>פינויים</Text>
-          <Text {...statNumberStyles}>{evacuations.length}</Text>
-          <Group gap={6} wrap="wrap">
-            {EVAC_STATUS_ORDER.map((key) => (
-              <Badge
-                key={key}
-                size="sm"
-                styles={{
-                  root: {
-                    backgroundColor: `color-mix(in srgb, ${EVAC_TEAM_STATUS_COLOR_VARS[key]} 16%, transparent)`,
-                    color: EVAC_TEAM_STATUS_COLOR_VARS[key],
-                  },
-                }}
-              >
-                {evacStatusCounts[key]} {EVAC_TEAM_STATUS_LABELS[key]}
-              </Badge>
-            ))}
-          </Group>
-        </Stack>
-      </Group>
-
-      <Group gap="sm" wrap="wrap">
-        <Button
-          leftSection={<IconPlayerTrackNext size={16} stroke={1.8} />}
-          variant="outline"
-          size="sm"
-          mih="2.25rem"
-          disabled={isCompleted || !nextStatus}
-          onClick={onAdvanceStatus}
-          styles={{
-            root: {
-              borderColor: "var(--app-color-border)",
-              color: "var(--app-color-text)",
-            },
-          }}
-        >
-          {nextStatus ? `קדם סטטוס ל${EVENT_STATUS_LABELS[nextStatus]}` : "קדם סטטוס"}
-        </Button>
-
-        <Button
-          leftSection={<IconSend size={16} stroke={1.8} />}
-          size="sm"
-          mih="2.25rem"
-          disabled={isCompleted || aerialEvacStatus === "needed"}
-          onClick={onRequestAerialEvac}
-          styles={{
-            root: {
-              backgroundColor: "var(--app-color-primary)",
-              color: "var(--app-color-primary-text)",
-              "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
-            },
-          }}
-        >
-          בקש פינוי אווירי
-        </Button>
-
-        <Button
-          leftSection={<IconCheck size={16} stroke={1.8} />}
-          size="sm"
-          mih="2.25rem"
-          disabled={isCompleted}
-          onClick={onCloseEvent}
-          styles={{
-            root: {
-              backgroundColor: "var(--app-color-error)",
-              color: "#FFFFFF",
-              "&:hover": {
-                backgroundColor: "var(--app-color-error)",
-                opacity: 0.9,
-              },
-            },
-          }}
-        >
-          סגור אירוע
-        </Button>
-      </Group>
     </DashboardCard>
   );
 };

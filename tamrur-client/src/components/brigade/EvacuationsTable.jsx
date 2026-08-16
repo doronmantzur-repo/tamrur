@@ -301,7 +301,7 @@ const EvacuationsTable = ({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {visibleEvacuations.map((evac) => {
+            {visibleEvacuations.map((evac, index) => {
               const isEditing = editingId === evac.id;
               const row = isEditing ? draft : evac;
               const MethodIcon = METHOD_ICONS[row.method] || IconHelicopter;
@@ -310,7 +310,7 @@ const EvacuationsTable = ({
               const mission = aerialMissions.find((m) => m.id === evac.aerialMissionId);
 
               return (
-                <Table.Tr key={evac.id}>
+                <Table.Tr key={evac.id} className="app-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
                   <Table.Td>
                     {incomplete && (
                       <Tooltip label="חסרים נתונים בשורה זו">
@@ -490,6 +490,7 @@ const EvacuationsTable = ({
                       />
                     ) : (
                       <Badge
+                        leftSection={<MethodIcon size={12} stroke={1.8} />}
                         styles={{
                           root: {
                             backgroundColor: `color-mix(in srgb, ${statusColor} 16%, transparent)`,

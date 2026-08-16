@@ -9,19 +9,44 @@ import { Box, Group, Paper, Stack, Title } from "@mantine/core";
 
 /**
  * Renders a dashboard panel card matching the app's auth-form-card styling
- * (surface background, border, top gold accent bar).
+ * (surface background, border, top gold accent bar). `fullHeight` fills a
+ * parent-provided height (e.g. a Grid.Col); `h` instead fixes the card's own
+ * height. Either way, the content stack stretches to fill it, so a flex-grow
+ * child (e.g. `flex: 1`) can center itself in the leftover space. Passing
+ * `aside` adds a second column stretched (via CSS grid's default
+ * `align-items: stretch`) to exactly match the height of the title row plus
+ * `children` combined — it grows and shrinks with that content instead of a
+ * fixed guess, and (per the app's RTL layout) renders on the visual left,
+ * with the title/children column on the right.
  *
  * @param {{
  *   title: string,
  *   headerExtra?: React.ReactNode,
+ *   aside?: React.ReactNode,
  *   children: React.ReactNode,
  *   padding?: string,
  *   gap?: string,
  *   fullHeight?: boolean,
+ *   h?: string,
  * }} props
  * @returns {JSX.Element} The dashboard card.
  */
-const DashboardCard = ({ title, headerExtra, children, padding = "lg", gap = "md", fullHeight = false }) => {
+const DashboardCard = ({ title, headerExtra, aside, children, padding = "lg", gap = "md", fullHeight = false, h }) => {
+  const stretchContent = fullHeight || h !== undefined;
+
+  const content = (
+    <Stack gap={gap} pt={aside ? undefined : "xs"} style={stretchContent ? { flex: 1, minHeight: 0 } : undefined}>
+      <Group justify="space-between" wrap="wrap" gap="sm">
+        <Title order={2} fz="lg" fw={700} c="var(--app-color-text)">
+          {title}
+        </Title>
+        {headerExtra}
+      </Group>
+
+      {children}
+    </Stack>
+  );
+
   return (
     <Paper
       radius="sm"
@@ -32,7 +57,9 @@ const DashboardCard = ({ title, headerExtra, children, padding = "lg", gap = "md
         overflow: "hidden",
         backgroundColor: "var(--app-color-surface)",
         borderColor: "var(--app-color-border)",
-        ...(fullHeight && { height: "100%", display: "flex", flexDirection: "column" }),
+        ...(fullHeight && { height: "100%" }),
+        ...(h !== undefined && { height: h }),
+        ...(stretchContent && { display: "flex", flexDirection: "column" }),
       }}
     >
       <Box
@@ -46,16 +73,22 @@ const DashboardCard = ({ title, headerExtra, children, padding = "lg", gap = "md
         }}
       />
 
-      <Stack gap={gap} pt="xs" style={fullHeight ? { flex: 1, minHeight: 0 } : undefined}>
-        <Group justify="space-between" wrap="wrap" gap="sm">
-          <Title order={2} fz="lg" fw={700} c="var(--app-color-text)">
-            {title}
-          </Title>
-          {headerExtra}
-        </Group>
-
-        {children}
-      </Stack>
+      {aside ? (
+        <Box
+          pt="xs"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr auto",
+            gap: "var(--mantine-spacing-sm)",
+            ...(stretchContent && { flex: 1, minHeight: 0 }),
+          }}
+        >
+          {content}
+          {aside}
+        </Box>
+      ) : (
+        content
+      )}
     </Paper>
   );
 };

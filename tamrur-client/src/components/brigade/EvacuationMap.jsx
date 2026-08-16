@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 // External libraries
-import { Box, Chip, Group, Stack, Text, Tooltip } from "@mantine/core";
+import { Box, Chip, Group, Stack, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
 import { IconAmbulance, IconBuildingHospital } from "@tabler/icons-react";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
@@ -15,6 +15,12 @@ import { toLatLng } from "../../utils/geo";
 import "leaflet/dist/leaflet.css";
 
 const DEFAULT_ZOOM = 14;
+
+/** CARTO basemap tiles, matching whichever mode the app is in. Same tile family (and attribution) in both modes, just the dark/light variant. */
+const TILE_URLS = {
+  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+};
 
 /** Used only if an event somehow has no location, so the map still has somewhere to center on. */
 const FALLBACK_CENTER = { lat: 31.7683, lng: 35.2137 };
@@ -29,7 +35,7 @@ const FALLBACK_CENTER = { lat: 31.7683, lng: 35.2137 };
  */
 function buildDivIcon({ label, background, size = 26, glow = false }) {
   const boxShadow = glow
-    ? "0 0 0 2px var(--app-color-surface), var(--app-effect-live-glow)"
+    ? `0 0 0 2px var(--app-color-surface), 0 0 8px ${background}`
     : "0 0 0 2px var(--app-color-surface)";
 
   return L.divIcon({
@@ -71,11 +77,13 @@ const HOSPITAL_ICON = buildDivIcon({
   label: tablerSvg(HOSPITAL_ICON_PATHS),
   background: "var(--app-color-success)",
   size: 26,
+  glow: true,
 });
 const OTHER_LOCATION_ICON = buildDivIcon({
   label: tablerSvg(AMBULANCE_ICON_PATHS),
   background: "var(--app-color-text-muted)",
   size: 26,
+  glow: true,
 });
 
 /**
@@ -152,14 +160,16 @@ function MapLegend() {
  * Renders the event map: the event location (exclamation marker), landing
  * pads (an "H" marker colored by pad status), hospitals, and other named
  * locations (e.g. an ambulance exchange point), each toggleable via a layer
- * chip row, plus a legend explaining the symbols. Evacuation routes and live
- * force tracking aren't supported yet, so both stay as disabled placeholder
- * chips until routing is available.
+ * chip row, plus a legend explaining the symbols. Tiles switch between
+ * CARTO's dark and light basemap to match the app's own theme toggle.
+ * Evacuation routes and live force tracking aren't supported yet, so both
+ * stay as disabled placeholder chips until routing is available.
  *
  * @param {{ event: object, locations: Array<object> }} props
  * @returns {JSX.Element} The evacuation map.
  */
 const EvacuationMap = ({ event, locations }) => {
+  const { colorScheme } = useMantineColorScheme();
   const [visibleLayers, setVisibleLayers] = useState(["location", "pads", "hospitals", "other"]);
 
   const isLayerOn = (key) => visibleLayers.includes(key);
@@ -214,8 +224,8 @@ const EvacuationMap = ({ event, locations }) => {
           style={{ height: "100%", width: "100%" }}
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url={colorScheme === "dark" ? TILE_URLS.dark : TILE_URLS.light}
           />
 
           {isLayerOn("location") && eventLatLng && (
@@ -234,6 +244,7 @@ const EvacuationMap = ({ event, locations }) => {
                   icon={buildDivIcon({
                     label: "H",
                     background: LANDING_PAD_STATUS_COLOR_VARS[padStatus],
+                    glow: true,
                   })}
                 >
                   <Popup>
