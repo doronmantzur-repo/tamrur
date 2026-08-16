@@ -51,10 +51,16 @@ function emptyDraft() {
  * Renders one casualty's treatment log: the records already saved, plus the
  * form for adding a new one or editing an existing one.
  *
- * @param {{ eventId: string, injuryId: string }} props
+ *
+ * `view` splits the two halves apart: "form" renders only the new-treatment form (the
+ * record modal), "history" renders only the treatment log plus, while an existing
+ * record is being edited, the form to edit it (the table's expanded sub-row).
+ * Omitting it renders both, as before.
+ *
+ * @param {{ eventId: string, injuryId: string, view?: "form" | "history" }} props
  * @returns {JSX.Element} The treatments section.
  */
-const TreatmentsSection = ({ eventId, injuryId }) => {
+const TreatmentsSection = ({ eventId, injuryId, view }) => {
   const dispatch = useDispatch();
   const [draft, setDraft] = useState(emptyDraft);
   const [errors, setErrors] = useState({});
@@ -178,6 +184,7 @@ const TreatmentsSection = ({ eventId, injuryId }) => {
         </Alert>
       )}
 
+      {view !== "form" && (
       <Box style={{ overflowX: "auto" }}>
         <Table verticalSpacing="sm" fz="sm">
           <Table.Thead>
@@ -259,7 +266,9 @@ const TreatmentsSection = ({ eventId, injuryId }) => {
           </Table.Tbody>
         </Table>
       </Box>
+      )}
 
+      {(view !== "history" || isEditing) && (
       <Paper
         p="md"
         withBorder
@@ -284,9 +293,14 @@ const TreatmentsSection = ({ eventId, injuryId }) => {
             label="תיאור הטיפול"
             placeholder="לדוגמה: חסם עורקים לירך שמאל"
             value={draft.treatment}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, treatment: event.currentTarget.value }))
-            }
+            // Read the value before the updater runs: React invokes a functional
+            // setState callback during the following render, by which point the
+            // synthetic event's currentTarget has been nulled — reading it in
+            // there threw and took the whole page down.
+            onChange={(event) => {
+              const { value } = event.currentTarget;
+              setDraft((current) => ({ ...current, treatment: value }));
+            }}
             error={errors.treatment}
             autosize
             minRows={2}
@@ -321,6 +335,7 @@ const TreatmentsSection = ({ eventId, injuryId }) => {
           </Group>
         </Stack>
       </Paper>
+      )}
     </Stack>
   );
 };

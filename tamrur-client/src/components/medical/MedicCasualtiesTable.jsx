@@ -18,12 +18,14 @@ import {
   IconAlertTriangle,
   IconChevronDown,
   IconChevronUp,
-  IconNotes,
+  IconPlus,
 } from "@tabler/icons-react";
 import { useSelector } from "react-redux";
 
 // Internal application modules
 import NewCasualtyForm from "./NewCasualtyForm";
+import CasualtyRecordsPanel from "./CasualtyRecordsPanel";
+import { useCasualtyRecordCounts } from "./useCasualtyRecordCounts";
 import {
   ACTIONS_WIDTH,
   EVACUATED_WIDTH,
@@ -33,6 +35,7 @@ import {
   renderCell,
   visibleFields,
 } from "./casualtyFields";
+import { MONO_FONT } from "./formStyles";
 import { useCellSave } from "./useCellSave";
 
 // Styles
@@ -77,9 +80,15 @@ export const CasualtyActions = ({ rowError, isSaving, onOpenRecords }) => (
         <IconAlertTriangle size={16} color="var(--app-color-error)" />
       </Tooltip>
     )}
-    <Tooltip label="טיפולים ומדדים">
-      <ActionIcon aria-label="טיפולים ומדדים" variant="subtle" onClick={onOpenRecords}>
-        <IconNotes size={18} color="var(--app-color-text-muted)" />
+    {/* Recording only. The log of what was already recorded lives in the row's
+        expanded panel, so the two concerns don't share a surface. */}
+    <Tooltip label="רישום טיפול / בדיקה">
+      <ActionIcon
+        aria-label="רישום טיפול / בדיקה"
+        variant="subtle"
+        onClick={onOpenRecords}
+      >
+        <IconPlus size={18} stroke={2.2} color="var(--app-color-primary)" />
       </ActionIcon>
     </Tooltip>
   </Group>
@@ -103,6 +112,7 @@ export const CasualtyActions = ({ rowError, isSaving, onOpenRecords }) => (
  * @returns {JSX.Element} The casualty row, plus its detail row when expanded.
  */
 const CasualtyRow = ({
+  eventId,
   casualty,
   fields,
   overflow,
@@ -116,15 +126,16 @@ const CasualtyRow = ({
 }) => {
   const save = useCellSave(casualty.id);
   const hasOverflow = overflow.length > 0;
+  const recordCount = useCasualtyRecordCounts(eventId, casualty.id).total;
 
   return (
     <Fragment>
       <Table.Tr>
-        {hasOverflow && (
+        {
           <Table.Td>
             <ActionIcon
-              aria-label={isOpen ? "הסתר שדות נוספים" : "הצג שדות נוספים"}
-              title={isOpen ? "הסתר שדות נוספים" : "הצג שדות נוספים"}
+              aria-label={isOpen ? "הסתר פרטים" : "הצג פרטים"}
+              title={isOpen ? "הסתר פרטים" : "הצג פרטים"}
               variant="subtle"
               onClick={onToggleOpen}
             >
@@ -135,8 +146,13 @@ const CasualtyRow = ({
                 <IconChevronDown size={18} color="var(--app-color-primary)" />
               )}
             </ActionIcon>
+            {recordCount > 0 && (
+              <Text fz="0.6rem" ta="center" c="var(--app-color-text-muted)" ff={MONO_FONT}>
+                {recordCount}
+              </Text>
+            )}
           </Table.Td>
-        )}
+        }
 
         {fields.map((field) => (
           <Table.Td key={field.key}>{renderCell(field, casualty, save)}</Table.Td>
@@ -164,14 +180,19 @@ const CasualtyRow = ({
 
       {/* The columns that don't fit this tier, disclosed beneath the row — the
           same pattern the brigade dashboard's casualties table uses. */}
-      {isOpen && hasOverflow && (
+      {isOpen && (
         <Table.Tr>
           <Table.Td
             colSpan={columnCount}
             p="md"
             style={{ backgroundColor: "var(--app-color-surface-high)" }}
           >
-            <CasualtyFieldsPanel fields={overflow} casualty={casualty} save={save} />
+            <Stack gap="md">
+              {hasOverflow && (
+                <CasualtyFieldsPanel fields={overflow} casualty={casualty} save={save} />
+              )}
+              <CasualtyRecordsPanel eventId={eventId} casualtyId={casualty.id} />
+            </Stack>
           </Table.Td>
         </Table.Tr>
       )}
@@ -223,9 +244,9 @@ const MedicCasualtiesTable = ({
   const fields = visibleFields(tier);
   const overflow = hiddenFields(tier);
   const groups = groupHeaders(fields);
-  const hasExpander = overflow.length > 0;
-  // fields + evacuated checkbox + actions (+ the tablet tier's expander)
-  const columnCount = fields.length + 2 + (hasExpander ? 1 : 0);
+  // The expander is always present now: it carries the treatment/test history
+  // on every tier, and on the compact tier the overflow fields as well.
+  const columnCount = fields.length + 3;
 
   return (
     <Box style={{ overflowX: "auto" }}>
@@ -242,7 +263,7 @@ const MedicCasualtiesTable = ({
             colSpans, which cannot express per-column widths. Putting the widths
             anywhere else silently gets ignored. */}
         <colgroup>
-          {hasExpander && <col style={{ width: `${EXPANDER_WIDTH}px` }} />}
+          <col style={{ width: `${EXPANDER_WIDTH}px` }} />
           {fields.map((field) => (
             <col key={field.key} style={field.width ? { width: `${field.width}px` } : undefined} />
           ))}
@@ -252,7 +273,7 @@ const MedicCasualtiesTable = ({
 
         <Table.Thead>
           <Table.Tr>
-            {hasExpander && <Table.Th rowSpan={2} style={groupHeaderStyle} />}
+            <Table.Th rowSpan={2} style={groupHeaderStyle} />
             {groups.map((group) => (
               <Table.Th key={group.key} colSpan={group.span} ta="center" style={groupHeaderStyle}>
                 {group.label}
@@ -274,6 +295,7 @@ const MedicCasualtiesTable = ({
           {casualties.map((casualty) => (
             <CasualtyRow
               key={casualty.id}
+              eventId={eventId}
               casualty={casualty}
               fields={fields}
               overflow={overflow}

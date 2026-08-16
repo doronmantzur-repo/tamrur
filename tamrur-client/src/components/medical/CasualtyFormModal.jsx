@@ -18,11 +18,12 @@ import { urgencyBadgeColors, urgencyLabel } from "../../constants/casualtyStatus
 // Styles
 
 /**
- * Hosts one casualty's timestamped records — the `casualties-treatment` and
- * `vitals` rows logged against them over the course of the incident.
+ * Records a new treatment or test against one casualty.
  *
- * The casualty's own fields are edited inline in the triage table instead, so
- * there's a single place each column is written from.
+ * Recording only: what has already been logged is read in the row's expanded
+ * panel in the table, not here, so the modal stays a short form rather than a
+ * form plus a growing history. The casualty's own fields are edited inline in
+ * the table for the same reason.
  *
  * @param {{
  *   eventId: string,
@@ -49,12 +50,12 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose }) => {
     <Modal
       opened={opened}
       onClose={onClose}
-      size="64rem"
+      size="52rem"
       centered
       title={
         <Group gap="sm">
           <Text fz="lg" fw={700} c="var(--app-color-text)">
-            טיפולים ומדדים
+            רישום טיפול / בדיקה
           </Text>
           {casualty && (
             <>
@@ -109,11 +110,11 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose }) => {
           </Tabs.List>
 
           <Tabs.Panel value="treatments" pt="md">
-            <TreatmentsSection eventId={eventId} injuryId={casualty.id} />
+            <TreatmentsSection eventId={eventId} injuryId={casualty.id} view="form" />
           </Tabs.Panel>
 
           <Tabs.Panel value="vitals" pt="md">
-            <VitalsSection eventId={eventId} injuryId={casualty.id} />
+            <VitalsSection eventId={eventId} injuryId={casualty.id} view="form" />
           </Tabs.Panel>
         </Tabs>
       )}

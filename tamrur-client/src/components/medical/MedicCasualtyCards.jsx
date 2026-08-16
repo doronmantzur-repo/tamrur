@@ -6,6 +6,7 @@ import { Checkbox, Group, Paper, Stack, Text } from "@mantine/core";
 // Internal application modules
 import NewCasualtyForm from "./NewCasualtyForm";
 import { CasualtyActions, CasualtyFieldsPanel } from "./MedicCasualtiesTable";
+import CasualtyRecordsPanel from "./CasualtyRecordsPanel";
 import { CASUALTY_FIELDS, renderCell } from "./casualtyFields";
 import { MONO_FONT } from "./formStyles";
 import { useCellSave } from "./useCellSave";
@@ -25,7 +26,7 @@ const BODY_FIELDS = CASUALTY_FIELDS.filter((field) => !HEADER_KEYS.includes(fiel
  * @param {{ casualty: Object, rowError: string | undefined, isSaving: boolean, onOpenRecords: () => void }} props
  * @returns {JSX.Element} The casualty card.
  */
-const CasualtyCard = ({ casualty, rowError, isSaving, onOpenRecords, onToggleEvacuated }) => {
+const CasualtyCard = ({ eventId, casualty, rowError, isSaving, onOpenRecords, onToggleEvacuated }) => {
   const save = useCellSave(casualty.id);
 
   return (
@@ -65,6 +66,10 @@ const CasualtyCard = ({ casualty, rowError, isSaving, onOpenRecords, onToggleEva
       </Group>
 
       <CasualtyFieldsPanel fields={BODY_FIELDS} casualty={casualty} save={save} />
+
+      <Stack gap="xs" mt="sm">
+        <CasualtyRecordsPanel eventId={eventId} casualtyId={casualty.id} />
+      </Stack>
     </Paper>
   );
 };
@@ -115,6 +120,7 @@ const MedicCasualtyCards = ({
     {casualties.map((casualty) => (
       <CasualtyCard
         key={casualty.id}
+        eventId={eventId}
         casualty={casualty}
         rowError={rowErrorById[casualty.id]}
         isSaving={Boolean(savingById[casualty.id])}
