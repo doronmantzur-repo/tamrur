@@ -2,7 +2,18 @@
 import { Fragment, useState } from "react";
 
 // External libraries
-import { ActionIcon, Box, Group, Loader, SimpleGrid, Stack, Table, Text, Tooltip } from "@mantine/core";
+import {
+  ActionIcon,
+  Box,
+  Checkbox,
+  Group,
+  Loader,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 import {
   IconAlertTriangle,
   IconChevronDown,
@@ -15,6 +26,7 @@ import { useSelector } from "react-redux";
 import NewCasualtyForm from "./NewCasualtyForm";
 import {
   ACTIONS_WIDTH,
+  EVACUATED_WIDTH,
   EXPANDER_WIDTH,
   groupHeaders,
   hiddenFields,
@@ -95,6 +107,7 @@ const CasualtyRow = ({
   fields,
   overflow,
   columnCount,
+  onToggleEvacuated,
   isOpen,
   onToggleOpen,
   rowError,
@@ -128,6 +141,17 @@ const CasualtyRow = ({
         {fields.map((field) => (
           <Table.Td key={field.key}>{renderCell(field, casualty, save)}</Table.Td>
         ))}
+
+        <Table.Td>
+          <Checkbox
+            aria-label={casualty.is_evacuated ? "בטל סימון פונה" : "סמן כפונה"}
+            title={casualty.is_evacuated ? "בטל סימון פונה" : "סמן כפונה"}
+            checked={Boolean(casualty.is_evacuated)}
+            onChange={(event) => onToggleEvacuated(casualty, event.currentTarget.checked)}
+            color="var(--app-color-primary)"
+            styles={{ input: { cursor: "pointer" } }}
+          />
+        </Table.Td>
 
         <Table.Td>
           <CasualtyActions
@@ -188,6 +212,8 @@ const MedicCasualtiesTable = ({
   isAdding,
   onAddingChange,
   onOpenRecords,
+  onToggleEvacuated,
+  emptyMessage = "לא נרשמו נפגעים באירוע זה",
 }) => {
   // Only one detail row is open at a time, mirroring the brigade table.
   const [openCasualtyId, setOpenInjuryId] = useState(null);
@@ -198,7 +224,8 @@ const MedicCasualtiesTable = ({
   const overflow = hiddenFields(tier);
   const groups = groupHeaders(fields);
   const hasExpander = overflow.length > 0;
-  const columnCount = fields.length + 1 + (hasExpander ? 1 : 0);
+  // fields + evacuated checkbox + actions (+ the tablet tier's expander)
+  const columnCount = fields.length + 2 + (hasExpander ? 1 : 0);
 
   return (
     <Box style={{ overflowX: "auto" }}>
@@ -219,6 +246,7 @@ const MedicCasualtiesTable = ({
           {fields.map((field) => (
             <col key={field.key} style={field.width ? { width: `${field.width}px` } : undefined} />
           ))}
+          <col style={{ width: `${EVACUATED_WIDTH}px` }} />
           <col style={{ width: `${ACTIONS_WIDTH}px` }} />
         </colgroup>
 
@@ -230,6 +258,9 @@ const MedicCasualtiesTable = ({
                 {group.label}
               </Table.Th>
             ))}
+            <Table.Th rowSpan={2} ta="center" style={groupHeaderStyle}>
+              פונה
+            </Table.Th>
             <Table.Th rowSpan={2} style={groupHeaderStyle} />
           </Table.Tr>
           <Table.Tr>
@@ -254,6 +285,7 @@ const MedicCasualtiesTable = ({
               rowError={rowErrorById[casualty.id]}
               isSaving={Boolean(savingById[casualty.id])}
               onOpenRecords={() => onOpenRecords(casualty)}
+              onToggleEvacuated={onToggleEvacuated}
             />
           ))}
 
@@ -274,7 +306,7 @@ const MedicCasualtiesTable = ({
           {casualties.length === 0 && !isAdding && (
             <Table.Tr>
               <Table.Td colSpan={columnCount} c="var(--app-color-text-muted)" ta="center">
-                לא נרשמו נפגעים באירוע זה
+                {emptyMessage}
               </Table.Td>
             </Table.Tr>
           )}

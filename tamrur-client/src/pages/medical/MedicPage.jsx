@@ -12,6 +12,7 @@ import MedicEventBar from "../../components/medical/MedicEventBar";
 import MedicCasualtiesCard from "../../components/medical/MedicCasualtiesCard";
 import CasualtyFormModal from "../../components/medical/CasualtyFormModal";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
+import { fetchEvents } from "../../features/events/eventsSlice";
 import { fetchTreatmentsByEvent } from "../../features/treatments/treatmentsSlice";
 import { fetchVitalsByEvent } from "../../features/vitals/vitalsSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
@@ -55,6 +56,9 @@ const MedicPage = () => {
         dispatch(fetchCasualtiesByEvent(eventId)),
         dispatch(fetchTreatmentsByEvent(eventId)),
         dispatch(fetchVitalsByEvent(eventId)),
+        // The event carries gathering_status and the derived evac_status, both
+        // of which another medic can move — poll them alongside the casualties.
+        dispatch(fetchEvents()),
       ]),
     [dispatch],
   );
@@ -183,7 +187,7 @@ const MedicPage = () => {
 
             {selectedEvent && !isLoadingEvent && (
               <MedicCasualtiesCard
-                eventId={selectedEventId}
+                event={selectedEvent}
                 casualties={casualties}
                 isAdding={isAdding}
                 onAddingChange={setIsAdding}

@@ -185,6 +185,15 @@ export const ACTIONS_WIDTH = 64;
 export const EXPANDER_WIDTH = 44;
 
 /**
+ * Width of the evacuation checkbox column.
+ *
+ * `is_evacuated` deliberately has no field descriptor: it isn't one of the paper
+ * form's four groups, it splits the table into two rather than being edited in
+ * place, and it must stay outside the grouped header's colSpan arithmetic.
+ */
+export const EVACUATED_WIDTH = 64;
+
+/**
  * The fields shown for a tier: everything on the full table, the `core` subset
  * on the narrow one.
  *

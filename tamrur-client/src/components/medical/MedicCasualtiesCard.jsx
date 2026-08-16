@@ -1,30 +1,55 @@
 // React
+import { useMemo, useState } from "react";
 
 // External libraries
-import { Badge, Button, Group, SimpleGrid, Stack, Text } from "@mantine/core";
-import { IconUserPlus } from "@tabler/icons-react";
-import { useSelector } from "react-redux";
+import {
+  Badge,
+  Button,
+  Collapse,
+  Group,
+  Paper,
+  SimpleGrid,
+  Stack,
+  Switch,
+  Text,
+} from "@mantine/core";
+import { IconChevronDown, IconChevronUp, IconUserPlus } from "@tabler/icons-react";
+import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
 import MedicCasualtyCards from "./MedicCasualtyCards";
 import MedicCasualtiesTable from "./MedicCasualtiesTable";
 import { MONO_FONT, primaryButtonStyles } from "./formStyles";
-import { URGENCY_COLOR_VARS, URGENCY_LABELS, URGENCY_ORDER } from "../../constants/casualtyStatus";
+import {
+  EVAC_STATUS_COLOR_VARS,
+  EVAC_STATUS_LABELS,
+  GATHERING_COMPLETED,
+  GATHERING_IN_PROGRESS,
+  GATHERING_STATUS_LABELS,
+  URGENCY_COLOR_VARS,
+  URGENCY_LABELS,
+  URGENCY_ORDER,
+} from "../../constants/casualtyStatus";
+import { updateCasualty } from "../../features/casualties/casualtiesSlice";
+import { fetchEvents, updateEventGatheringStatus } from "../../features/events/eventsSlice";
 import { CASUALTY_TIER, useCasualtyTier } from "../../hooks/useCasualtyTier";
 
 // Styles
 
 /**
- * Renders the medic interface's casualty card: the urgency breakdown, the
- * add-casualty control, and the casualty list itself.
+ * Renders the medic interface's casualty card.
  *
- * The list re-lays-out with the viewport — the full triage table on a laptop,
- * a reduced table with an expandable detail row on a tablet, and stacked cards
- * on a phone. All three render the same editable cells.
+ * Casualties split in two: those still on scene, and those already evacuated.
+ * Evacuating a casualty is a one-click move from the first list to the second,
+ * which stays collapsed by default so the active picture isn't cluttered.
+ *
+ * The gathering switch closes casualty collection for the event. That, together
+ * with how many casualties have been evacuated, is what the server derives the
+ * event's `evac_status` from — the badge here only reports it.
  *
  * @param {{
- *   eventId: string,
+ *   event: Object,
  *   casualties: Array<Object>,
  *   isAdding: boolean,
  *   onAddingChange: (isAdding: boolean) => void,
@@ -32,28 +57,83 @@ import { CASUALTY_TIER, useCasualtyTier } from "../../hooks/useCasualtyTier";
  * }} props
  * @returns {JSX.Element} The medic casualties card.
  */
-const MedicCasualtiesCard = ({
-  eventId,
-  casualties,
-  isAdding,
-  onAddingChange,
-  onOpenRecords,
-}) => {
+const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOpenRecords }) => {
+  const dispatch = useDispatch();
   const tier = useCasualtyTier();
+  const [showEvacuated, setShowEvacuated] = useState(false);
+
   const rowErrorById = useSelector((state) => state.casualties.rowErrorById);
   const savingById = useSelector((state) => state.casualties.savingById);
+  const isUpdatingEvent = useSelector((state) => state.events.updateStatus === "loading");
 
+  const eventId = event.id;
+  const gatheringStatus = event.gathering_status ?? GATHERING_IN_PROGRESS;
+  const isGatheringComplete = gatheringStatus === GATHERING_COMPLETED;
+  const evacStatus = event.evac_status ?? 0;
+
+  const { active, evacuated } = useMemo(
+    () => ({
+      active: casualties.filter((casualty) => !casualty.is_evacuated),
+      evacuated: casualties.filter((casualty) => casualty.is_evacuated),
+    }),
+    [casualties],
+  );
+
+  // The tiles describe who is still on scene, matching the table beneath them.
   const countsByUrgency = URGENCY_ORDER.reduce((acc, key) => {
-    acc[key] = casualties.filter((casualty) => casualty.urgency === key).length;
+    acc[key] = active.filter((casualty) => casualty.urgency === key).length;
     return acc;
   }, {});
+
+  /**
+   * Marks a casualty evacuated, or puts them back on scene.
+   *
+   * The slice applies this optimistically, so the row moves between the two
+   * lists on the click and rolls back only if the write fails.
+   *
+   * @param {Object} casualty
+   * @param {boolean} isEvacuated
+   * @returns {void}
+   */
+  function handleToggleEvacuated(casualty, isEvacuated) {
+    dispatch(updateCasualty({ id: casualty.id, fields: { is_evacuated: isEvacuated } }))
+      .unwrap()
+      // The event's evac_status is derived server-side from this very write, so
+      // the event has to be re-read or the badge reports the state from before
+      // the click.
+      .then(() => dispatch(fetchEvents()))
+      // The failure is flagged on the row and the optimistic change is rolled
+      // back in the slice — swallow it so it isn't an unhandled rejection.
+      .catch(() => {});
+  }
+
+  /**
+   * Opens or closes casualty gathering for this event.
+   *
+   * @param {boolean} complete
+   * @returns {void}
+   */
+  function handleGatheringChange(complete) {
+    dispatch(
+      updateEventGatheringStatus({
+        id: eventId,
+        gatheringStatus: complete ? GATHERING_COMPLETED : GATHERING_IN_PROGRESS,
+      }),
+    )
+      .unwrap()
+      .catch(() => {});
+  }
+
+  const listProps = {
+    eventId,
+    onAddingChange,
+    onOpenRecords,
+    onToggleEvacuated: handleToggleEvacuated,
+  };
 
   return (
     <DashboardCard
       title="נפגעים"
-      // Trims the card's own gutters where width is scarcest. Resolves to the
-      // usual "lg" from md up, so the desktop view stays identical to the rest
-      // of the dashboard.
       padding={{ base: "xs", sm: "md", md: "lg" }}
       headerExtra={
         <Group gap="sm">
@@ -67,7 +147,7 @@ const MedicCasualtiesCard = ({
               },
             }}
           >
-            {casualties.length} סה״כ
+            {active.length} בזירה · {casualties.length} סה״כ
           </Badge>
           <Button
             size="xs"
@@ -83,6 +163,52 @@ const MedicCasualtiesCard = ({
         </Group>
       }
     >
+      {/* Gathering control, plus the event's derived evacuation state. */}
+      <Paper
+        withBorder
+        radius="sm"
+        px="md"
+        py="sm"
+        style={{
+          backgroundColor: "var(--app-color-surface-high)",
+          borderColor: "var(--app-color-border)",
+          borderInlineStart: `3px solid ${EVAC_STATUS_COLOR_VARS[evacStatus]}`,
+        }}
+      >
+        <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+          <Switch
+            checked={isGatheringComplete}
+            onChange={(changed) => handleGatheringChange(changed.currentTarget.checked)}
+            disabled={isUpdatingEvent}
+            color="var(--app-color-primary)"
+            label={
+              <Text fz="sm" fw={600} c="var(--app-color-text)">
+                איסוף נפגעים: {GATHERING_STATUS_LABELS[gatheringStatus] ?? gatheringStatus}
+              </Text>
+            }
+          />
+
+          <Group gap="xs" align="center" wrap="nowrap">
+            <Text fz="0.68rem" c="var(--app-color-text-muted)">
+              מצב פינוי
+            </Text>
+            <Badge
+              styles={{
+                root: {
+                  backgroundColor: `color-mix(in srgb, ${EVAC_STATUS_COLOR_VARS[evacStatus]} 16%, transparent)`,
+                  color: EVAC_STATUS_COLOR_VARS[evacStatus],
+                },
+              }}
+            >
+              {EVAC_STATUS_LABELS[evacStatus] ?? evacStatus}
+            </Badge>
+            <Text fz="0.68rem" c="var(--app-color-text-muted)" ff={MONO_FONT}>
+              {evacuated.length}/{casualties.length}
+            </Text>
+          </Group>
+        </Group>
+      </Paper>
+
       <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
         {URGENCY_ORDER.map((key) => (
           <Stack
@@ -108,24 +234,68 @@ const MedicCasualtiesCard = ({
 
       {tier === CASUALTY_TIER.CARD ? (
         <MedicCasualtyCards
-          eventId={eventId}
-          casualties={casualties}
+          {...listProps}
+          casualties={active}
           rowErrorById={rowErrorById}
           savingById={savingById}
           isAdding={isAdding}
-          onAddingChange={onAddingChange}
-          onOpenRecords={onOpenRecords}
         />
       ) : (
         <MedicCasualtiesTable
-          eventId={eventId}
-          casualties={casualties}
+          {...listProps}
+          casualties={active}
           tier={tier}
           isAdding={isAdding}
-          onAddingChange={onAddingChange}
-          onOpenRecords={onOpenRecords}
+          // "none recorded" is wrong once everyone has been evacuated.
+          emptyMessage={
+            evacuated.length > 0 ? "כל הנפגעים פונו" : "לא נרשמו נפגעים באירוע זה"
+          }
         />
       )}
+
+      {/* Evacuated casualties, tucked away until asked for. */}
+      <Stack gap="sm">
+        <Button
+          variant="default"
+          size="xs"
+          h="2.25rem"
+          mih="2.25rem"
+          onClick={() => setShowEvacuated((open) => !open)}
+          disabled={evacuated.length === 0}
+          leftSection={showEvacuated ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+          styles={{
+            root: {
+              alignSelf: "flex-start",
+              backgroundColor: "var(--app-color-surface-high)",
+              color: "var(--app-color-text)",
+              border: "1px solid var(--app-color-border)",
+            },
+          }}
+        >
+          {showEvacuated ? "הסתר נפגעים שפונו" : `הצג נפגעים שפונו (${evacuated.length})`}
+        </Button>
+
+        {/* Mantine v9 spells this `expanded`; the older `in` is silently ignored. */}
+        <Collapse expanded={showEvacuated && evacuated.length > 0}>
+          {tier === CASUALTY_TIER.CARD ? (
+            <MedicCasualtyCards
+              {...listProps}
+              casualties={evacuated}
+              rowErrorById={rowErrorById}
+              savingById={savingById}
+              isAdding={false}
+            />
+          ) : (
+            <MedicCasualtiesTable
+              {...listProps}
+              casualties={evacuated}
+              tier={tier}
+              isAdding={false}
+              emptyMessage="לא פונו נפגעים עדיין"
+            />
+          )}
+        </Collapse>
+      </Stack>
     </DashboardCard>
   );
 };
