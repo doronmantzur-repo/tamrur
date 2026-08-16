@@ -374,6 +374,7 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
               rowErrorById={rowErrorById}
               savingById={savingById}
               isAdding={false}
+              hideReadyForEvac
             />
           ) : (
             <MedicCasualtiesTable
@@ -382,6 +383,7 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
               tier={tier}
               isAdding={false}
               emptyMessage="לא פונו נפגעים עדיין"
+              hideReadyForEvac
             />
           )}
         </Collapse>

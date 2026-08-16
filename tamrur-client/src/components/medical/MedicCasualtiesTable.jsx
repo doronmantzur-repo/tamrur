@@ -231,8 +231,14 @@ const CasualtyRow = ({
  *   isAdding: boolean,
  *   onAddingChange: (isAdding: boolean) => void,
  *   onOpenRecords: (casualty: Object) => void,
+ *   hideReadyForEvac?: boolean,
  * }} props
  * @returns {JSX.Element} The casualty table.
+ *
+ * `hideReadyForEvac` drops the מוכן לפינוי column. Set it on the evacuated
+ * list, where "ready to be evacuated" is a question already answered — the
+ * column is presentation only, so the field is still stored and still edited
+ * from the active table.
  */
 const MedicCasualtiesTable = ({
   eventId,
@@ -243,6 +249,7 @@ const MedicCasualtiesTable = ({
   onOpenRecords,
   onToggleEvacuated,
   emptyMessage = "לא נרשמו נפגעים באירוע זה",
+  hideReadyForEvac = false,
 }) => {
   // Only one detail row is open at a time, mirroring the brigade table.
   // A set rather than a single id: "expand all" has no meaning in a
@@ -282,8 +289,17 @@ const MedicCasualtiesTable = ({
     setExpandedIds(allExpanded ? new Set() : new Set(visibleIds));
   }
 
-  const fields = visibleFields(tier);
-  const overflow = hiddenFields(tier);
+  // Dropped from the visible columns *and* the overflow panel: filtering only
+  // the former would relocate the column into the expanded detail row on the
+  // compact tier rather than hide it.
+  const keep = (list) =>
+    hideReadyForEvac ? list.filter((field) => field.key !== "evac-ready") : list;
+
+  const fields = keep(visibleFields(tier));
+  const overflow = keep(hiddenFields(tier));
+  // Spans are counted from the fields actually rendered, so דגשים לפינוי
+  // narrows by one on its own; the null-width פציעות column absorbs the freed
+  // 52px, which keeps the table full-width without any hand-tuned widths.
   const groups = groupHeaders(fields);
   // The expander is always present now: it carries the treatment/test history
   // on every tier, and on the compact tier the overflow fields as well.
