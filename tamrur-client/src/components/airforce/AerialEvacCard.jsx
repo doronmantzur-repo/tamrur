@@ -36,14 +36,15 @@ const denyButtonStyles = {
 };
 
 /**
- * Renders a single event's aerial-evacuation request status. The aerial_mission
- * row's own request-status field is the trigger for whether this is
- * actionable — whenever it's "needed", this renders approve/deny controls.
- * Denying is a single click. Approving is two steps: pressing "אשר" first
- * reveals the chopper's radio call-sign field, and only confirming that
- * actually sends the approval. Either decision updates the mission row (a
- * card only renders once one already exists for the event, per the parent
- * page's mission-driven filter).
+ * Renders a single event's aerial-evacuation request status. The parent page
+ * only renders this once the event's own aerial-evac field is "needed" — at
+ * that point there usually isn't an aerial_mission row yet, so the status
+ * defaults to "needed" when none exists. Whenever the effective status is
+ * "needed", this renders approve/deny controls. Denying is a single click.
+ * Approving is two steps: pressing "אשר" first reveals the chopper's radio
+ * call-sign field, and only confirming that actually sends the approval.
+ * Either decision creates the mission row if this event doesn't have one yet,
+ * or updates it if it does.
  *
  * The decision timestamp shown below the buttons is tracked in local state
  * only, not persisted server-side — it reflects decisions made in this
@@ -59,7 +60,7 @@ const AerialEvacCard = ({ event, mission }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [decidedAt, setDecidedAt] = useState(null);
 
-  const status = mission?.["request-status"];
+  const status = mission?.["request-status"] || "needed";
   const color = AERIAL_EVAC_COLOR_VARS[status] || "var(--app-color-text-muted)";
   const isActionable = status === "needed";
 
