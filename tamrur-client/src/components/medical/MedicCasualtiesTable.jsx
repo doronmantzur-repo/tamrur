@@ -48,6 +48,18 @@ const groupHeaderStyle = {
 };
 
 /**
+ * The second header row's label cells for the two ungrouped columns.
+ *
+ * The field labels beside them are single-line, so they centre without help;
+ * these two have to be centred explicitly, because "עדכן תרופה/מדדים" wraps and
+ * would otherwise sit top-aligned against its taller neighbours.
+ */
+const labelHeaderStyle = {
+  verticalAlign: "middle",
+  lineHeight: 1.25,
+};
+
+/**
  * Renders the per-casualty controls the row itself has no room for, as a
  * labelled grid. Shared by the tablet detail row and the phone card.
  *
@@ -323,14 +335,13 @@ const MedicCasualtiesTable = ({
                 {group.label}
               </Table.Th>
             ))}
-            <Table.Th rowSpan={2} ta="center" style={groupHeaderStyle}>
-              פונה
-            </Table.Th>
-            <Table.Th rowSpan={2} ta="center" style={groupHeaderStyle}>
-              <Text fz="0.68rem" lh={1.25}>
-                עדכן תרופה/מדדים
-              </Text>
-            </Table.Th>
+            {/* פונה and the actions column belong to no group, but they still
+                sit in the group band so the header keeps one unbroken row of
+                surface-high across its full width. Their labels live in the
+                second row with every other column label, rather than spanning
+                both rows. */}
+            <Table.Th style={groupHeaderStyle} aria-hidden />
+            <Table.Th style={groupHeaderStyle} aria-hidden />
           </Table.Tr>
           <Table.Tr>
             {fields.map((field) => (
@@ -338,6 +349,21 @@ const MedicCasualtiesTable = ({
                 {tier === "compact" ? field.short : field.header}
               </Table.Th>
             ))}
+            <Table.Th ta="center" style={labelHeaderStyle}>
+              פונה
+            </Table.Th>
+            {/* Two lines at the table's normal header size, rather than one line
+                shrunk until it fits the 96px column.
+                The slash ends the first line rather than starting the second: it
+                is a bidi-neutral character, so on its own at the head of an RTL
+                line it gets reordered to the far end and the label reads
+                "עדכן תרופה מדדים /". Kept inside the first line's run, it stays
+                put. */}
+            <Table.Th ta="center" style={labelHeaderStyle}>
+              עדכן תרופה/
+              <br />
+              מדדים
+            </Table.Th>
           </Table.Tr>
         </Table.Thead>
 
