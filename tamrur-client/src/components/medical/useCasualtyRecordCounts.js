@@ -17,11 +17,12 @@ import { useSelector } from "react-redux";
  *
  * @param {string} eventId
  * @param {string} casualtyId
- * @returns {{treatments: number, vitals: number, total: number}}
+ * @returns {{treatments: number, vitals: number, drugs: number, total: number}}
  */
 export function useCasualtyRecordCounts(eventId, casualtyId) {
   const eventTreatments = useSelector((state) => state.treatments.byEventId[eventId]);
   const eventVitals = useSelector((state) => state.vitals.byEventId[eventId]);
+  const eventDrugs = useSelector((state) => state.drugs.byEventId[eventId]);
 
   return useMemo(() => {
     // The treatment/vitals foreign key is still spelled "injury-id" — the
@@ -29,6 +30,9 @@ export function useCasualtyRecordCounts(eventId, casualtyId) {
     const treatments = (eventTreatments || []).filter((r) => r["injury-id"] === casualtyId).length;
     const vitals = (eventVitals || []).filter((r) => r["injury-id"] === casualtyId).length;
 
-    return { treatments, vitals, total: treatments + vitals };
-  }, [eventTreatments, eventVitals, casualtyId]);
+    // The drugs table was added later and uses snake_case keys throughout.
+    const drugs = (eventDrugs || []).filter((r) => r.casualty_id === casualtyId).length;
+
+    return { treatments, vitals, drugs, total: treatments + vitals + drugs };
+  }, [eventTreatments, eventVitals, eventDrugs, casualtyId]);
 }

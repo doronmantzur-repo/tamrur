@@ -2,9 +2,10 @@
 
 // External libraries
 import { Badge, Group, Stack, Text } from "@mantine/core";
-import { IconActivityHeartbeat, IconStethoscope } from "@tabler/icons-react";
+import { IconActivityHeartbeat, IconPill, IconStethoscope } from "@tabler/icons-react";
 
 // Internal application modules
+import DrugsSection from "./DrugsSection";
 import TreatmentsSection from "./TreatmentsSection";
 import { useCasualtyRecordCounts } from "./useCasualtyRecordCounts";
 import VitalsSection from "./VitalsSection";
@@ -55,13 +56,24 @@ const CasualtyRecordsPanel = ({ eventId, casualtyId }) => {
   if (counts.total === 0) {
     return (
       <Text fz="sm" c="var(--app-color-text-muted)">
-        אין טיפולים או בדיקות מתועדים
+        אין תרופות, טיפולים או בדיקות מתועדים
       </Text>
     );
   }
 
   return (
     <Stack gap="md">
+      {counts.drugs > 0 && (
+        <Stack gap="xs">
+          <GroupHeading
+            icon={<IconPill size={16} stroke={1.8} color="var(--app-color-primary)" />}
+            title="תרופות"
+            count={counts.drugs}
+          />
+          <DrugsSection eventId={eventId} casualtyId={casualtyId} view="history" />
+        </Stack>
+      )}
+
       {counts.treatments > 0 && (
         <Stack gap="xs">
           <GroupHeading

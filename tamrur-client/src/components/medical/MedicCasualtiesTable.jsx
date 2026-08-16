@@ -82,9 +82,9 @@ export const CasualtyActions = ({ rowError, isSaving, onOpenRecords }) => (
     )}
     {/* Recording only. The log of what was already recorded lives in the row's
         expanded panel, so the two concerns don't share a surface. */}
-    <Tooltip label="רישום טיפול / בדיקה">
+    <Tooltip label="עדכן תרופה/מדדים">
       <ActionIcon
-        aria-label="רישום טיפול / בדיקה"
+        aria-label="עדכן תרופה/מדדים"
         variant="subtle"
         onClick={onOpenRecords}
       >
@@ -282,7 +282,11 @@ const MedicCasualtiesTable = ({
             <Table.Th rowSpan={2} ta="center" style={groupHeaderStyle}>
               פונה
             </Table.Th>
-            <Table.Th rowSpan={2} style={groupHeaderStyle} />
+            <Table.Th rowSpan={2} ta="center" style={groupHeaderStyle}>
+              <Text fz="0.68rem" lh={1.25}>
+                עדכן תרופה/מדדים
+              </Text>
+            </Table.Th>
           </Table.Tr>
           <Table.Tr>
             {fields.map((field) => (

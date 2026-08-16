@@ -3,10 +3,11 @@ import { useEffect } from "react";
 
 // External libraries
 import { Badge, Group, Modal, Tabs, Text } from "@mantine/core";
-import { IconActivityHeartbeat, IconStethoscope } from "@tabler/icons-react";
+import { IconActivityHeartbeat, IconPill, IconStethoscope } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 
 // Internal application modules
+import DrugsSection from "./DrugsSection";
 import TreatmentsSection from "./TreatmentsSection";
 import VitalsSection from "./VitalsSection";
 import { MONO_FONT } from "./formStyles";
@@ -55,7 +56,7 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose }) => {
       title={
         <Group gap="sm">
           <Text fz="lg" fw={700} c="var(--app-color-text)">
-            רישום טיפול / בדיקה
+            עדכן תרופה/מדדים
           </Text>
           {casualty && (
             <>
@@ -90,7 +91,7 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose }) => {
           the casualties rename deliberately left alone. */}
       {opened && casualty && (
         <Tabs
-          defaultValue="treatments"
+          defaultValue="drugs"
           color="var(--app-color-primary)"
           styles={{
             tab: { color: "var(--app-color-text-muted)" },
@@ -98,16 +99,23 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose }) => {
           }}
         >
           <Tabs.List>
+            <Tabs.Tab value="drugs" leftSection={<IconPill size={16} stroke={1.8} />}>
+              תרופות
+            </Tabs.Tab>
             <Tabs.Tab value="treatments" leftSection={<IconStethoscope size={16} stroke={1.8} />}>
-              טיפולים
+              טיפולים נוספים
             </Tabs.Tab>
             <Tabs.Tab
               value="vitals"
               leftSection={<IconActivityHeartbeat size={16} stroke={1.8} />}
             >
-              מדדים ובדיקות
+              מדדים
             </Tabs.Tab>
           </Tabs.List>
+
+          <Tabs.Panel value="drugs" pt="md">
+            <DrugsSection eventId={eventId} casualtyId={casualty.id} view="form" />
+          </Tabs.Panel>
 
           <Tabs.Panel value="treatments" pt="md">
             <TreatmentsSection eventId={eventId} injuryId={casualty.id} view="form" />

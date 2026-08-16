@@ -190,7 +190,7 @@ export const CASUALTY_FIELDS = [
 ];
 
 /** Width of the trailing actions column, which has no field descriptor. */
-export const ACTIONS_WIDTH = 60;
+export const ACTIONS_WIDTH = 96;
 
 /** Width of the tablet tier's disclosure-chevron column. */
 export const EXPANDER_WIDTH = 44;
