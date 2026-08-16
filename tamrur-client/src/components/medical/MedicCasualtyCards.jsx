@@ -26,8 +26,19 @@ const BODY_FIELDS = CASUALTY_FIELDS.filter((field) => !HEADER_KEYS.includes(fiel
  * @param {{ casualty: Object, rowError: string | undefined, isSaving: boolean, onOpenRecords: () => void }} props
  * @returns {JSX.Element} The casualty card.
  */
-const CasualtyCard = ({ eventId, casualty, rowError, isSaving, onOpenRecords, onToggleEvacuated }) => {
+const CasualtyCard = ({
+  eventId,
+  casualty,
+  rowError,
+  isSaving,
+  onOpenRecords,
+  onToggleEvacuated,
+  hideReadyForEvac,
+}) => {
   const save = useCellSave(casualty.id);
+  const bodyFields = hideReadyForEvac
+    ? BODY_FIELDS.filter((field) => field.key !== "evac-ready")
+    : BODY_FIELDS;
 
   return (
     <Paper
@@ -65,7 +76,7 @@ const CasualtyCard = ({ eventId, casualty, rowError, isSaving, onOpenRecords, on
         </Group>
       </Group>
 
-      <CasualtyFieldsPanel fields={BODY_FIELDS} casualty={casualty} save={save} />
+      <CasualtyFieldsPanel fields={bodyFields} casualty={casualty} save={save} />
 
       <Stack gap="xs" mt="sm">
         <CasualtyRecordsPanel eventId={eventId} casualtyId={casualty.id} />
@@ -89,8 +100,13 @@ const CasualtyCard = ({ eventId, casualty, rowError, isSaving, onOpenRecords, on
  *   isAdding: boolean,
  *   onAddingChange: (isAdding: boolean) => void,
  *   onOpenRecords: (casualty: Object) => void,
+ *   hideReadyForEvac?: boolean,
  * }} props
  * @returns {JSX.Element} The casualty card list.
+ *
+ * `hideReadyForEvac` mirrors the table's prop of the same name, so the
+ * evacuated list drops מוכן לפינוי on this tier too rather than the column
+ * reappearing as soon as the screen gets narrow.
  */
 const MedicCasualtyCards = ({
   eventId,
@@ -101,6 +117,7 @@ const MedicCasualtyCards = ({
   onAddingChange,
   onOpenRecords,
   onToggleEvacuated,
+  hideReadyForEvac = false,
 }) => (
   <Stack gap="sm">
     {isAdding && (
@@ -126,6 +143,7 @@ const MedicCasualtyCards = ({
         isSaving={Boolean(savingById[casualty.id])}
         onOpenRecords={() => onOpenRecords(casualty)}
         onToggleEvacuated={onToggleEvacuated}
+        hideReadyForEvac={hideReadyForEvac}
       />
     ))}
 

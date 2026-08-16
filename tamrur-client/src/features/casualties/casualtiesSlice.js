@@ -16,9 +16,7 @@ export const fetchCasualtiesByEvent = createAsyncThunk(
       const response = await TamrurAPI.get(`/casualties/${eventId}`);
       return { eventId, casualties: response.data.casualties };
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message ?? "Failed to load casualties",
-      );
+      return rejectWithValue(err.response?.data?.message ?? "Failed to load casualties");
     }
   },
 );
@@ -40,9 +38,7 @@ export const createCasualty = createAsyncThunk(
       const response = await TamrurAPI.post("/casualties", { eventId, ...fields });
       return response.data.casualty;
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message ?? "Failed to create casualty",
-      );
+      return rejectWithValue(err.response?.data?.message ?? "Failed to create casualty");
     }
   },
 );
@@ -64,9 +60,31 @@ export const updateCasualty = createAsyncThunk(
       const response = await TamrurAPI.put(`/casualties/${id}`, fields);
       return response.data.casualty;
     } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message ?? "Failed to update casualty",
-      );
+      return rejectWithValue(err.response?.data?.message ?? "Failed to update casualty");
+    }
+  },
+);
+
+/**
+ * Asks the server to rank this event's casualties by evacuation priority.
+ *
+ * The server does the whole job: it gathers the casualties and their treatment
+ * log, retrieves the trauma manual's triage guidance, asks the model, and writes
+ * the result to each casualty's `ai_evacuation_priority`. Only the event id goes
+ * up, and the saved rows come back — so this is the one and only time the AI is
+ * invoked. Every later table load just reads the column like any other.
+ *
+ * @param {string} eventId
+ * @returns {Promise<{eventId: string, casualties: Array<Object>}>} The saved rows.
+ */
+export const setAiEvacPriorities = createAsyncThunk(
+  "casualties/setAiEvacPriorities",
+  async (eventId, { rejectWithValue }) => {
+    try {
+      const response = await TamrurAPI.post(`/medic-query/priority/${eventId}`);
+      return { eventId, casualties: response.data.casualties };
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message ?? "חישוב קדימות הפינוי נכשל, נסה שוב");
     }
   },
 );
@@ -89,6 +107,10 @@ const initialState = {
   savingById: {},
   rowErrorById: {},
   rollbackById: {},
+  // The AI ranking is one request covering the whole event, so its progress and
+  // failure are event-level rather than per row.
+  aiPriorityStatus: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
+  aiPriorityError: null,
 };
 
 /**
@@ -123,6 +145,12 @@ const casualtiesSlice = createSlice({
     /** Dismisses one row's inline save error in the casualty table. */
     clearCasualtyRowError(state, action) {
       delete state.rowErrorById[action.payload];
+    },
+
+    /** Dismisses the AI ranking's error alert. */
+    clearAiPriorityError(state) {
+      state.aiPriorityStatus = "idle";
+      state.aiPriorityError = null;
     },
   },
   extraReducers: (builder) => {
@@ -198,10 +226,34 @@ const casualtiesSlice = createSlice({
           Object.assign(casualty, rollback);
         }
         delete state.rollbackById[id];
+      })
+      .addCase(setAiEvacPriorities.pending, (state) => {
+        state.aiPriorityStatus = "loading";
+        state.aiPriorityError = null;
+      })
+      .addCase(setAiEvacPriorities.fulfilled, (state, action) => {
+        state.aiPriorityStatus = "succeeded";
+
+        // Merged by id rather than assigned wholesale: the response carries only
+        // the casualties the model actually ranked, so replacing the array would
+        // drop any the server declined to rank.
+        const { eventId, casualties } = action.payload;
+        const loaded = state.byEventId[eventId];
+        if (!loaded) return;
+
+        casualties.forEach((saved) => {
+          const index = loaded.findIndex((casualty) => casualty.id === saved.id);
+          if (index !== -1) loaded[index] = saved;
+        });
+      })
+      .addCase(setAiEvacPriorities.rejected, (state, action) => {
+        state.aiPriorityStatus = "failed";
+        state.aiPriorityError = action.payload;
       });
   },
 });
 
-export const { clearCasualtySaveError, clearCasualtyRowError } = casualtiesSlice.actions;
+export const { clearCasualtySaveError, clearCasualtyRowError, clearAiPriorityError } =
+  casualtiesSlice.actions;
 
 export default casualtiesSlice.reducer;

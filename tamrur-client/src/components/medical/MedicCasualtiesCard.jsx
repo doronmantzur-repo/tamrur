@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 
 // External libraries
 import {
+  Alert,
   Badge,
   Button,
   Collapse,
@@ -13,7 +14,13 @@ import {
   Switch,
   Text,
 } from "@mantine/core";
-import { IconChevronDown, IconChevronUp, IconUserPlus } from "@tabler/icons-react";
+import {
+  IconAlertCircle,
+  IconChevronDown,
+  IconChevronUp,
+  IconSparkles,
+  IconUserPlus,
+} from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
@@ -33,7 +40,11 @@ import {
   URGENCY_NONE_LABEL,
   URGENCY_ORDER,
 } from "../../constants/casualtyStatus";
-import { updateCasualty } from "../../features/casualties/casualtiesSlice";
+import {
+  clearAiPriorityError,
+  setAiEvacPriorities,
+  updateCasualty,
+} from "../../features/casualties/casualtiesSlice";
 import { fetchEvents, updateEventGatheringStatus } from "../../features/events/eventsSlice";
 import { CASUALTY_TIER, useCasualtyTier } from "../../hooks/useCasualtyTier";
 
@@ -67,6 +78,8 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
   const rowErrorById = useSelector((state) => state.casualties.rowErrorById);
   const savingById = useSelector((state) => state.casualties.savingById);
   const isUpdatingEvent = useSelector((state) => state.events.updateStatus === "loading");
+  const isRankingByAi = useSelector((state) => state.casualties.aiPriorityStatus === "loading");
+  const aiPriorityError = useSelector((state) => state.casualties.aiPriorityError);
 
   const eventId = event.id;
   const gatheringStatus = event.gathering_status ?? GATHERING_IN_PROGRESS;
@@ -149,6 +162,22 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
       .catch(() => {});
   }
 
+  /**
+   * Asks the server to rank this event's casualties by evacuation priority.
+   *
+   * The saved rows come back in the response, so the AI column fills in without
+   * a refetch. This is the only path that ever calls the model — loading the
+   * table just reads the stored column.
+   *
+   * @returns {void}
+   */
+  function handleRankByAi() {
+    dispatch(setAiEvacPriorities(eventId))
+      .unwrap()
+      // Surfaced in the alert below the action bar via `aiPriorityError`.
+      .catch(() => {});
+  }
+
   const listProps = {
     eventId,
     onAddingChange,
@@ -178,6 +207,27 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
             size="xs"
             h="2.25rem"
             mih="2.25rem"
+            variant="default"
+            leftSection={<IconSparkles size={16} stroke={1.8} />}
+            loading={isRankingByAi}
+            // Nothing to rank on an empty event, and re-running mid-request
+            // would just queue a second identical inference.
+            disabled={casualties.length === 0 || isRankingByAi}
+            onClick={handleRankByAi}
+            styles={{
+              root: {
+                backgroundColor: "var(--app-color-surface-high)",
+                color: "var(--app-color-primary)",
+                border: "1px solid color-mix(in srgb, var(--app-color-primary) 45%, transparent)",
+              },
+            }}
+          >
+            חשב קדימות לפינוי (AI)
+          </Button>
+          <Button
+            size="xs"
+            h="2.25rem"
+            mih="2.25rem"
             leftSection={<IconUserPlus size={16} stroke={1.8} />}
             disabled={isAdding}
             onClick={() => onAddingChange(true)}
@@ -188,6 +238,23 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
         </Group>
       }
     >
+      {aiPriorityError && (
+        <Alert
+          icon={<IconAlertCircle size={18} />}
+          color="red"
+          withCloseButton
+          closeButtonLabel="סגור"
+          onClose={() => dispatch(clearAiPriorityError())}
+          styles={{
+            root: {
+              backgroundColor: "color-mix(in srgb, var(--app-color-error) 12%, transparent)",
+            },
+          }}
+        >
+          {aiPriorityError}
+        </Alert>
+      )}
+
       {/* Gathering control, plus the event's derived evacuation state. */}
       <Paper
         withBorder
@@ -272,9 +339,7 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
           tier={tier}
           isAdding={isAdding}
           // "none recorded" is wrong once everyone has been evacuated.
-          emptyMessage={
-            evacuated.length > 0 ? "כל הנפגעים פונו" : "לא נרשמו נפגעים באירוע זה"
-          }
+          emptyMessage={evacuated.length > 0 ? "כל הנפגעים פונו" : "לא נרשמו נפגעים באירוע זה"}
         />
       )}
 
@@ -309,6 +374,7 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
               rowErrorById={rowErrorById}
               savingById={savingById}
               isAdding={false}
+              hideReadyForEvac
             />
           ) : (
             <MedicCasualtiesTable
@@ -317,6 +383,7 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
               tier={tier}
               isAdding={false}
               emptyMessage="לא פונו נפגעים עדיין"
+              hideReadyForEvac
             />
           )}
         </Collapse>
