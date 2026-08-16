@@ -1,7 +1,8 @@
 // React
 
 // External libraries
-import { Badge, Checkbox, NumberInput, Select, Textarea } from "@mantine/core";
+import { Badge, Checkbox, NumberInput, Select, Text, Textarea } from "@mantine/core";
+import { IconSparkles } from "@tabler/icons-react";
 
 // Internal application modules
 import {
@@ -67,6 +68,46 @@ function renderUrgencyBadge(value) {
       }}
     >
       {urgencyLabel(value)}
+    </Badge>
+  );
+}
+
+/**
+ * Renders the AI's evacuation rank as a read-only badge.
+ *
+ * Deliberately styled apart from the medic's own קדימות לפינוי beside it — this
+ * is the model's advice, not a decision anyone has taken. A casualty that hasn't
+ * been ranked yet shows a neutral dash rather than an empty cell, so "no ranking
+ * yet" is visibly different from "ranked, and the answer was blank".
+ *
+ * @param {number | null | undefined} value
+ * @returns {JSX.Element} The badge, or the placeholder.
+ */
+function renderAiPriority(value) {
+  if (value === null || value === undefined || value === "") {
+    return (
+      <Text fz="sm" c="var(--app-color-text-muted)" ta="center">
+        —
+      </Text>
+    );
+  }
+
+  return (
+    <Badge
+      variant="outline"
+      leftSection={<IconSparkles size={12} stroke={2} />}
+      styles={{
+        root: {
+          backgroundColor: "color-mix(in srgb, var(--app-color-primary) 14%, transparent)",
+          borderColor: "color-mix(in srgb, var(--app-color-primary) 45%, transparent)",
+          color: "var(--app-color-primary)",
+          maxWidth: "none",
+          paddingInline: "0.4rem",
+        },
+        label: { overflow: "visible", textOverflow: "clip" },
+      }}
+    >
+      {value}
     </Badge>
   );
 }
@@ -143,6 +184,20 @@ export const CASUALTY_FIELDS = [
     width: 52,
     core: true,
     cell: "number",
+    centered: true,
+  },
+  {
+    key: "ai_evacuation_priority",
+    header: "קדימות לפינוי (AI)",
+    short: "פינוי (AI)",
+    group: "summary",
+    width: 62,
+    core: true,
+    // Read-only: written solely by the inference run, never edited in place.
+    // `renderCell` returns a bare badge for this type — no CellButton, so there
+    // is nothing to click and no save path.
+    cell: "readonly",
+    renderValue: renderAiPriority,
     centered: true,
   },
   {
@@ -281,6 +336,9 @@ export function renderCell(field, casualty, save) {
           save={save}
         />
       );
+    case "readonly":
+      // No CellButton and no `save` — the cell is display only.
+      return field.renderValue(value);
     case "number":
       return <NumberCell value={value} column={field.key} label={field.header} save={save} />;
     case "treatments":
@@ -314,6 +372,8 @@ export function renderCell(field, casualty, save) {
  */
 export function emptyDraft() {
   return CASUALTY_FIELDS.reduce((draft, field) => {
+    // Nothing can seed a read-only column — it only ever comes from the server.
+    if (field.cell === "readonly") return draft;
     if (field.cell === "toggle") return { ...draft, [field.key]: false };
     if (field.cell === "treatments") return { ...draft, [field.key]: [] };
     if (field.cell === "select") return { ...draft, [field.key]: null };
@@ -331,6 +391,9 @@ export function draftToFields(draft) {
   return CASUALTY_FIELDS.reduce((fields, field) => {
     const value = draft[field.key];
 
+    // Kept out of the create body entirely: the server's casualties controller
+    // doesn't map this key, so sending it would be silently dropped anyway.
+    if (field.cell === "readonly") return fields;
     if (field.cell === "toggle") return { ...fields, [field.key]: Boolean(value) };
     if (field.cell === "treatments") return { ...fields, [field.key]: value ?? [] };
     if (field.cell === "text") {
@@ -359,6 +422,10 @@ export function draftToFields(draft) {
  */
 export function renderDraftInput(field, value, onChange, hasError = false) {
   switch (field.cell) {
+    // A read-only column has nothing to fill in on a brand-new casualty: it is
+    // populated later, by the inference run, and the cell stays blank until then.
+    case "readonly":
+      return null;
     case "text":
       return (
         <Textarea
