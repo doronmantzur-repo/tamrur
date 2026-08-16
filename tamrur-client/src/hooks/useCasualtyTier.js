@@ -37,7 +37,11 @@ export function useCasualtyTier() {
   const theme = useMantineTheme();
   const options = { getInitialValueInEffect: false };
 
-  const isFull = useMediaQuery(`(min-width: ${theme.breakpoints.md})`, true, options);
+  // `lg` (1200px), not `md`: the full table carries 13 columns, and below about
+  // 1200px the fixed columns leave the free-text פציעות column under ~120px.
+  // The 992–1199 band is better served by the compact tier, where the
+  // lower-priority columns move into the expandable detail row.
+  const isFull = useMediaQuery(`(min-width: ${theme.breakpoints.lg})`, true, options);
   const isTable = useMediaQuery(`(min-width: ${theme.breakpoints.sm})`, true, options);
 
   if (isFull) return CASUALTY_TIER.FULL;

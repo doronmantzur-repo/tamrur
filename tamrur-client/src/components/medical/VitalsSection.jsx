@@ -92,10 +92,16 @@ function readBloodPressure(record) {
  * Renders one casualty's vitals log: the readings already saved, plus the form
  * for adding a new one or editing an existing one.
  *
- * @param {{ eventId: string, injuryId: string }} props
+ *
+ * `view` splits the two halves apart: "form" renders only the new-reading form (the
+ * record modal), "history" renders only the vitals log plus, while an existing
+ * record is being edited, the form to edit it (the table's expanded sub-row).
+ * Omitting it renders both, as before.
+ *
+ * @param {{ eventId: string, injuryId: string, view?: "form" | "history" }} props
  * @returns {JSX.Element} The vitals section.
  */
-const VitalsSection = ({ eventId, injuryId }) => {
+const VitalsSection = ({ eventId, injuryId, view }) => {
   const dispatch = useDispatch();
   const [draft, setDraft] = useState(emptyDraft);
   const [errors, setErrors] = useState({});
@@ -271,6 +277,7 @@ const VitalsSection = ({ eventId, injuryId }) => {
         </Alert>
       )}
 
+      {view !== "form" && (
       <Box style={{ overflowX: "auto" }}>
         <Table verticalSpacing="sm" fz="sm">
           <Table.Thead>
@@ -364,7 +371,9 @@ const VitalsSection = ({ eventId, injuryId }) => {
           </Table.Tbody>
         </Table>
       </Box>
+      )}
 
+      {(view !== "history" || isEditing) && (
       <Paper
         p="md"
         withBorder
@@ -456,6 +465,7 @@ const VitalsSection = ({ eventId, injuryId }) => {
           </Group>
         </Stack>
       </Paper>
+      )}
     </Stack>
   );
 };

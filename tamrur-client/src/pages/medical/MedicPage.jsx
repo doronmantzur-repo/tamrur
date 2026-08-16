@@ -15,6 +15,7 @@ import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlic
 import { fetchEvents } from "../../features/events/eventsSlice";
 import { fetchTreatmentsByEvent } from "../../features/treatments/treatmentsSlice";
 import { fetchVitalsByEvent } from "../../features/vitals/vitalsSlice";
+import { fetchDrugsByEvent } from "../../features/drugs/drugsSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
 
 // Styles
@@ -47,7 +48,8 @@ const MedicPage = () => {
   const recordsCasualty =
     casualties.find((casualty) => casualty.id === recordsCasualtyId) ?? null;
   const loadError = useSelector(
-    (state) => state.casualties.error || state.treatments.error || state.vitals.error,
+    (state) =>
+      state.casualties.error || state.treatments.error || state.vitals.error || state.drugs.error,
   );
 
   const loadEventRecords = useCallback(
@@ -56,6 +58,7 @@ const MedicPage = () => {
         dispatch(fetchCasualtiesByEvent(eventId)),
         dispatch(fetchTreatmentsByEvent(eventId)),
         dispatch(fetchVitalsByEvent(eventId)),
+        dispatch(fetchDrugsByEvent(eventId)),
         // The event carries gathering_status and the derived evac_status, both
         // of which another medic can move — poll them alongside the casualties.
         dispatch(fetchEvents()),

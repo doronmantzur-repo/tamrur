@@ -22,10 +22,62 @@ export const URGENCY_COLOR_VARS = {
   deceased: "var(--app-color-text-muted)",
 };
 
+// Urgency is optional: a casualty can be logged before anyone has triaged them.
+// These give that state a name and a neutral colour instead of leaving lookups
+// undefined, which produced `color-mix(in srgb, undefined 16%, transparent)` —
+// invalid CSS that silently dropped the badge's styling.
+export const URGENCY_NONE_LABEL = "ללא דחיפות";
+export const URGENCY_NONE_PLACEHOLDER = "בחר דחיפות...";
+export const URGENCY_NONE_COLOR_VAR = "var(--app-color-text-muted)";
+
+/**
+ * The Hebrew label for an urgency value, including the not-yet-triaged case.
+ *
+ * @param {string | null | undefined} value
+ * @returns {string} The label to display.
+ */
+export function urgencyLabel(value) {
+  if (value === null || value === undefined || value === "") return URGENCY_NONE_LABEL;
+
+  return URGENCY_LABELS[value] ?? value;
+}
+
+/**
+ * Badge colours for an urgency value, falling back to the muted neutral when a
+ * casualty has not been triaged yet.
+ *
+ * @param {string | null | undefined} value
+ * @returns {{backgroundColor: string, color: string}} Badge root styles.
+ */
+export function urgencyBadgeColors(value) {
+  const color = URGENCY_COLOR_VARS[value] ?? URGENCY_NONE_COLOR_VAR;
+
+  return {
+    backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)`,
+    color,
+  };
+}
+
+/**
+ * The evacuation postures a casualty can be recorded with.
+ *
+ * `walk` is deliberately absent: only sitting and lying are offered now. The
+ * Postgres enum still contains `walk`, so the label below is kept purely so a
+ * legacy row written before this change still renders "הליכה" rather than a raw
+ * `walk` — see EVAC_ABILITY_LABELS.
+ */
+export const EVAC_ABILITY_ORDER = ["sit", "lie"];
+
+/**
+ * Display labels, including the retired `walk` value.
+ *
+ * Read-only: use EVAC_ABILITY_OPTIONS for anything the medic can pick from.
+ */
 export const EVAC_ABILITY_LABELS = {
-  walk: "הליכה",
   sit: "ישיבה",
   lie: "שכיבה",
+  // Retired — never offered, only rendered if an old row still holds it.
+  walk: "הליכה",
 };
 
 // recommended-evac-dest is free text, not a fixed enum — translate the known
@@ -49,7 +101,9 @@ function toSelectOptions(labels, order) {
 // insert, so the medic form only ever offers these.
 export const URGENCY_OPTIONS = toSelectOptions(URGENCY_LABELS, URGENCY_ORDER);
 
-export const EVAC_ABILITY_OPTIONS = toSelectOptions(EVAC_ABILITY_LABELS);
+// Built from the explicit order, not from the label map, so the retired `walk`
+// label can stay readable without becoming selectable again.
+export const EVAC_ABILITY_OPTIONS = toSelectOptions(EVAC_ABILITY_LABELS, EVAC_ABILITY_ORDER);
 
 export const EVAC_DEST_OPTIONS = toSelectOptions(EVAC_DEST_LABELS);
 

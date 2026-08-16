@@ -206,7 +206,7 @@ export const NumberCell = ({ value, column, label, save }) => {
  * for "שכיבה" still shows a readable option list.
  *
  * @param {{
- *   value: string | null, column: string, label: string, options: Array<Object>,
+ *   value: string | null, column: string, label: string, placeholder?: string, options: Array<Object>,
  *   labels: Record<string, string>, clearable?: boolean, save: Function,
  *   renderValue?: (value: string | null) => React.ReactNode,
  * }} props
@@ -216,6 +216,7 @@ export const SelectCell = ({
   value,
   column,
   label,
+  placeholder,
   options,
   labels,
   clearable = true,
@@ -235,7 +236,7 @@ export const SelectCell = ({
   return (
     <Select
       aria-label={label}
-      placeholder={label}
+      placeholder={placeholder ?? label}
       data={options}
       value={value ?? null}
       onChange={(next) => {

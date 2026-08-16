@@ -29,6 +29,8 @@ import {
   GATHERING_STATUS_LABELS,
   URGENCY_COLOR_VARS,
   URGENCY_LABELS,
+  URGENCY_NONE_COLOR_VAR,
+  URGENCY_NONE_LABEL,
   URGENCY_ORDER,
 } from "../../constants/casualtyStatus";
 import { updateCasualty } from "../../features/casualties/casualtiesSlice";
@@ -84,6 +86,29 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
     acc[key] = active.filter((casualty) => casualty.urgency === key).length;
     return acc;
   }, {});
+
+  // Urgency is optional, so a casualty can sit outside all four tiles. Surface
+  // that as its own tile rather than letting the breakdown quietly under-count —
+  // an un-triaged casualty is exactly the one a medic needs to notice.
+  const untriagedCount = active.filter((casualty) => !casualty.urgency).length;
+  const urgencyTiles = [
+    ...URGENCY_ORDER.map((key) => ({
+      key,
+      label: URGENCY_LABELS[key],
+      color: URGENCY_COLOR_VARS[key],
+      count: countsByUrgency[key],
+    })),
+    ...(untriagedCount > 0
+      ? [
+          {
+            key: "__untriaged__",
+            label: URGENCY_NONE_LABEL,
+            color: URGENCY_NONE_COLOR_VAR,
+            count: untriagedCount,
+          },
+        ]
+      : []),
+  ];
 
   /**
    * Marks a casualty evacuated, or puts them back on scene.
@@ -209,24 +234,24 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
         </Group>
       </Paper>
 
-      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
-        {URGENCY_ORDER.map((key) => (
+      <SimpleGrid cols={{ base: 2, sm: urgencyTiles.length > 4 ? 5 : 4 }} spacing="sm">
+        {urgencyTiles.map((tile) => (
           <Stack
-            key={key}
+            key={tile.key}
             gap={4}
             p="sm"
             style={{
               backgroundColor: "var(--app-color-surface-high)",
               border: "1px solid var(--app-color-border)",
-              borderInlineStart: `3px solid ${URGENCY_COLOR_VARS[key]}`,
+              borderInlineStart: `3px solid ${tile.color}`,
               borderRadius: "var(--mantine-radius-sm)",
             }}
           >
             <Text fz="1.35rem" fw={700} lh={1} ff={MONO_FONT}>
-              {countsByUrgency[key]}
+              {tile.count}
             </Text>
             <Text fz="0.68rem" c="var(--app-color-text-muted)">
-              {URGENCY_LABELS[key]}
+              {tile.label}
             </Text>
           </Stack>
         ))}

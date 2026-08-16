@@ -153,6 +153,31 @@ table {
   }
 }
 
+/* Centred columns: דחיפות and every column to its left. Nothing here keys off
+   `direction`, so the same rules hold whichever way the table is laid out.
+
+   text-align covers the text and the urgency badge, but a Checkbox and a Group
+   both render as flex containers that ignore it — Checkbox's flex row is its
+   `body` element, not its root, which is a plain block. Those two are centred
+   on their own axis instead. */
+.medic-cell-center,
+.medic-cell-center .medic-cell {
+  text-align: center;
+}
+
+.medic-cell-center .mantine-Checkbox-body,
+.medic-cell-center .mantine-Group-root {
+  justify-content: center;
+}
+
+/* The touch-target rule above turns .medic-cell into a flex row, which then
+   needs centring on its own axis too. */
+@media (pointer: coarse) {
+  .medic-cell-center .medic-cell {
+    justify-content: center;
+  }
+}
+
 /* Accessibility */
 
 :focus-visible {

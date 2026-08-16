@@ -3,26 +3,28 @@ import { useEffect } from "react";
 
 // External libraries
 import { Badge, Group, Modal, Tabs, Text } from "@mantine/core";
-import { IconActivityHeartbeat, IconStethoscope } from "@tabler/icons-react";
+import { IconActivityHeartbeat, IconPill, IconStethoscope } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 
 // Internal application modules
+import DrugsSection from "./DrugsSection";
 import TreatmentsSection from "./TreatmentsSection";
 import VitalsSection from "./VitalsSection";
 import { MONO_FONT } from "./formStyles";
 import { clearCasualtySaveError } from "../../features/casualties/casualtiesSlice";
 import { clearTreatmentSaveError } from "../../features/treatments/treatmentsSlice";
 import { clearVitalsSaveError } from "../../features/vitals/vitalsSlice";
-import { URGENCY_COLOR_VARS, URGENCY_LABELS } from "../../constants/casualtyStatus";
+import { urgencyBadgeColors, urgencyLabel } from "../../constants/casualtyStatus";
 
 // Styles
 
 /**
- * Hosts one casualty's timestamped records — the `casualties-treatment` and
- * `vitals` rows logged against them over the course of the incident.
+ * Records a new treatment or test against one casualty.
  *
- * The casualty's own fields are edited inline in the triage table instead, so
- * there's a single place each column is written from.
+ * Recording only: what has already been logged is read in the row's expanded
+ * panel in the table, not here, so the modal stays a short form rather than a
+ * form plus a growing history. The casualty's own fields are edited inline in
+ * the table for the same reason.
  *
  * @param {{
  *   eventId: string,
@@ -49,24 +51,21 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose }) => {
     <Modal
       opened={opened}
       onClose={onClose}
-      size="64rem"
+      size="52rem"
       centered
       title={
         <Group gap="sm">
           <Text fz="lg" fw={700} c="var(--app-color-text)">
-            טיפולים ומדדים
+            עדכן תרופה/מדדים
           </Text>
           {casualty && (
             <>
               <Badge
                 styles={{
-                  root: {
-                    backgroundColor: `color-mix(in srgb, ${URGENCY_COLOR_VARS[casualty.urgency]} 16%, transparent)`,
-                    color: URGENCY_COLOR_VARS[casualty.urgency],
-                  },
+                  root: urgencyBadgeColors(casualty.urgency),
                 }}
               >
-                {URGENCY_LABELS[casualty.urgency] || casualty.urgency || "—"}
+                {urgencyLabel(casualty.urgency)}
               </Badge>
               <Text fz="sm" c="var(--app-color-text-muted)" ff={MONO_FONT}>
                 {casualty["casualty-number"] != null
@@ -92,7 +91,7 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose }) => {
           the casualties rename deliberately left alone. */}
       {opened && casualty && (
         <Tabs
-          defaultValue="treatments"
+          defaultValue="drugs"
           color="var(--app-color-primary)"
           styles={{
             tab: { color: "var(--app-color-text-muted)" },
@@ -100,23 +99,30 @@ const CasualtyFormModal = ({ eventId, casualty, opened, onClose }) => {
           }}
         >
           <Tabs.List>
+            <Tabs.Tab value="drugs" leftSection={<IconPill size={16} stroke={1.8} />}>
+              תרופות
+            </Tabs.Tab>
             <Tabs.Tab value="treatments" leftSection={<IconStethoscope size={16} stroke={1.8} />}>
-              טיפולים
+              טיפולים נוספים
             </Tabs.Tab>
             <Tabs.Tab
               value="vitals"
               leftSection={<IconActivityHeartbeat size={16} stroke={1.8} />}
             >
-              מדדים ובדיקות
+              מדדים
             </Tabs.Tab>
           </Tabs.List>
 
+          <Tabs.Panel value="drugs" pt="md">
+            <DrugsSection eventId={eventId} casualtyId={casualty.id} view="form" />
+          </Tabs.Panel>
+
           <Tabs.Panel value="treatments" pt="md">
-            <TreatmentsSection eventId={eventId} injuryId={casualty.id} />
+            <TreatmentsSection eventId={eventId} injuryId={casualty.id} view="form" />
           </Tabs.Panel>
 
           <Tabs.Panel value="vitals" pt="md">
-            <VitalsSection eventId={eventId} injuryId={casualty.id} />
+            <VitalsSection eventId={eventId} injuryId={casualty.id} view="form" />
           </Tabs.Panel>
         </Tabs>
       )}
