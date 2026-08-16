@@ -17,6 +17,8 @@ import {
 import {
   IconAlertTriangle,
   IconChevronDown,
+  IconChevronsDown,
+  IconChevronsUp,
   IconChevronUp,
   IconPlus,
 } from "@tabler/icons-react";
@@ -237,9 +239,42 @@ const MedicCasualtiesTable = ({
   emptyMessage = "לא נרשמו נפגעים באירוע זה",
 }) => {
   // Only one detail row is open at a time, mirroring the brigade table.
-  const [openCasualtyId, setOpenInjuryId] = useState(null);
+  // A set rather than a single id: "expand all" has no meaning in a
+  // one-at-a-time accordion. Rows opened individually and rows opened by the
+  // global toggle live in the same place, so the two stay in step.
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
   const rowErrorById = useSelector((state) => state.casualties.rowErrorById);
   const savingById = useSelector((state) => state.casualties.savingById);
+
+  const visibleIds = casualties.map((casualty) => casualty.id);
+  const allExpanded = visibleIds.length > 0 && visibleIds.every((id) => expandedIds.has(id));
+
+  /**
+   * Opens or closes one row, leaving the others alone.
+   *
+   * @param {string} casualtyId
+   * @returns {void}
+   */
+  function toggleRow(casualtyId) {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(casualtyId)) next.delete(casualtyId);
+      else next.add(casualtyId);
+      return next;
+    });
+  }
+
+  /**
+   * Opens every row currently rendered, or closes all of them.
+   *
+   * Only the rows on screen are added — a casualty that arrives later from a
+   * poll stays collapsed rather than springing open under the medic.
+   *
+   * @returns {void}
+   */
+  function toggleAll() {
+    setExpandedIds(allExpanded ? new Set() : new Set(visibleIds));
+  }
 
   const fields = visibleFields(tier);
   const overflow = hiddenFields(tier);
@@ -273,7 +308,22 @@ const MedicCasualtiesTable = ({
 
         <Table.Thead>
           <Table.Tr>
-            <Table.Th rowSpan={2} style={groupHeaderStyle} />
+            <Table.Th rowSpan={2} ta="center" style={groupHeaderStyle}>
+              <Tooltip label={allExpanded ? "סגור הכל" : "פתח הכל"}>
+                <ActionIcon
+                  aria-label={allExpanded ? "סגור הכל" : "פתח הכל"}
+                  variant="subtle"
+                  onClick={toggleAll}
+                  disabled={visibleIds.length === 0}
+                >
+                  {allExpanded ? (
+                    <IconChevronsUp size={18} color="var(--app-color-primary)" />
+                  ) : (
+                    <IconChevronsDown size={18} color="var(--app-color-primary)" />
+                  )}
+                </ActionIcon>
+              </Tooltip>
+            </Table.Th>
             {groups.map((group) => (
               <Table.Th key={group.key} colSpan={group.span} ta="center" style={groupHeaderStyle}>
                 {group.label}
@@ -304,10 +354,8 @@ const MedicCasualtiesTable = ({
               fields={fields}
               overflow={overflow}
               columnCount={columnCount}
-              isOpen={openCasualtyId === casualty.id}
-              onToggleOpen={() =>
-                setOpenInjuryId((current) => (current === casualty.id ? null : casualty.id))
-              }
+              isOpen={expandedIds.has(casualty.id)}
+              onToggleOpen={() => toggleRow(casualty.id)}
               rowError={rowErrorById[casualty.id]}
               isSaving={Boolean(savingById[casualty.id])}
               onOpenRecords={() => onOpenRecords(casualty)}
