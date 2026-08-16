@@ -161,12 +161,16 @@ const eventsSlice = createSlice({
       })
       .addCase(updateEvent.fulfilled, (state, action) => {
         state.updateStatus = "succeeded";
+        // Every caller sends a partial `changes` object, never the full
+        // event — merge the response instead of replacing wholesale, so a
+        // PUT response that only echoes the changed fields (rather than the
+        // complete event) doesn't wipe out everything else (e.g. created_at).
         if (state.currentEvent?.id === action.payload.id) {
-          state.currentEvent = action.payload;
+          state.currentEvent = { ...state.currentEvent, ...action.payload };
         }
         const index = state.events.findIndex((event) => event.id === action.payload.id);
         if (index !== -1) {
-          state.events[index] = action.payload;
+          state.events[index] = { ...state.events[index], ...action.payload };
         }
       })
       .addCase(updateEvent.rejected, (state, action) => {

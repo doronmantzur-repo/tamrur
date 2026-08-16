@@ -9,6 +9,7 @@ import {
   Grid,
   Group,
   Loader,
+  Modal,
   SimpleGrid,
   Stack,
   Text,
@@ -51,30 +52,22 @@ import { mockCasualties } from "./mockEventDashboardData";
 
 // Styles
 
-const STATUS_ORDER = [
-  "evaluated",
-  "controlled",
-  "ready_for_evacuation",
-  "evacuation_started",
-  "completed",
-];
-
 /** Stable reference for "nothing fetched yet" so selector fallbacks don't create a new array every render. */
 const EMPTY_ARRAY = [];
 
 /**
  * Renders the brigade single-event dashboard: a top bar (title, theme
- * toggle, open-event button, and the event's action buttons), the event
- * header (name, timer), a 4-tile stat row (total casualties, critical count,
- * evacuated count, active evacuation teams), then one row split 1/5-2/5-2/5
- * between the event map, the casualties table, and the evacuation team
- * table. The whole page is pinned to the viewport height with no page-level
- * scroll; the bottom row fills whatever space is left and each of its three
- * cards scrolls its own content internally instead. The event (by
- * :eventId), locations, aerial missions, and evacuations are all fetched
- * from the API; casualties are still hardcoded mock data, owned by a
- * teammate's in-progress work elsewhere. An approved aerial mission with no
- * evacuation row yet auto-creates one in the background.
+ * toggle, open-event button, and the close-event action), the event header
+ * (name, status dropdown, timer), a 4-tile stat row (total casualties,
+ * critical count, evacuated count, active evacuation teams), then one row
+ * split 1/5-2/5-2/5 between the event map, the casualties table, and the
+ * evacuation team table. The whole page is pinned to the viewport height
+ * with no page-level scroll; the bottom row fills whatever space is left
+ * and each of its three cards scrolls its own content internally instead.
+ * The event (by :eventId), locations, aerial missions, and evacuations are
+ * all fetched from the API; casualties are still hardcoded mock data, owned
+ * by a teammate's in-progress work elsewhere. An approved aerial mission
+ * with no evacuation row yet auto-creates one in the background.
  *
  * @returns {JSX.Element} The brigade event dashboard page.
  */
@@ -85,6 +78,13 @@ const EventDashboardPage = () => {
   const { eventId } = useParams();
 
   const [casualties] = useState(mockCasualties);
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+
+  // Recorded locally at the moment the brigade actually closes the event,
+  // rather than trusting event.closure_at to round-trip back from the API
+  // (there's no backend in this repo to confirm it does) — this is what the
+  // header's timer freezes against, so it doesn't depend on that round-trip.
+  const [localClosureAt, setLocalClosureAt] = useState(null);
 
   // Tracks mission ids we've already dispatched an auto-create for, so a
   // slow create request doesn't get triggered again by the next poll tick
@@ -181,21 +181,32 @@ const EventDashboardPage = () => {
 
   const isDark = colorScheme === "dark";
 
-  const handleAdvanceStatus = () => {
-    const currentIndex = STATUS_ORDER.indexOf(event.status);
-    const nextStatus = STATUS_ORDER[currentIndex + 1];
-    if (nextStatus) {
-      dispatch(updateEvent({ id: eventId, changes: { status: nextStatus } }));
-    }
+  // The actual close dispatch, only ever called once the confirmation modal is accepted.
+  const confirmCloseEvent = () => {
+    const closureAt = new Date().toISOString();
+    dispatch(updateEvent({ id: eventId, changes: { status: COMPLETED_STATUS, closure_at: closureAt } }));
+    setLocalClosureAt(closureAt);
+    setCloseConfirmOpen(false);
   };
 
-  const handleCloseEvent = () => {
-    dispatch(
-      updateEvent({
-        id: eventId,
-        changes: { status: COMPLETED_STATUS, closure_at: new Date().toISOString() },
-      }),
-    );
+  // Setting status to "completed" via the dropdown leads to the same
+  // confirmation as the close-event button, since both result in the event
+  // closing. Moving off "completed" (reopening) needs no confirmation,
+  // clears closure_at (a stale "closed at" timestamp would be misleading for
+  // an active event), and clears the locally-tracked one too, so a future
+  // close captures a fresh timestamp instead of reusing this one.
+  const handleStatusChange = (nextStatus) => {
+    if (nextStatus === COMPLETED_STATUS) {
+      setCloseConfirmOpen(true);
+      return;
+    }
+
+    const changes = { status: nextStatus };
+    if (event.status === COMPLETED_STATUS) {
+      changes.closure_at = null;
+      setLocalClosureAt(null);
+    }
+    dispatch(updateEvent({ id: eventId, changes }));
   };
 
   const handleRequestAerialEvac = () => {
@@ -308,12 +319,7 @@ const EventDashboardPage = () => {
               </Button>
 
               {!isInitialLoad && isShowingCurrentEvent && event && (
-                <EventActionButtons
-                  event={event}
-                  isCompleted={isEventCompleted}
-                  onAdvanceStatus={handleAdvanceStatus}
-                  onCloseEvent={handleCloseEvent}
-                />
+                <EventActionButtons isCompleted={isEventCompleted} onCloseEvent={() => setCloseConfirmOpen(true)} />
               )}
             </Group>
           </Group>
@@ -335,7 +341,12 @@ const EventDashboardPage = () => {
 
           {!isInitialLoad && isShowingCurrentEvent && (
             <>
-              <EventHeaderCard event={event} aerialEvacStatus={aerialEvacStatus} />
+              <EventHeaderCard
+                event={event}
+                aerialEvacStatus={aerialEvacStatus}
+                localClosureAt={localClosureAt}
+                onStatusChange={handleStatusChange}
+              />
 
               <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
                 <StatTile
@@ -394,6 +405,43 @@ const EventDashboardPage = () => {
           )}
         </Stack>
       </Stack>
+
+      <Modal
+        opened={closeConfirmOpen}
+        onClose={() => setCloseConfirmOpen(false)}
+        centered
+        radius="sm"
+        title={
+          <Group gap="xs" wrap="nowrap">
+            <IconAlertTriangle size={22} stroke={1.8} color="var(--app-color-warning)" />
+            <Text fw={700} fz="lg" c="var(--app-color-text)">
+              סגירת אירוע
+            </Text>
+          </Group>
+        }
+        styles={{
+          content: {
+            border: "1px solid color-mix(in srgb, var(--app-color-warning) 40%, transparent)",
+            backgroundColor: "var(--app-color-surface)",
+          },
+          header: { backgroundColor: "var(--app-color-surface)" },
+        }}
+      >
+        <Text fz="sm" c="var(--app-color-text-muted)" mb="lg">
+          האם אתה בטוח שברצונך לסגור את האירוע? האירוע יסומן כהושלם. ניתן יהיה לפתוח אותו מחדש מאוחר יותר במידת הצורך.
+        </Text>
+        <Group justify="flex-end" gap="sm">
+          <Button variant="default" onClick={() => setCloseConfirmOpen(false)}>
+            ביטול
+          </Button>
+          <Button
+            styles={{ root: { backgroundColor: "var(--app-color-warning)", color: "#FFFFFF" } }}
+            onClick={confirmCloseEvent}
+          >
+            סגור אירוע
+          </Button>
+        </Group>
+      </Modal>
     </Layout>
   );
 };
