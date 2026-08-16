@@ -172,8 +172,8 @@ const CasualtiesTableCard = ({ casualties }) => {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {visibleCasualties.map((casualty) => (
-              <Table.Tr key={casualty.id}>
+            {visibleCasualties.map((casualty, index) => (
+              <Table.Tr key={casualty.id} className="app-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
                 <Table.Td>
                   <Badge
                     styles={{

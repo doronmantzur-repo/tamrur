@@ -17,8 +17,8 @@ export const URGENCY_LABELS = {
 
 export const URGENCY_COLOR_VARS = {
   "non-urgent": "var(--app-color-success)",
-  urgent: "var(--app-color-warning)",
-  expectant: "var(--app-color-error)",
+  urgent: "var(--app-color-error)",
+  expectant: "var(--app-color-warning)",
   deceased: "var(--app-color-text-muted)",
 };
 
