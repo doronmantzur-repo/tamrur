@@ -30,7 +30,7 @@ function formatDateTime(isoString) {
  */
 const EventDetailsCard = ({ event }) => {
   const isCompleted = event.status === COMPLETED_STATUS;
-  const elapsedSeconds = useElapsedSeconds(isCompleted ? null : event.created_at);
+  const elapsedSeconds = useElapsedSeconds(event.created_at, isCompleted ? event.closure_at : null);
 
   return (
     <DashboardCard
