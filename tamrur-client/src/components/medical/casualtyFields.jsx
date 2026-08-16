@@ -84,6 +84,10 @@ function renderUrgencyBadge(value) {
  * move into the expandable detail row.
  * `width` is the fixed pixel width used by `<colgroup>`; the one field with a
  * null width absorbs whatever space is left over.
+ * `centered` centres the header and the cell. It is set from `urgency` onward —
+ * in RTL those are דחיפות and every column to its left, which are the narrow
+ * coded ones (numbers, badges, ticks) that read better centred than the wide
+ * free-text ones before them.
  *
  * @type {Array<Object>}
  */
@@ -129,6 +133,7 @@ export const CASUALTY_FIELDS = [
     // this clears back to "not yet triaged" like any other select.
     placeholder: URGENCY_NONE_PLACEHOLDER,
     renderValue: renderUrgencyBadge,
+    centered: true,
   },
   {
     key: "evac-priority",
@@ -138,6 +143,7 @@ export const CASUALTY_FIELDS = [
     width: 52,
     core: true,
     cell: "number",
+    centered: true,
   },
   {
     key: "treatment-priority",
@@ -146,6 +152,7 @@ export const CASUALTY_FIELDS = [
     width: 52,
     core: false,
     cell: "number",
+    centered: true,
   },
   {
     key: "evac-ability",
@@ -156,6 +163,7 @@ export const CASUALTY_FIELDS = [
     cell: "select",
     options: EVAC_ABILITY_OPTIONS,
     labels: EVAC_ABILITY_LABELS,
+    centered: true,
   },
   {
     key: "ventilation",
@@ -166,6 +174,7 @@ export const CASUALTY_FIELDS = [
     cell: "select",
     options: VENTILATION_OPTIONS,
     labels: VENTILATION_LABELS,
+    centered: true,
   },
   {
     key: "escort-type",
@@ -176,8 +185,17 @@ export const CASUALTY_FIELDS = [
     cell: "select",
     options: ESCORT_TYPE_OPTIONS,
     labels: ESCORT_TYPE_LABELS,
+    centered: true,
   },
-  { key: "helivac", header: "מוסק", group: "evac", width: 48, core: false, cell: "toggle" },
+  {
+    key: "helivac",
+    header: "מוסק",
+    group: "evac",
+    width: 48,
+    core: false,
+    cell: "toggle",
+    centered: true,
+  },
   {
     key: "evac-ready",
     header: "מוכן לפינוי",
@@ -186,6 +204,7 @@ export const CASUALTY_FIELDS = [
     width: 52,
     core: true,
     cell: "toggle",
+    centered: true,
   },
 ];
 
@@ -319,7 +338,10 @@ export function draftToFields(draft) {
       return { ...fields, [field.key]: trimmed === "" ? null : trimmed };
     }
 
-    return { ...fields, [field.key]: value === "" || value === undefined ? null : value };
+    return {
+      ...fields,
+      [field.key]: value === "" || value === undefined ? null : value,
+    };
   }, {});
 }
 

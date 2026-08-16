@@ -58,10 +58,26 @@ export function urgencyBadgeColors(value) {
   };
 }
 
+/**
+ * The evacuation postures a casualty can be recorded with.
+ *
+ * `walk` is deliberately absent: only sitting and lying are offered now. The
+ * Postgres enum still contains `walk`, so the label below is kept purely so a
+ * legacy row written before this change still renders "הליכה" rather than a raw
+ * `walk` — see EVAC_ABILITY_LABELS.
+ */
+export const EVAC_ABILITY_ORDER = ["sit", "lie"];
+
+/**
+ * Display labels, including the retired `walk` value.
+ *
+ * Read-only: use EVAC_ABILITY_OPTIONS for anything the medic can pick from.
+ */
 export const EVAC_ABILITY_LABELS = {
-  walk: "הליכה",
   sit: "ישיבה",
   lie: "שכיבה",
+  // Retired — never offered, only rendered if an old row still holds it.
+  walk: "הליכה",
 };
 
 // recommended-evac-dest is free text, not a fixed enum — translate the known
@@ -85,7 +101,9 @@ function toSelectOptions(labels, order) {
 // insert, so the medic form only ever offers these.
 export const URGENCY_OPTIONS = toSelectOptions(URGENCY_LABELS, URGENCY_ORDER);
 
-export const EVAC_ABILITY_OPTIONS = toSelectOptions(EVAC_ABILITY_LABELS);
+// Built from the explicit order, not from the label map, so the retired `walk`
+// label can stay readable without becoming selectable again.
+export const EVAC_ABILITY_OPTIONS = toSelectOptions(EVAC_ABILITY_LABELS, EVAC_ABILITY_ORDER);
 
 export const EVAC_DEST_OPTIONS = toSelectOptions(EVAC_DEST_LABELS);
 

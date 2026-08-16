@@ -85,11 +85,7 @@ export const CasualtyActions = ({ rowError, isSaving, onOpenRecords }) => (
     {/* Recording only. The log of what was already recorded lives in the row's
         expanded panel, so the two concerns don't share a surface. */}
     <Tooltip label="עדכן תרופה/מדדים">
-      <ActionIcon
-        aria-label="עדכן תרופה/מדדים"
-        variant="subtle"
-        onClick={onOpenRecords}
-      >
+      <ActionIcon aria-label="עדכן תרופה/מדדים" variant="subtle" onClick={onOpenRecords}>
         <IconPlus size={18} stroke={2.2} color="var(--app-color-primary)" />
       </ActionIcon>
     </Tooltip>
@@ -157,10 +153,12 @@ const CasualtyRow = ({
         }
 
         {fields.map((field) => (
-          <Table.Td key={field.key}>{renderCell(field, casualty, save)}</Table.Td>
+          <Table.Td key={field.key} className={field.centered ? "medic-cell-center" : undefined}>
+            {renderCell(field, casualty, save)}
+          </Table.Td>
         ))}
 
-        <Table.Td>
+        <Table.Td className="medic-cell-center">
           <Checkbox
             aria-label={casualty.is_evacuated ? "בטל סימון פונה" : "סמן כפונה"}
             title={casualty.is_evacuated ? "בטל סימון פונה" : "סמן כפונה"}
@@ -171,12 +169,8 @@ const CasualtyRow = ({
           />
         </Table.Td>
 
-        <Table.Td>
-          <CasualtyActions
-            rowError={rowError}
-            isSaving={isSaving}
-            onOpenRecords={onOpenRecords}
-          />
+        <Table.Td className="medic-cell-center">
+          <CasualtyActions rowError={rowError} isSaving={isSaving} onOpenRecords={onOpenRecords} />
         </Table.Td>
       </Table.Tr>
 
@@ -340,7 +334,9 @@ const MedicCasualtiesTable = ({
           </Table.Tr>
           <Table.Tr>
             {fields.map((field) => (
-              <Table.Th key={field.key}>{tier === "compact" ? field.short : field.header}</Table.Th>
+              <Table.Th key={field.key} ta={field.centered ? "center" : undefined}>
+                {tier === "compact" ? field.short : field.header}
+              </Table.Th>
             ))}
           </Table.Tr>
         </Table.Thead>
