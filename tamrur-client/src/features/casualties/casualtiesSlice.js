@@ -76,7 +76,9 @@ export const updateCasualty = createAsyncThunk(
  * once (e.g. the airforce page lists every event needing aerial evac).
  * `savingById` tracks in-flight row saves individually, so the casualty table
  * can spin only the row being saved instead of every row at once.
- * @type {{byEventId: Object<string, Array<Object>>, status: string, error: string|null, saveStatus: string, saveError: string|null, savingById: Object<string, boolean>, rowErrorById: Object<string, string>}}
+ * `rollbackById` holds the pre-write values of an optimistically applied update,
+ * so a rejected save can put the row back exactly as it was.
+ * @type {{byEventId: Object<string, Array<Object>>, status: string, error: string|null, saveStatus: string, saveError: string|null, savingById: Object<string, boolean>, rowErrorById: Object<string, string>, rollbackById: Object<string, Object>}}
  */
 const initialState = {
   byEventId: {},
@@ -86,7 +88,24 @@ const initialState = {
   saveError: null,
   savingById: {},
   rowErrorById: {},
+  rollbackById: {},
 };
+
+/**
+ * Finds a casualty row across every loaded event.
+ *
+ * @param {Object} state - The slice state.
+ * @param {string} casualtyId
+ * @returns {Object | undefined} The row, if it is loaded.
+ */
+function findCasualty(state, casualtyId) {
+  for (const casualties of Object.values(state.byEventId)) {
+    const found = casualties.find((casualty) => casualty.id === casualtyId);
+    if (found) return found;
+  }
+
+  return undefined;
+}
 
 /**
  * Casualties slice: holds each fetched event's casualties, keyed by event id.
@@ -136,14 +155,30 @@ const casualtiesSlice = createSlice({
       // `action` is needed here: the row-level save state is keyed by the
       // casualty id carried on the thunk argument.
       .addCase(updateCasualty.pending, (state, action) => {
+        const { id, fields } = action.meta.arg;
         state.saveStatus = "loading";
         state.saveError = null;
-        state.savingById[action.meta.arg.id] = true;
-        delete state.rowErrorById[action.meta.arg.id];
+        state.savingById[id] = true;
+        delete state.rowErrorById[id];
+
+        // Applied optimistically: ticking "פונה" has to move the casualty out of
+        // the active table on the click, not a round trip later. The previous
+        // values are kept so a rejected save can put the row back.
+        const casualty = findCasualty(state, id);
+        if (!casualty) return;
+
+        state.rollbackById[id] = Object.fromEntries(
+          Object.keys(fields).map((key) => [key, casualty[key]]),
+        );
+        Object.assign(casualty, fields);
       })
       .addCase(updateCasualty.fulfilled, (state, action) => {
         state.saveStatus = "succeeded";
         delete state.savingById[action.meta.arg.id];
+        delete state.rollbackById[action.meta.arg.id];
+
+        // The server row is authoritative — it carries fields the optimistic
+        // patch couldn't know, such as the stamped evacuated_at.
         const casualties = state.byEventId[action.payload["event-id"]] || [];
         const index = casualties.findIndex((casualty) => casualty.id === action.payload.id);
         if (index !== -1) {
@@ -151,10 +186,18 @@ const casualtiesSlice = createSlice({
         }
       })
       .addCase(updateCasualty.rejected, (state, action) => {
+        const { id } = action.meta.arg;
         state.saveStatus = "failed";
         state.saveError = action.payload;
-        delete state.savingById[action.meta.arg.id];
-        state.rowErrorById[action.meta.arg.id] = action.payload;
+        delete state.savingById[id];
+        state.rowErrorById[id] = action.payload;
+
+        const casualty = findCasualty(state, id);
+        const rollback = state.rollbackById[id];
+        if (casualty && rollback) {
+          Object.assign(casualty, rollback);
+        }
+        delete state.rollbackById[id];
       });
   },
 });

@@ -81,6 +81,29 @@ export const updateEvent = createAsyncThunk(
 );
 
 /**
+ * Opens or closes casualty gathering for an event.
+ *
+ * The server recomputes the event's derived `evac_status` inside the same write,
+ * so the response carries the new value rather than the client inferring it.
+ *
+ * @param {{ id: string, gatheringStatus: "in_progress" | "completed" }} params
+ * @returns {Promise<Object>} The updated event row.
+ */
+export const updateEventGatheringStatus = createAsyncThunk(
+  "events/updateGatheringStatus",
+  async ({ id, gatheringStatus }, { rejectWithValue }) => {
+    try {
+      const response = await TamrurAPI.put(`/events/${id}`, { gatheringStatus });
+      return response.data.event;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message ?? "Failed to update gathering status",
+      );
+    }
+  },
+);
+
+/**
  * @type {{
  *   events: Array<Object>,
  *   status: string,
@@ -174,6 +197,33 @@ const eventsSlice = createSlice({
         }
       })
       .addCase(updateEvent.rejected, (state, action) => {
+        state.updateStatus = "failed";
+        state.updateError = action.payload;
+      })
+      .addCase(updateEventGatheringStatus.pending, (state) => {
+        state.updateStatus = "loading";
+        state.updateError = null;
+      })
+      .addCase(updateEventGatheringStatus.fulfilled, (state, action) => {
+        state.updateStatus = "succeeded";
+
+        // Patch just these two fields. update_event returns the raw row, whose
+        // `location` has not been through ST_AsGeoJSON — merging the whole
+        // response would replace the map coordinates with raw geography.
+        const patch = {
+          gathering_status: action.payload.gathering_status,
+          evac_status: action.payload.evac_status,
+        };
+
+        if (state.currentEvent?.id === action.payload.id) {
+          Object.assign(state.currentEvent, patch);
+        }
+        const event = state.events.find((item) => item.id === action.payload.id);
+        if (event) {
+          Object.assign(event, patch);
+        }
+      })
+      .addCase(updateEventGatheringStatus.rejected, (state, action) => {
         state.updateStatus = "failed";
         state.updateError = action.payload;
       });

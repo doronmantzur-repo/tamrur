@@ -134,3 +134,28 @@ export function labelFor(labels, value) {
 
   return labels[value] ?? value;
 }
+// איסוף נפגעים — whether medics are still collecting casualties at the scene.
+// Drives the event's derived evac_status; see the server's 003 migration.
+export const GATHERING_IN_PROGRESS = "in_progress";
+export const GATHERING_COMPLETED = "completed";
+
+export const GATHERING_STATUS_LABELS = {
+  [GATHERING_IN_PROGRESS]: "בתהליך",
+  [GATHERING_COMPLETED]: "הושלם",
+};
+
+// evac_status is derived server-side and never written by the client:
+//   0 = no casualty evacuated yet
+//   1 = evacuation under way
+//   2 = gathering closed and every casualty evacuated
+export const EVAC_STATUS_LABELS = {
+  0: "פינוי טרם החל",
+  1: "פינוי בתהליך",
+  2: "פינוי הושלם",
+};
+
+export const EVAC_STATUS_COLOR_VARS = {
+  0: "var(--app-color-text-muted)",
+  1: "var(--app-color-warning)",
+  2: "var(--app-color-success)",
+};

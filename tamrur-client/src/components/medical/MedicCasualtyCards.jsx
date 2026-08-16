@@ -1,7 +1,7 @@
 // React
 
 // External libraries
-import { Group, Paper, Stack, Text } from "@mantine/core";
+import { Checkbox, Group, Paper, Stack, Text } from "@mantine/core";
 
 // Internal application modules
 import NewCasualtyForm from "./NewCasualtyForm";
@@ -25,7 +25,7 @@ const BODY_FIELDS = CASUALTY_FIELDS.filter((field) => !HEADER_KEYS.includes(fiel
  * @param {{ casualty: Object, rowError: string | undefined, isSaving: boolean, onOpenRecords: () => void }} props
  * @returns {JSX.Element} The casualty card.
  */
-const CasualtyCard = ({ casualty, rowError, isSaving, onOpenRecords }) => {
+const CasualtyCard = ({ casualty, rowError, isSaving, onOpenRecords, onToggleEvacuated }) => {
   const save = useCellSave(casualty.id);
 
   return (
@@ -48,7 +48,20 @@ const CasualtyCard = ({ casualty, rowError, isSaving, onOpenRecords }) => {
           {renderCell(URGENCY_FIELD, casualty, save)}
         </Group>
 
-        <CasualtyActions rowError={rowError} isSaving={isSaving} onOpenRecords={onOpenRecords} />
+        <Group gap="xs" wrap="nowrap">
+          <Checkbox
+            aria-label={casualty.is_evacuated ? "בטל סימון פונה" : "סמן כפונה"}
+            checked={Boolean(casualty.is_evacuated)}
+            onChange={(changed) => onToggleEvacuated(casualty, changed.currentTarget.checked)}
+            label={
+              <Text fz="0.68rem" c="var(--app-color-text-muted)">
+                פונה
+              </Text>
+            }
+            color="var(--app-color-primary)"
+          />
+          <CasualtyActions rowError={rowError} isSaving={isSaving} onOpenRecords={onOpenRecords} />
+        </Group>
       </Group>
 
       <CasualtyFieldsPanel fields={BODY_FIELDS} casualty={casualty} save={save} />
@@ -82,6 +95,7 @@ const MedicCasualtyCards = ({
   isAdding,
   onAddingChange,
   onOpenRecords,
+  onToggleEvacuated,
 }) => (
   <Stack gap="sm">
     {isAdding && (
@@ -105,6 +119,7 @@ const MedicCasualtyCards = ({
         rowError={rowErrorById[casualty.id]}
         isSaving={Boolean(savingById[casualty.id])}
         onOpenRecords={() => onOpenRecords(casualty)}
+        onToggleEvacuated={onToggleEvacuated}
       />
     ))}
 
