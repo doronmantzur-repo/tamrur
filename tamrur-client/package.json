@@ -14,6 +14,8 @@
     "url": "git+https://github.com/doronmantzur-repo/tamrur.git"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/utilities": "^3.2.2",
     "@mantine/core": "^9.5.1",
     "@mantine/hooks": "^9.5.1",
     "@reduxjs/toolkit": "^2.12.0",

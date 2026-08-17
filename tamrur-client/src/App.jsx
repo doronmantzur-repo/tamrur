@@ -6,6 +6,7 @@ import MedicPage from "./pages/medical/MedicPage";
 import AerialEvacuationPage from "./pages/airforce/AerialEvacuationPage";
 import CreateEventForm from "./components/events/CreateEventForm";
 import EventDashboardPage from "./pages/brigade/EventDashboardPage";
+import EventQueueBoardPage from "./pages/brigade/EventQueueBoardPage";
 import EventAnalystPage from "./pages/event-analyst/EventAnalystPage";
 import MedicQueryPage from "./pages/medic-query/MedicQueryPage";
 const App = () => {
@@ -17,6 +18,7 @@ const App = () => {
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/medic" element={<MedicPage />} />
       <Route path="/airforce" element={<AerialEvacuationPage />} />
+      <Route path="/brigade" element={<EventQueueBoardPage />} />
       <Route path="/brigade/:eventId" element={<EventDashboardPage />} />
       <Route path="/analyst" element={<EventAnalystPage />} />
       <Route path="/query" element={<MedicQueryPage />} />
