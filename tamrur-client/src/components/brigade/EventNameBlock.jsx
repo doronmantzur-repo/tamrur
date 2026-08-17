@@ -10,6 +10,16 @@ import { IconCheck, IconPencil, IconX } from "@tabler/icons-react";
 // Styles
 
 /**
+ * Shared fixed height for every element in the description row — the
+ * "תיאור:" label, the pencil icon, the textarea, and its save/cancel icons
+ * — in both the view and edit states. Without this, the row's height is
+ * whatever each state's content happens to need, and switching between them
+ * (e.g. clicking the pencil) changes that height, pushing the rest of the
+ * top bar down. Same value in both states keeps the row's height constant.
+ */
+const DESCRIPTION_ROW_HEIGHT = "1.75rem";
+
+/**
  * Renders the selected event's name and a client-only note beneath it,
  * edited via the pencil icon — the DB has no description column, so this
  * never persists past the browser session. Sits directly under "לוח בקרה:
@@ -61,12 +71,13 @@ const EventNameBlock = ({ event }) => {
             style={{
               flex: 1,
               minWidth: "22rem",
+              height: DESCRIPTION_ROW_HEIGHT,
               boxSizing: "border-box",
               backgroundColor: "var(--app-color-background)",
               color: "var(--app-color-text)",
               border: "1px solid var(--app-color-border)",
               borderRadius: "0.25rem",
-              padding: "0.25rem 0.5rem",
+              padding: "0.125rem 0.5rem",
               fontFamily: "inherit",
               fontSize: "0.875rem",
               lineHeight: 1.4,
@@ -77,7 +88,7 @@ const EventNameBlock = ({ event }) => {
             variant="subtle"
             aria-label="שמור תיאור"
             onClick={saveDescription}
-            styles={{ root: { color: "var(--app-color-success)" } }}
+            styles={{ root: { color: "var(--app-color-success)", height: DESCRIPTION_ROW_HEIGHT, width: DESCRIPTION_ROW_HEIGHT } }}
           >
             <IconCheck size={14} stroke={1.8} />
           </ActionIcon>
@@ -85,7 +96,9 @@ const EventNameBlock = ({ event }) => {
             variant="subtle"
             aria-label="בטל"
             onClick={cancelEditingDescription}
-            styles={{ root: { color: "var(--app-color-text-muted)" } }}
+            styles={{
+              root: { color: "var(--app-color-text-muted)", height: DESCRIPTION_ROW_HEIGHT, width: DESCRIPTION_ROW_HEIGHT },
+            }}
           >
             <IconX size={14} stroke={1.8} />
           </ActionIcon>
@@ -97,7 +110,12 @@ const EventNameBlock = ({ event }) => {
         // rather than the caption and pencil being grouped apart from the
         // description they're both describing.
         <Group gap="xs" wrap="nowrap" align="center">
-          <Text fz="xs" fw={600} c="var(--app-color-text-muted)">
+          <Text
+            fz="xs"
+            fw={600}
+            c="var(--app-color-text-muted)"
+            style={{ height: DESCRIPTION_ROW_HEIGHT, display: "flex", alignItems: "center" }}
+          >
             תיאור:
           </Text>
           {description && (
@@ -110,7 +128,13 @@ const EventNameBlock = ({ event }) => {
               variant="subtle"
               aria-label={description ? "ערוך תיאור" : "הוסף תיאור"}
               onClick={startEditingDescription}
-              styles={{ root: { color: "var(--app-color-text-muted)" } }}
+              styles={{
+                root: {
+                  color: "var(--app-color-text-muted)",
+                  height: DESCRIPTION_ROW_HEIGHT,
+                  width: DESCRIPTION_ROW_HEIGHT,
+                },
+              }}
             >
               <IconPencil size={14} stroke={1.8} />
             </ActionIcon>
