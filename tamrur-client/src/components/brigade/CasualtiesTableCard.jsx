@@ -1,25 +1,34 @@
 // React
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 
 // External libraries
-import { Badge, Box, Table } from "@mantine/core";
-import { IconBandage, IconCheck, IconX } from "@tabler/icons-react";
+import { ActionIcon, Badge, Box, Group, Stack, Table, Text } from "@mantine/core";
+import {
+  IconBandage,
+  IconCheck,
+  IconChevronDown,
+  IconChevronUp,
+  IconX,
+} from "@tabler/icons-react";
 
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
 import ColumnHeader from "../dashboard/ColumnHeader";
 import {
+  ESCORT_TYPE_LABELS,
   EVAC_ABILITY_LABELS,
+  normalizeTreatments,
   URGENCY_LABELS,
   URGENCY_ORDER,
   urgencyBadgeColors,
   urgencyLabel,
+  VENTILATION_LABELS,
 } from "../../constants/casualtyStatus";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
 
 // Styles
 
-const timeFormatter = new Intl.DateTimeFormat("he-IL", { timeStyle: "short" });
+const MONO_FONT = 'ui-monospace, "SF Mono", "Consolas", monospace';
 
 function YesNo({ value }) {
   return value ? (
@@ -39,24 +48,94 @@ const ABILITY_FILTER_OPTIONS = Object.keys(EVAC_ABILITY_LABELS).map((key) => ({
   value: key,
   label: EVAC_ABILITY_LABELS[key],
 }));
+const VENTILATION_FILTER_OPTIONS = Object.keys(VENTILATION_LABELS).map((key) => ({
+  value: key,
+  label: VENTILATION_LABELS[key],
+}));
+const ESCORT_TYPE_FILTER_OPTIONS = Object.keys(ESCORT_TYPE_LABELS).map((key) => ({
+  value: key,
+  label: ESCORT_TYPE_LABELS[key],
+}));
+
+/** Number of columns in the main row: the chevron plus the 9 default-visible fields. */
+const COLUMN_COUNT = 10;
 
 /** Accessors used for both sorting and filter-value matching (filter matching always compares as strings). */
 const COLUMN_ACCESSORS = {
+  "casualty-number": (casualty) => casualty["casualty-number"],
   urgency: (casualty) => casualty.urgency,
-  "evac-ability": (casualty) => casualty["evac-ability"],
   "evac-priority": (casualty) => casualty["evac-priority"],
-  escort: (casualty) => Boolean(casualty.escort),
-  "recommended-evac-dest": (casualty) => casualty["recommended-evac-dest"] || "—",
+  "evac-ability": (casualty) => casualty["evac-ability"],
+  ventilation: (casualty) => casualty.ventilation,
+  "escort-type": (casualty) => casualty["escort-type"],
+  helivac: (casualty) => Boolean(casualty.helivac),
   "evac-ready": (casualty) => Boolean(casualty["evac-ready"]),
-  created_at: (casualty) => casualty.created_at,
+  is_evacuated: (casualty) => Boolean(casualty.is_evacuated),
 };
 
 /**
+ * Renders a casualty's fields that don't fit the default row, disclosed
+ * beneath it when the chevron is opened — same pattern the medic page's
+ * casualties table uses for its own overflow fields, but read-only here.
+ *
+ * @param {{ casualty: object }} props
+ * @returns {JSX.Element} The expanded detail panel.
+ */
+function CasualtyDetails({ casualty }) {
+  const treatments = normalizeTreatments(casualty.treatments);
+
+  return (
+    <Group align="flex-start" gap="xl" wrap="wrap">
+      <Stack gap={2} style={{ flex: 2, minWidth: "12rem" }}>
+        <Text fz="0.68rem" c="var(--app-color-text-muted)">
+          פציעות
+        </Text>
+        <Text fz="sm">{casualty.description || "—"}</Text>
+      </Stack>
+
+      <Stack gap={2}>
+        <Text fz="0.68rem" c="var(--app-color-text-muted)">
+          קדימות לטיפול
+        </Text>
+        <Text fz="sm" ff={MONO_FONT}>
+          {casualty["treatment-priority"] ?? "—"}
+        </Text>
+      </Stack>
+
+      <Stack gap={2} style={{ flex: 1, minWidth: "10rem" }}>
+        <Text fz="0.68rem" c="var(--app-color-text-muted)">
+          טיפולים
+        </Text>
+        {treatments.length === 0 ? (
+          <Text fz="sm" c="var(--app-color-text-muted)">
+            —
+          </Text>
+        ) : (
+          <Stack gap={4}>
+            {treatments.map((treatment, index) => (
+              <Group key={index} gap={6} wrap="nowrap">
+                {treatment.done ? (
+                  <IconCheck size={14} color="var(--app-color-success)" />
+                ) : (
+                  <IconX size={14} color="var(--app-color-text-muted)" />
+                )}
+                <Text fz="sm">{treatment.text}</Text>
+              </Group>
+            ))}
+          </Stack>
+        )}
+      </Stack>
+    </Group>
+  );
+}
+
+/**
  * Renders the full casualties table as its own card, meant to sit beside the
- * event map and the evacuations table. The DB has no link between a casualty
- * and an evacuation, so this only shows the casualty's own fields. Every
- * column is sortable (click header, one active column at a time); every
- * column but the creation time also has a searchable filter pick-list.
+ * event map and the evacuations table. Every default column is sortable
+ * (click header, one active column at a time) and filterable via a
+ * searchable pick-list. The columns the paper form treats as secondary
+ * (פציעות, טיפולים, קדימות לטיפול) live in a per-row detail panel disclosed
+ * by the chevron, rather than cluttering the default view.
  *
  * @param {{ casualties: Array<object> }} props
  * @returns {JSX.Element} The casualties table card.
@@ -64,6 +143,16 @@ const COLUMN_ACCESSORS = {
 const CasualtiesTableCard = ({ casualties }) => {
   const [sort, setSort] = useState({ key: null, direction: null });
   const [filters, setFilters] = useState({});
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
+
+  const toggleRow = (id) => {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const priorityOptions = useMemo(() => {
     const values = [...new Set(casualties.map((casualty) => casualty["evac-priority"]).filter((v) => v != null))].sort(
@@ -72,9 +161,11 @@ const CasualtiesTableCard = ({ casualties }) => {
     return values.map((value) => ({ value: String(value), label: String(value) }));
   }, [casualties]);
 
-  const destOptions = useMemo(() => {
-    const values = [...new Set(casualties.map((casualty) => casualty["recommended-evac-dest"] || "—"))];
-    return values.map((value) => ({ value, label: value }));
+  const numberOptions = useMemo(() => {
+    const values = [...new Set(casualties.map((casualty) => casualty["casualty-number"]).filter((v) => v != null))].sort(
+      (a, b) => a - b,
+    );
+    return values.map((value) => ({ value: String(value), label: String(value) }));
   }, [casualties]);
 
   const handleSortClick = (key) => {
@@ -148,10 +239,21 @@ const CasualtiesTableCard = ({ casualties }) => {
         <Table verticalSpacing="sm" fz="sm">
           <Table.Thead>
             <Table.Tr>
+              <Table.Th />
+              <ColumnHeader
+                label="מס' פצוע"
+                {...sortProps("casualty-number")}
+                {...filterProps("casualty-number", numberOptions)}
+              />
               <ColumnHeader
                 label="דחיפות"
                 {...sortProps("urgency")}
                 {...filterProps("urgency", URGENCY_FILTER_OPTIONS)}
+              />
+              <ColumnHeader
+                label="עדיפות לפינוי"
+                {...sortProps("evac-priority")}
+                {...filterProps("evac-priority", priorityOptions)}
               />
               <ColumnHeader
                 label="יכולת פינוי"
@@ -159,62 +261,93 @@ const CasualtiesTableCard = ({ casualties }) => {
                 {...filterProps("evac-ability", ABILITY_FILTER_OPTIONS)}
               />
               <ColumnHeader
-                label="עדיפות"
-                {...sortProps("evac-priority")}
-                {...filterProps("evac-priority", priorityOptions)}
+                label="מונשם"
+                {...sortProps("ventilation")}
+                {...filterProps("ventilation", VENTILATION_FILTER_OPTIONS)}
               />
-              <ColumnHeader label="ליווי" {...sortProps("escort")} {...filterProps("escort", BOOL_FILTER_OPTIONS)} />
               <ColumnHeader
-                label="יעד מומלץ"
-                {...sortProps("recommended-evac-dest")}
-                {...filterProps("recommended-evac-dest", destOptions)}
+                label="ליווי"
+                {...sortProps("escort-type")}
+                {...filterProps("escort-type", ESCORT_TYPE_FILTER_OPTIONS)}
               />
+              <ColumnHeader label="מוסק" {...sortProps("helivac")} {...filterProps("helivac", BOOL_FILTER_OPTIONS)} />
               <ColumnHeader
                 label="מוכן לפינוי"
                 {...sortProps("evac-ready")}
                 {...filterProps("evac-ready", BOOL_FILTER_OPTIONS)}
               />
-              <ColumnHeader label="נפתח" {...sortProps("created_at")} />
+              <ColumnHeader
+                label="פונה"
+                {...sortProps("is_evacuated")}
+                {...filterProps("is_evacuated", BOOL_FILTER_OPTIONS)}
+              />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {visibleCasualties.map((casualty, index) => (
-              <Table.Tr key={casualty.id} className="app-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
-                <Table.Td>
-                  <Badge
-                    styles={{
-                      root: {
-                        ...urgencyBadgeColors(casualty.urgency),
-                      },
-                    }}
-                  >
-                    {urgencyLabel(casualty.urgency)}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>
-                <Table.Td ff='ui-monospace, "SF Mono", "Consolas", monospace'>
-                  {casualty["evac-priority"] ?? "—"}
-                </Table.Td>
-                <Table.Td>
-                  <YesNo value={casualty.escort} />
-                </Table.Td>
-                <Table.Td c="var(--app-color-text-muted)">
-                  {casualty["recommended-evac-dest"] || "—"}
-                </Table.Td>
-                <Table.Td>
-                  <YesNo value={casualty["evac-ready"]} />
-                </Table.Td>
-                <Table.Td
-                  c="var(--app-color-text-muted)"
-                  ff='ui-monospace, "SF Mono", "Consolas", monospace'
-                >
-                  {casualty.created_at ? timeFormatter.format(new Date(casualty.created_at)) : "—"}
-                </Table.Td>
-              </Table.Tr>
-            ))}
+            {visibleCasualties.map((casualty, index) => {
+              const isOpen = expandedIds.has(casualty.id);
+
+              return (
+                <Fragment key={casualty.id}>
+                  <Table.Tr className="app-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
+                    <Table.Td>
+                      <ActionIcon
+                        aria-label={isOpen ? "הסתר פרטים" : "הצג פרטים"}
+                        title={isOpen ? "הסתר פרטים" : "הצג פרטים"}
+                        variant="subtle"
+                        onClick={() => toggleRow(casualty.id)}
+                      >
+                        {isOpen ? (
+                          <IconChevronUp size={18} color="var(--app-color-primary)" />
+                        ) : (
+                          <IconChevronDown size={18} color="var(--app-color-primary)" />
+                        )}
+                      </ActionIcon>
+                    </Table.Td>
+                    <Table.Td ff={MONO_FONT}>{casualty["casualty-number"] ?? "—"}</Table.Td>
+                    <Table.Td>
+                      <Badge
+                        styles={{
+                          root: {
+                            ...urgencyBadgeColors(casualty.urgency),
+                          },
+                        }}
+                      >
+                        {urgencyLabel(casualty.urgency)}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td ff={MONO_FONT}>{casualty["evac-priority"] ?? "—"}</Table.Td>
+                    <Table.Td>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>
+                    <Table.Td>{VENTILATION_LABELS[casualty.ventilation] || "—"}</Table.Td>
+                    <Table.Td>{ESCORT_TYPE_LABELS[casualty["escort-type"]] || "—"}</Table.Td>
+                    <Table.Td>
+                      <YesNo value={casualty.helivac} />
+                    </Table.Td>
+                    <Table.Td>
+                      <YesNo value={casualty["evac-ready"]} />
+                    </Table.Td>
+                    <Table.Td>
+                      <YesNo value={casualty.is_evacuated} />
+                    </Table.Td>
+                  </Table.Tr>
+
+                  {isOpen && (
+                    <Table.Tr>
+                      <Table.Td
+                        colSpan={COLUMN_COUNT}
+                        p="md"
+                        style={{ backgroundColor: "var(--app-color-surface-high)" }}
+                      >
+                        <CasualtyDetails casualty={casualty} />
+                      </Table.Td>
+                    </Table.Tr>
+                  )}
+                </Fragment>
+              );
+            })}
             {visibleCasualties.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={7} c="var(--app-color-text-muted)" ta="center">
+                <Table.Td colSpan={COLUMN_COUNT} c="var(--app-color-text-muted)" ta="center">
                   {casualties.length === 0 ? "לא נרשמו נפגעים באירוע זה" : "אין נפגעים התואמים לסינון"}
                 </Table.Td>
               </Table.Tr>

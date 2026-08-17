@@ -33,9 +33,9 @@ const EventActionButtons = ({ isCompleted, onCloseEvent }) => {
   return (
     <Group gap="sm" wrap="wrap">
       <Button
-        leftSection={<IconCheck size={16} stroke={1.8} />}
+        leftSection={<IconCheck size={18} stroke={1.8} />}
         size="sm"
-        mih="2.25rem"
+        mih="2.5rem"
         disabled={isCompleted}
         onClick={onCloseEvent}
         styles={{

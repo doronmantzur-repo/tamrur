@@ -198,6 +198,11 @@ export const GATHERING_STATUS_LABELS = {
   [GATHERING_COMPLETED]: "הושלם",
 };
 
+export const GATHERING_STATUS_COLOR_VARS = {
+  [GATHERING_IN_PROGRESS]: "var(--app-color-warning)",
+  [GATHERING_COMPLETED]: "var(--app-color-success)",
+};
+
 // evac_status is derived server-side and never written by the client:
 //   0 = no casualty evacuated yet
 //   1 = evacuation under way
