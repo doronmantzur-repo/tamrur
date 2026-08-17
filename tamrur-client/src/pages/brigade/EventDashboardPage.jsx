@@ -28,6 +28,7 @@ import EventTimerChip from "../../components/brigade/EventTimerChip";
 import EventActionButtons from "../../components/brigade/EventActionButtons";
 import EventMapCard from "../../components/brigade/EventMapCard";
 import CasualtiesTableCard from "../../components/brigade/CasualtiesTableCard";
+import EvacuatedCasualtiesCard from "../../components/brigade/EvacuatedCasualtiesCard";
 import EvacuationsTable from "../../components/brigade/EvacuationsTable";
 import { COMPLETED_STATUS } from "../../constants/eventStatus";
 import { fetchLocations } from "../../features/locations/locationsSlice";
@@ -59,13 +60,18 @@ const EMPTY_ARRAY = [];
  * and the page's separate 4-tile stat row — the active-teams count that
  * used to be a tile here now lives as a badge in EvacuationsTable's own
  * header instead. Below that, one row split 1/5-2/5-2/5 between the event
- * map, the casualties table, and the evacuation team table. The whole page
- * is pinned to the viewport height with no page-level scroll; the bottom
- * row fills whatever space is left and each of its three cards scrolls its
- * own content internally instead. The event (by :eventId), locations,
- * aerial missions, evacuations, and casualties are all fetched from the
- * API. An approved aerial mission with no evacuation row yet auto-creates
- * one in the background.
+ * map, the casualties table (not-yet-evacuated casualties only), and the
+ * evacuation team column — which itself stacks EvacuationsTable (the
+ * working table, most of the column's height) above EvacuatedCasualtiesCard
+ * (a compact read-only reference of who's already evacuated and when,
+ * mirroring the medic page's own active/evacuated split — casualties are
+ * split into the two halves once here and handed to each card separately).
+ * The whole page is pinned to the viewport height with no page-level
+ * scroll; the bottom row fills whatever space is left and each card
+ * scrolls its own content internally instead. The event (by :eventId),
+ * locations, aerial missions, evacuations, and casualties are all fetched
+ * from the API. An approved aerial mission with no evacuation row yet
+ * auto-creates one in the background.
  *
  * @returns {JSX.Element} The brigade event dashboard page.
  */
@@ -226,6 +232,12 @@ const EventDashboardPage = () => {
   };
 
   const isEventCompleted = event?.status === COMPLETED_STATUS;
+
+  // Split once here, same as the medic page's own active/evacuated split —
+  // CasualtiesTableCard gets the active half, EvacuatedCasualtiesCard the
+  // other, so neither needs to know how the other one filters.
+  const activeCasualties = casualties.filter((casualty) => !casualty.is_evacuated);
+  const evacuatedCasualties = casualties.filter((casualty) => casualty.is_evacuated);
 
   return (
     <Layout>
@@ -398,19 +410,31 @@ const EventDashboardPage = () => {
                   <EventMapCard event={event} locations={locations} />
                 </Grid.Col>
                 <Grid.Col span={{ base: 10, md: 4 }} style={{ height: "100%" }}>
-                  <CasualtiesTableCard casualties={casualties} />
+                  <CasualtiesTableCard casualties={activeCasualties} />
                 </Grid.Col>
                 <Grid.Col span={{ base: 10, md: 4 }} style={{ height: "100%" }}>
-                  <EvacuationsTable
-                    evacuations={evacuations}
-                    locations={locations}
-                    aerialMissions={aerialMissions}
-                    isCompleted={isEventCompleted}
-                    aerialEvacStatus={aerialEvacStatus}
-                    onUpdateEvacuation={handleUpdateEvacuation}
-                    onDeleteEvacuation={handleDeleteEvacuation}
-                    onRequestAerialEvac={handleRequestAerialEvac}
-                  />
+                  {/* Evacuations gets the larger share (it's still the
+                      working table — inline editing, request buttons);
+                      the evacuated-casualties card underneath is a
+                      compact reference, not a working table, so it
+                      doesn't need equal room. */}
+                  <Stack gap="sm" style={{ height: "100%" }}>
+                    <Box style={{ flex: 3, minHeight: 0 }}>
+                      <EvacuationsTable
+                        evacuations={evacuations}
+                        locations={locations}
+                        aerialMissions={aerialMissions}
+                        isCompleted={isEventCompleted}
+                        aerialEvacStatus={aerialEvacStatus}
+                        onUpdateEvacuation={handleUpdateEvacuation}
+                        onDeleteEvacuation={handleDeleteEvacuation}
+                        onRequestAerialEvac={handleRequestAerialEvac}
+                      />
+                    </Box>
+                    <Box style={{ flex: 2, minHeight: 0 }}>
+                      <EvacuatedCasualtiesCard casualties={evacuatedCasualties} />
+                    </Box>
+                  </Stack>
                 </Grid.Col>
               </Grid>
             </>

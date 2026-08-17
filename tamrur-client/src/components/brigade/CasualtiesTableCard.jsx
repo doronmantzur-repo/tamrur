@@ -57,8 +57,8 @@ const ESCORT_TYPE_FILTER_OPTIONS = Object.keys(ESCORT_TYPE_LABELS).map((key) => 
   label: ESCORT_TYPE_LABELS[key],
 }));
 
-/** Number of columns in the main row: the chevron plus the 9 default-visible fields. */
-const COLUMN_COUNT = 10;
+/** Number of columns in the main row: the chevron plus the 8 default-visible fields. */
+const COLUMN_COUNT = 9;
 
 /** Accessors used for both sorting and filter-value matching (filter matching always compares as strings). */
 const COLUMN_ACCESSORS = {
@@ -70,7 +70,6 @@ const COLUMN_ACCESSORS = {
   "escort-type": (casualty) => casualty["escort-type"],
   helivac: (casualty) => Boolean(casualty.helivac),
   "evac-ready": (casualty) => Boolean(casualty["evac-ready"]),
-  is_evacuated: (casualty) => Boolean(casualty.is_evacuated),
 };
 
 /**
@@ -131,11 +130,17 @@ function CasualtyDetails({ casualty }) {
 
 /**
  * Renders the full casualties table as its own card, meant to sit beside the
- * event map and the evacuations table. Every default column is sortable
- * (click header, one active column at a time) and filterable via a
- * searchable pick-list. The columns the paper form treats as secondary
- * (פציעות, טיפולים, קדימות לטיפול) live in a per-row detail panel disclosed
- * by the chevron, rather than cluttering the default view.
+ * event map and the evacuations table. Expects only not-yet-evacuated
+ * casualties — the caller (EventDashboardPage) splits the full list in two,
+ * same as the medic page's own active/evacuated split; already-evacuated
+ * casualties get their own read-only card instead (see
+ * `EvacuatedCasualtiesCard`, stacked under EvacuationsTable), so there's no
+ * "פונה" column here — every row in this table is implicitly not evacuated.
+ * Every default column is sortable (click header, one active column at a
+ * time) and filterable via a searchable pick-list. The columns the paper
+ * form treats as secondary (פציעות, טיפולים, קדימות לטיפול) live in a
+ * per-row detail panel disclosed by the chevron, rather than cluttering the
+ * default view.
  *
  * @param {{ casualties: Array<object> }} props
  * @returns {JSX.Element} The casualties table card.
@@ -276,11 +281,6 @@ const CasualtiesTableCard = ({ casualties }) => {
                 {...sortProps("evac-ready")}
                 {...filterProps("evac-ready", BOOL_FILTER_OPTIONS)}
               />
-              <ColumnHeader
-                label="פונה"
-                {...sortProps("is_evacuated")}
-                {...filterProps("is_evacuated", BOOL_FILTER_OPTIONS)}
-              />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -325,9 +325,6 @@ const CasualtiesTableCard = ({ casualties }) => {
                     </Table.Td>
                     <Table.Td>
                       <YesNo value={casualty["evac-ready"]} />
-                    </Table.Td>
-                    <Table.Td>
-                      <YesNo value={casualty.is_evacuated} />
                     </Table.Td>
                   </Table.Tr>
 
