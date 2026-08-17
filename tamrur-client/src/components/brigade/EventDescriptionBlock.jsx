@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 // External libraries
-import { ActionIcon, Group, Text, Title, Tooltip } from "@mantine/core";
+import { ActionIcon, Group, Text, Tooltip } from "@mantine/core";
 import { IconCheck, IconPencil, IconX } from "@tabler/icons-react";
 
 // Internal application modules
@@ -20,16 +20,14 @@ import { IconCheck, IconPencil, IconX } from "@tabler/icons-react";
 const DESCRIPTION_ROW_HEIGHT = "1.75rem";
 
 /**
- * Renders the selected event's name and a client-only note beneath it,
- * edited via the pencil icon — the DB has no description column, so this
- * never persists past the browser session. Sits directly under "לוח בקרה:
- * חטיבה" in the top bar, so the event name matches that title's font size
- * (fz="1.5rem") rather than a smaller card-header size.
+ * Renders a client-only note about the selected event, edited via the
+ * pencil icon — the DB has no description column, so this never persists
+ * past the browser session. Sits under the event name (rendered inline
+ * with the shield icon by the caller) in the top bar.
  *
- * @param {{ event: object }} props
- * @returns {JSX.Element} The event name and description block.
+ * @returns {JSX.Element} The event description block.
  */
-const EventNameBlock = ({ event }) => {
+const EventDescriptionBlock = () => {
   const [description, setDescription] = useState("");
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState("");
@@ -50,10 +48,6 @@ const EventNameBlock = ({ event }) => {
 
   return (
     <>
-      <Title order={2} fz="1.5rem" fw={700} c="var(--app-color-text)">
-        {event.name || "אירוע ללא שם"}
-      </Title>
-
       {isEditingDescription ? (
         // A plain HTML textarea, not Mantine's <Textarea> — Mantine
         // auto-wraps it in an Input.Wrapper div that the theme forces to
@@ -145,4 +139,4 @@ const EventNameBlock = ({ event }) => {
   );
 };
 
-export default EventNameBlock;
+export default EventDescriptionBlock;

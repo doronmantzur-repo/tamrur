@@ -239,12 +239,50 @@ table {
   animation: app-pulse-glow 1.6s ease-in-out infinite;
 }
 
+/* Same box-shadow pulse as app-pulse-glow, minus the opacity dip — used on
+   StatTile, which drives its own opacity separately (the "dimmed" state
+   when another tile is selected). app-pulse-glow's opacity keyframe would
+   fight that: a paused CSS animation still holds its last keyframe value
+   for the properties it controls, even over a plain inline style, so a
+   tile frozen mid-pulse could get stuck at the animation's own opacity
+   instead of the dimmed 0.4 it's supposed to show. Kept box-shadow-only so
+   pausing it (see StatTile's animationPlayState) never fights dimming. */
+@keyframes app-pulse-glow-tile {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  50% {
+    box-shadow: 0 0 10px 3px currentColor;
+  }
+}
+
+.app-pulse-glow-tile {
+  animation: app-pulse-glow-tile 1.6s ease-in-out infinite;
+}
+
 .app-pulse-scale {
   animation: app-pulse-scale 1s ease-in-out infinite;
 }
 
 .app-fade-in {
   animation: app-fade-in 0.25s ease-out both;
+}
+
+/* EvacuationProgressCard's bar segments: hover brightening needs a real
+   :hover selector, which an inline `style` prop can't express. Opacity
+   (dimmed-by-selection) and the selected ring stay inline, since those are
+   computed per render from React state rather than a fixed hover rule. */
+.app-bar-segment {
+  cursor: pointer;
+  transition:
+    filter 0.15s ease,
+    opacity 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.app-bar-segment:hover {
+  filter: brightness(1.15);
 }
 
 /* Leaflet's required tile-provider attribution: theme-matched instead of
