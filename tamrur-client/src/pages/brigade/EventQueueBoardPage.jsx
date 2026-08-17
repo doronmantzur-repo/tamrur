@@ -1,0 +1,270 @@
+// React
+import { useEffect, useMemo, useState } from "react";
+
+// External libraries
+import { ActionIcon, Alert, Box, Group, Loader, Stack, Text, Title, useMantineColorScheme } from "@mantine/core";
+import { IconAlertTriangle, IconLayoutKanban, IconMap2, IconMoon, IconSearch, IconSun, IconTable } from "@tabler/icons-react";
+import { useDispatch, useSelector } from "react-redux";
+
+// Internal application modules
+import Layout from "../../components/layout/Layout";
+import DateNavBar from "../../components/brigade/DateNavBar";
+import EventQueueTable from "../../components/brigade/EventQueueTable";
+import EventQueueMap from "../../components/brigade/EventQueueMap";
+import EventQueueBoard from "../../components/brigade/EventQueueBoard";
+import { COMPLETED_STATUS } from "../../constants/eventStatus";
+import { fetchEvents, updateEvent } from "../../features/events/eventsSlice";
+import { POLL_INTERVAL_MS } from "../../constants/polling";
+import { isEventActiveOnDate, isSameDay, startOfDay } from "../../utils/eventQueueDate";
+
+// Styles
+
+/** The three ways to look at the queue. */
+const VIEW_OPTIONS = [
+  { key: "table", label: "טבלה", icon: IconTable },
+  { key: "map", label: "מפה", icon: IconMap2 },
+  { key: "board", label: "לוח", icon: IconLayoutKanban },
+];
+
+/**
+ * The brigade's event queue board — every event, filterable by date and by
+ * name, switchable between a table, a map, and a kanban board. All three
+ * views now read the same real event list (`fetchEvents`, polled like every
+ * other brigade page — see `POLL_INTERVAL_MS`). Kanban's drag actions
+ * dispatch `updateEvent` (via `handleStatusChange`/`handleCompleteEvent`
+ * below, both returning the dispatch's promise) — the optimistic move and
+ * the revert-on-failure both live in EventQueueBoard itself, since it's the
+ * one that needs to react to success/failure, not this page. Kanban's "+"
+ * doesn't have its own create form — it navigates to the existing
+ * `/create-event` page (`CreateEventForm`), since that already handles the
+ * one thing a lightweight inline form couldn't (a required location pin)
+ * and already guarantees new events start as "evaluated" (status is never
+ * sent from that form — the server always decides it).
+ *
+ * @returns {JSX.Element} The event queue board page.
+ */
+const EventQueueBoardPage = () => {
+  const dispatch = useDispatch();
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+
+  const events = useSelector((state) => state.events.events);
+  const apiStatus = useSelector((state) => state.events.status);
+  const apiError = useSelector((state) => state.events.error);
+
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("table");
+
+  const isToday = isSameDay(selectedDate, startOfDay(new Date()));
+
+  useEffect(() => {
+    dispatch(fetchEvents());
+
+    // Other brigade members can open/close events at any time, so keep
+    // polling instead of fetching once — same pattern every other brigade
+    // page already uses.
+    const intervalId = setInterval(() => {
+      dispatch(fetchEvents());
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [dispatch]);
+
+  const isInitialLoad = apiStatus === "loading" && events.length === 0;
+
+  const visibleEvents = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return events.filter(
+      (event) => isEventActiveOnDate(event, selectedDate) && (!query || event.name.toLowerCase().includes(query)),
+    );
+  }, [events, selectedDate, searchQuery]);
+
+  // Both return the dispatch's promise (rather than catching here) so
+  // EventQueueBoard can await it: it needs to know success/failure itself,
+  // to revert its own optimistic move if the update fails.
+  const handleStatusChange = (eventId, status) =>
+    dispatch(updateEvent({ id: eventId, changes: { status } })).unwrap();
+
+  const handleCompleteEvent = (eventId) =>
+    dispatch(updateEvent({ id: eventId, changes: { status: COMPLETED_STATUS, closure_at: new Date().toISOString() } })).unwrap();
+
+  const isDark = colorScheme === "dark";
+
+  return (
+    <Layout>
+      <Box
+        aria-hidden="true"
+        pos="absolute"
+        inset={0}
+        style={{
+          zIndex: 0,
+          pointerEvents: "none",
+          opacity: 0.2,
+          backgroundImage: "radial-gradient(rgba(197, 160, 89, 0.1) 1px, transparent 1px)",
+          backgroundSize: "20px 20px",
+        }}
+      />
+
+      <Box
+        aria-hidden="true"
+        pos="absolute"
+        inset={0}
+        style={{
+          zIndex: 0,
+          pointerEvents: "none",
+          background:
+            "linear-gradient(to bottom, color-mix(in srgb, var(--app-color-surface-high) 50%, transparent), var(--app-color-background))",
+        }}
+      />
+
+      <Stack
+        align="stretch"
+        h="100vh"
+        px="var(--app-page-padding)"
+        py="md"
+        pos="relative"
+        style={{ zIndex: 10, overflow: "hidden" }}
+      >
+        <Group justify="space-between" align="center">
+          <Title order={1} fz="1.5rem" fw={700} c="var(--app-color-text)">
+            לוח מעקב אירועים
+          </Title>
+
+          <ActionIcon
+            aria-label="החלף מצב תצוגה"
+            title="החלף מצב תצוגה"
+            variant="default"
+            size={40}
+            radius="sm"
+            onClick={() => toggleColorScheme()}
+            styles={{
+              root: {
+                backgroundColor: "var(--app-color-surface)",
+                borderColor: "var(--app-color-border)",
+                color: "var(--app-color-text)",
+              },
+            }}
+          >
+            {isDark ? (
+              <IconSun aria-hidden="true" size={20} stroke={1.8} />
+            ) : (
+              <IconMoon aria-hidden="true" size={20} stroke={1.8} />
+            )}
+          </ActionIcon>
+        </Group>
+
+        <Group justify="space-between" gap="sm" wrap="wrap">
+          <Group
+            gap="xs"
+            style={{
+              flex: 1,
+              minWidth: "16rem",
+              maxWidth: "22rem",
+              backgroundColor: "var(--app-color-surface)",
+              border: "1px solid var(--app-color-border)",
+              borderRadius: "var(--mantine-radius-sm)",
+              padding: "0.4rem 0.7rem",
+            }}
+          >
+            <IconSearch size={15} stroke={2} color="var(--app-color-text-muted)" />
+            <input
+              type="text"
+              placeholder="חיפוש אירוע לפי שם..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.currentTarget.value)}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: "transparent",
+                border: 0,
+                outline: "none",
+                color: "var(--app-color-text)",
+                fontFamily: "inherit",
+                fontSize: "0.9rem",
+              }}
+            />
+          </Group>
+
+          <Group
+            gap={4}
+            p={4}
+            style={{
+              backgroundColor: "var(--app-color-surface)",
+              border: "1px solid var(--app-color-border)",
+              borderRadius: "var(--mantine-radius-sm)",
+            }}
+          >
+            {VIEW_OPTIONS.map(({ key, label, icon: Icon }) => (
+              <Box
+                key={key}
+                component="button"
+                type="button"
+                onClick={() => setViewMode(key)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  padding: "0.4rem 0.75rem",
+                  borderRadius: "calc(var(--mantine-radius-sm) - 0.05rem)",
+                  border: 0,
+                  cursor: "pointer",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  fontFamily: "inherit",
+                  backgroundColor: viewMode === key ? "var(--app-color-primary)" : "transparent",
+                  color: viewMode === key ? "var(--app-color-primary-text)" : "var(--app-color-text-muted)",
+                }}
+              >
+                <Icon size={15} stroke={2} />
+                {label}
+              </Box>
+            ))}
+          </Group>
+        </Group>
+
+        <DateNavBar selectedDate={selectedDate} onChange={setSelectedDate} />
+
+        {apiStatus === "failed" && (
+          <Alert
+            icon={<IconAlertTriangle size={18} />}
+            title="טעינת האירועים נכשלה"
+            styles={{
+              root: {
+                backgroundColor: "color-mix(in srgb, var(--app-color-error) 12%, transparent)",
+                borderInlineStart: "3px solid var(--app-color-error)",
+              },
+              title: { color: "var(--app-color-error)" },
+              body: { color: "var(--app-color-text)" },
+            }}
+          >
+            {apiError}
+          </Alert>
+        )}
+
+        {isInitialLoad && (
+          <Stack align="center" gap="xs" py="xl">
+            <Loader color="var(--app-color-primary)" />
+            <Text fz="sm" c="var(--app-color-text-muted)">
+              טוען אירועים...
+            </Text>
+          </Stack>
+        )}
+
+        {!isInitialLoad && viewMode === "table" && <EventQueueTable events={visibleEvents} />}
+
+        {!isInitialLoad && viewMode === "map" && <EventQueueMap events={visibleEvents} />}
+
+        {!isInitialLoad && viewMode === "board" && (
+          <EventQueueBoard
+            events={visibleEvents}
+            isToday={isToday}
+            onStatusChange={handleStatusChange}
+            onCompleteEvent={handleCompleteEvent}
+          />
+        )}
+      </Stack>
+    </Layout>
+  );
+};
+
+export default EventQueueBoardPage;
