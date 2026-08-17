@@ -1,9 +1,10 @@
 // React
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // External libraries
-import { ActionIcon, Box, Group, Stack, Title, useMantineColorScheme } from "@mantine/core";
-import { IconLayoutKanban, IconMap2, IconMoon, IconSearch, IconSun, IconTable } from "@tabler/icons-react";
+import { ActionIcon, Alert, Box, Group, Loader, Stack, Text, Title, useMantineColorScheme } from "@mantine/core";
+import { IconAlertTriangle, IconLayoutKanban, IconMap2, IconMoon, IconSearch, IconSun, IconTable } from "@tabler/icons-react";
+import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
@@ -12,12 +13,13 @@ import EventQueueTable from "../../components/brigade/EventQueueTable";
 import EventQueueMap from "../../components/brigade/EventQueueMap";
 import EventQueueBoard from "../../components/brigade/EventQueueBoard";
 import { COMPLETED_STATUS } from "../../constants/eventStatus";
-import { mockQueueEvents } from "./mockEventQueueBoardData";
+import { fetchEvents, updateEvent } from "../../features/events/eventsSlice";
+import { POLL_INTERVAL_MS } from "../../constants/polling";
 import { isEventActiveOnDate, isSameDay, startOfDay } from "../../utils/eventQueueDate";
 
 // Styles
 
-/** The three ways to look at the queue — table, map, and kanban are all built now. */
+/** The three ways to look at the queue. */
 const VIEW_OPTIONS = [
   { key: "table", label: "טבלה", icon: IconTable },
   { key: "map", label: "מפה", icon: IconMap2 },
@@ -26,23 +28,49 @@ const VIEW_OPTIONS = [
 
 /**
  * The brigade's event queue board — every event, filterable by date and by
- * name, switchable between a table, a map, and a kanban board. Still on
- * mock data (`events` state, seeded from `mockQueueEvents`): Redux/API
- * wiring is a separate, later pass once the layout itself is signed off,
- * so the status-change/create handlers below just update local state —
- * nothing dispatches or fetches. Kanban drag/create is only live on
- * today's date; a past date is read-only history.
+ * name, switchable between a table, a map, and a kanban board. All three
+ * views now read the same real event list (`fetchEvents`, polled like every
+ * other brigade page — see `POLL_INTERVAL_MS`). Kanban's drag actions
+ * dispatch `updateEvent` (via `handleStatusChange`/`handleCompleteEvent`
+ * below, both returning the dispatch's promise) — the optimistic move and
+ * the revert-on-failure both live in EventQueueBoard itself, since it's the
+ * one that needs to react to success/failure, not this page. Kanban's "+"
+ * doesn't have its own create form — it navigates to the existing
+ * `/create-event` page (`CreateEventForm`), since that already handles the
+ * one thing a lightweight inline form couldn't (a required location pin)
+ * and already guarantees new events start as "evaluated" (status is never
+ * sent from that form — the server always decides it).
  *
  * @returns {JSX.Element} The event queue board page.
  */
 const EventQueueBoardPage = () => {
+  const dispatch = useDispatch();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-  const [events, setEvents] = useState(mockQueueEvents);
+
+  const events = useSelector((state) => state.events.events);
+  const apiStatus = useSelector((state) => state.events.status);
+  const apiError = useSelector((state) => state.events.error);
+
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("table");
 
   const isToday = isSameDay(selectedDate, startOfDay(new Date()));
+
+  useEffect(() => {
+    dispatch(fetchEvents());
+
+    // Other brigade members can open/close events at any time, so keep
+    // polling instead of fetching once — same pattern every other brigade
+    // page already uses.
+    const intervalId = setInterval(() => {
+      dispatch(fetchEvents());
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [dispatch]);
+
+  const isInitialLoad = apiStatus === "loading" && events.length === 0;
 
   const visibleEvents = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -51,34 +79,14 @@ const EventQueueBoardPage = () => {
     );
   }, [events, selectedDate, searchQuery]);
 
-  const handleStatusChange = (eventId, status) => {
-    setEvents((prev) => prev.map((event) => (event.id === eventId ? { ...event, status } : event)));
-  };
+  // Both return the dispatch's promise (rather than catching here) so
+  // EventQueueBoard can await it: it needs to know success/failure itself,
+  // to revert its own optimistic move if the update fails.
+  const handleStatusChange = (eventId, status) =>
+    dispatch(updateEvent({ id: eventId, changes: { status } })).unwrap();
 
-  const handleCompleteEvent = (eventId) => {
-    setEvents((prev) =>
-      prev.map((event) =>
-        event.id === eventId ? { ...event, status: COMPLETED_STATUS, closure_at: new Date().toISOString() } : event,
-      ),
-    );
-  };
-
-  const handleCreateEvent = ({ name, type }) => {
-    setEvents((prev) => [
-      ...prev,
-      {
-        id: Math.max(...prev.map((event) => event.id)) + 1,
-        name,
-        type,
-        status: "evaluated",
-        created_at: new Date().toISOString(),
-        closure_at: null,
-        // No location picker in this simplified create flow — the event
-        // just won't have a marker on the map view until one is added.
-        location: null,
-      },
-    ]);
-  };
+  const handleCompleteEvent = (eventId) =>
+    dispatch(updateEvent({ id: eventId, changes: { status: COMPLETED_STATUS, closure_at: new Date().toISOString() } })).unwrap();
 
   const isDark = colorScheme === "dark";
 
@@ -216,17 +224,42 @@ const EventQueueBoardPage = () => {
 
         <DateNavBar selectedDate={selectedDate} onChange={setSelectedDate} />
 
-        {viewMode === "table" && <EventQueueTable events={visibleEvents} />}
+        {apiStatus === "failed" && (
+          <Alert
+            icon={<IconAlertTriangle size={18} />}
+            title="טעינת האירועים נכשלה"
+            styles={{
+              root: {
+                backgroundColor: "color-mix(in srgb, var(--app-color-error) 12%, transparent)",
+                borderInlineStart: "3px solid var(--app-color-error)",
+              },
+              title: { color: "var(--app-color-error)" },
+              body: { color: "var(--app-color-text)" },
+            }}
+          >
+            {apiError}
+          </Alert>
+        )}
 
-        {viewMode === "map" && <EventQueueMap events={visibleEvents} />}
+        {isInitialLoad && (
+          <Stack align="center" gap="xs" py="xl">
+            <Loader color="var(--app-color-primary)" />
+            <Text fz="sm" c="var(--app-color-text-muted)">
+              טוען אירועים...
+            </Text>
+          </Stack>
+        )}
 
-        {viewMode === "board" && (
+        {!isInitialLoad && viewMode === "table" && <EventQueueTable events={visibleEvents} />}
+
+        {!isInitialLoad && viewMode === "map" && <EventQueueMap events={visibleEvents} />}
+
+        {!isInitialLoad && viewMode === "board" && (
           <EventQueueBoard
             events={visibleEvents}
             isToday={isToday}
             onStatusChange={handleStatusChange}
             onCompleteEvent={handleCompleteEvent}
-            onCreateEvent={handleCreateEvent}
           />
         )}
       </Stack>

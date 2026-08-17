@@ -4,7 +4,6 @@
 import { Badge, Box, Group, Text } from "@mantine/core";
 import { IconClock, IconLock } from "@tabler/icons-react";
 import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 
 // Internal application modules
 import { COMPLETED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
@@ -14,47 +13,22 @@ import { COMPLETED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_TYPE_LABELS } from "..
 const timeFormatter = new Intl.DateTimeFormat("he-IL", { hour: "2-digit", minute: "2-digit", hour12: false });
 
 /**
- * One draggable card in the kanban board. Completed events (final, per the
- * app-wide "closing is one-way" rule — see EventBadgesRow) and anything on
- * a past date (the board is read-only history there) can't be dragged, so
- * the drag hook is disabled rather than just visually discouraged. Click
- * and drag share the element with no separate handle: the parent
- * `DndContext`'s `PointerSensor` uses a distance threshold, so a plain
- * click never starts a drag and this card's own `onClick` fires normally.
+ * The card's visual content only, with no drag/click wiring of its own —
+ * shared between the real draggable card below and its `DragOverlay`
+ * preview in `EventQueueBoard`. The overlay can't just render another
+ * `EventQueueCard` for the same event, since `useDraggable` only allows one
+ * registration per id and the overlay renders *alongside* the original
+ * while a drag is in progress, not instead of it.
  *
- * @param {{ event: object, isToday: boolean, onOpen: () => void }} props
- * @returns {JSX.Element} The kanban card.
+ * @param {{ event: object }} props
+ * @returns {JSX.Element} The card's inner content.
  */
-const EventQueueCard = ({ event, isToday, onOpen }) => {
+export function EventQueueCardContent({ event }) {
   const isLocked = event.status === COMPLETED_STATUS;
   const color = EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)";
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: event.id,
-    disabled: isLocked || !isToday,
-  });
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.4 : 1,
-  };
-
   return (
-    <Box
-      ref={setNodeRef}
-      style={{
-        ...style,
-        backgroundColor: "var(--app-color-surface-high)",
-        border: "1px solid var(--app-color-border)",
-        borderRadius: "var(--mantine-radius-sm)",
-        padding: "0.55rem 0.65rem",
-        cursor: isLocked || !isToday ? "default" : "grab",
-        transition: "border-color 0.15s ease, filter 0.15s ease",
-      }}
-      onClick={onOpen}
-      {...listeners}
-      {...attributes}
-    >
+    <>
       <Badge
         size="xs"
         variant="outline"
@@ -87,6 +61,55 @@ const EventQueueCard = ({ event, isToday, onOpen }) => {
           <Text fz="xs">סופי — לא ניתן להזיז</Text>
         </Group>
       )}
+    </>
+  );
+}
+
+/**
+ * One draggable card in the kanban board. Completed events (final, per the
+ * app-wide "closing is one-way" rule — see EventBadgesRow) and anything on
+ * a past date (the board is read-only history there) can't be dragged, so
+ * the drag hook is disabled rather than just visually discouraged. Click
+ * and drag share the element with no separate handle: the parent
+ * `DndContext`'s `PointerSensor` uses a distance threshold, so a plain
+ * click never starts a drag and this card's own `onClick` fires normally.
+ *
+ * The card itself stays put (just dimmed) while dragging — it does *not*
+ * follow the pointer via `useDraggable`'s own `transform`. Each column's
+ * card list scrolls (`overflow-y: auto`), which clips any child the moment
+ * it's transformed outside that column's box — exactly what happens the
+ * instant a drag crosses into a neighboring column. `EventQueueBoard`'s
+ * `DragOverlay` (portal-rendered, unaffected by any column's overflow) is
+ * what actually renders the moving copy.
+ *
+ * @param {{ event: object, isToday: boolean, onOpen: () => void }} props
+ * @returns {JSX.Element} The kanban card.
+ */
+const EventQueueCard = ({ event, isToday, onOpen }) => {
+  const isLocked = event.status === COMPLETED_STATUS;
+
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: event.id,
+    disabled: isLocked || !isToday,
+  });
+
+  return (
+    <Box
+      ref={setNodeRef}
+      style={{
+        backgroundColor: "var(--app-color-surface-high)",
+        border: "1px solid var(--app-color-border)",
+        borderRadius: "var(--mantine-radius-sm)",
+        padding: "0.55rem 0.65rem",
+        cursor: isLocked || !isToday ? "default" : "grab",
+        opacity: isDragging ? 0.4 : 1,
+        transition: "border-color 0.15s ease, filter 0.15s ease",
+      }}
+      onClick={onOpen}
+      {...listeners}
+      {...attributes}
+    >
+      <EventQueueCardContent event={event} />
     </Box>
   );
 };

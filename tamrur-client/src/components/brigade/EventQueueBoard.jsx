@@ -2,13 +2,14 @@
 import { useMemo, useState } from "react";
 
 // External libraries
-import { Box, Button, Group, Modal, Select, Text, TextInput } from "@mantine/core";
-import { IconAlertTriangle, IconShieldHalfFilled } from "@tabler/icons-react";
+import { Alert, Box, Button, Group, Modal, Stack, Text } from "@mantine/core";
+import { IconAlertTriangle } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragOverlay, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 
 // Internal application modules
 import QueueColumn from "./QueueColumn";
+import { EventQueueCardContent } from "./EventQueueCard";
 import { COMPLETED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
 
 // Styles
@@ -19,8 +20,6 @@ const STATUS_LIST = Object.entries(EVENT_STATUS_LABELS).map(([key, label]) => ({
   label,
   color: EVENT_STATUS_COLOR_VARS[key] || "var(--app-color-text-muted)",
 }));
-
-const TYPE_OPTIONS = Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 
 const SORTERS = {
   created_desc: (a, b) => new Date(b.created_at) - new Date(a.created_at),
@@ -34,54 +33,112 @@ const SORTERS = {
  * Every queue sorts independently (`sortModeByStatus`, not one board-wide
  * order). Dropping into "completed" opens a confirm modal first — that
  * status is final everywhere else in the app (EventBadgesRow) — every
- * other move applies immediately. New events can only ever be created into
- * "evaluated" (the "+" only exists on that column, per product decision),
- * never opened directly into a later status. The whole board is read-only
- * (no drag, no create) while `isToday` is false, since dragging changes an
+ * other move applies immediately.
+ *
+ * Moves are optimistic: `statusOverrides` shows a card in its new column
+ * the instant it's dropped, laid on top of the real `events` prop from
+ * Redux (`effectiveEvents`), while `onStatusChange`/`onCompleteEvent`
+ * dispatch the real `updateEvent` update in the background. The override
+ * clears once that resolves (by then the store has the real value anyway)
+ * or, on failure, clears and reverts the card to its actual status while
+ * showing an error banner — otherwise a card would visibly snap back to
+ * its old column for a moment and then jump to the new one once the
+ * network round-trip finished, since nothing here has any control over
+ * how long that takes.
+ *
+ * The "+" (evaluated column only — new events can only ever start there)
+ * navigates to the existing `/create-event` page rather than opening its
+ * own form: that page already collects the location `createEvent`
+ * requires (a lightweight inline form here couldn't, with no location
+ * picker of its own) and already guarantees new events start as
+ * "evaluated" since it never sends a status. The whole board is read-only
+ * (no drag, no "+") while `isToday` is false, since dragging changes an
  * event's *current* status, which isn't meaningful while browsing a past
- * day. Still mock data: `onStatusChange`/`onCompleteEvent`/`onCreateEvent`
- * just update the page's local state, no dispatch/fetch here.
+ * day.
  *
  * @param {{
  *   events: Array<object>,
  *   isToday: boolean,
- *   onStatusChange: (id: string|number, status: string) => void,
- *   onCompleteEvent: (id: string|number) => void,
- *   onCreateEvent: (input: { name: string, type: string }) => void,
+ *   onStatusChange: (id: string|number, status: string) => Promise<unknown>,
+ *   onCompleteEvent: (id: string|number) => Promise<unknown>,
  * }} props
  * @returns {JSX.Element} The kanban board.
  */
-const EventQueueBoard = ({ events, isToday, onStatusChange, onCompleteEvent, onCreateEvent }) => {
+const EventQueueBoard = ({ events, isToday, onStatusChange, onCompleteEvent }) => {
   const navigate = useNavigate();
 
   const [sortModeByStatus, setSortModeByStatus] = useState(() =>
     Object.fromEntries(STATUS_LIST.map((s) => [s.key, "created_desc"])),
   );
   const [pendingDrop, setPendingDrop] = useState(null); // { eventId, name } | null
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createName, setCreateName] = useState("");
-  const [createType, setCreateType] = useState(TYPE_OPTIONS[0].value);
+  const [activeEvent, setActiveEvent] = useState(null);
+  const [activeWidth, setActiveWidth] = useState(null);
+  const [statusOverrides, setStatusOverrides] = useState({}); // { [eventId]: status }
+  const [dropError, setDropError] = useState(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  // The optimistic layer: same events, with any in-flight move's status
+  // already applied, so the board reflects a drop instantly instead of
+  // waiting on the network round-trip.
+  const effectiveEvents = useMemo(
+    () => events.map((event) => (event.id in statusOverrides ? { ...event, status: statusOverrides[event.id] } : event)),
+    [events, statusOverrides],
+  );
 
   const columns = useMemo(
     () =>
       STATUS_LIST.map((status) => ({
         status,
-        events: events.filter((event) => event.status === status.key).sort(SORTERS[sortModeByStatus[status.key]]),
+        events: effectiveEvents.filter((event) => event.status === status.key).sort(SORTERS[sortModeByStatus[status.key]]),
       })),
-    [events, sortModeByStatus],
+    [effectiveEvents, sortModeByStatus],
   );
 
   const handleSortChange = (statusKey, mode) => {
     setSortModeByStatus((prev) => ({ ...prev, [statusKey]: mode }));
   };
 
+  const clearOverride = (eventId) => {
+    setStatusOverrides((prev) => {
+      if (!(eventId in prev)) return prev;
+      const next = { ...prev };
+      delete next[eventId];
+      return next;
+    });
+  };
+
+  /** Shows the move immediately, then reconciles once the real dispatch settles. */
+  const applyOptimisticMove = (eventId, toStatus, dispatchMove) => {
+    setDropError(null);
+    setStatusOverrides((prev) => ({ ...prev, [eventId]: toStatus }));
+
+    dispatchMove().then(
+      () => clearOverride(eventId),
+      (message) => {
+        clearOverride(eventId);
+        setDropError(message);
+      },
+    );
+  };
+
+  const handleDragStart = ({ active }) => {
+    setActiveEvent(effectiveEvents.find((event) => event.id === active.id) ?? null);
+    setActiveWidth(active.rect.current?.initial?.width ?? null);
+  };
+
+  const clearActiveDrag = () => {
+    setActiveEvent(null);
+    setActiveWidth(null);
+  };
+
   const handleDragEnd = ({ active, over }) => {
+    clearActiveDrag();
+
     if (!over) return;
     const eventId = active.id;
     const toStatus = over.id;
-    const source = events.find((event) => event.id === eventId);
+    const source = effectiveEvents.find((event) => event.id === eventId);
     if (!source || source.status === toStatus) return;
 
     if (toStatus === COMPLETED_STATUS) {
@@ -89,30 +146,37 @@ const EventQueueBoard = ({ events, isToday, onStatusChange, onCompleteEvent, onC
       return;
     }
 
-    onStatusChange(eventId, toStatus);
+    applyOptimisticMove(eventId, toStatus, () => onStatusChange(eventId, toStatus));
   };
 
   const handleConfirmComplete = () => {
     if (!pendingDrop) return;
-    onCompleteEvent(pendingDrop.eventId);
+    const { eventId } = pendingDrop;
     setPendingDrop(null);
-  };
-
-  const openCreateModal = () => {
-    setCreateName("");
-    setCreateType(TYPE_OPTIONS[0].value);
-    setCreateOpen(true);
-  };
-
-  const handleCreateConfirm = () => {
-    const name = createName.trim();
-    if (!name) return;
-    onCreateEvent({ name, type: createType });
-    setCreateOpen(false);
+    applyOptimisticMove(eventId, COMPLETED_STATUS, () => onCompleteEvent(eventId));
   };
 
   return (
-    <>
+    <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
+      {dropError && (
+        <Alert
+          icon={<IconAlertTriangle size={18} />}
+          title="עדכון האירוע נכשל"
+          withCloseButton
+          onClose={() => setDropError(null)}
+          styles={{
+            root: {
+              backgroundColor: "color-mix(in srgb, var(--app-color-error) 12%, transparent)",
+              borderInlineStart: "3px solid var(--app-color-error)",
+            },
+            title: { color: "var(--app-color-error)" },
+            body: { color: "var(--app-color-text)" },
+          }}
+        >
+          {dropError}
+        </Alert>
+      )}
+
       <Box
         style={{
           flex: 1,
@@ -122,7 +186,13 @@ const EventQueueBoard = ({ events, isToday, onStatusChange, onCompleteEvent, onC
           gap: "0.75rem",
         }}
       >
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={clearActiveDrag}
+        >
           {columns.map(({ status, events: columnEvents }) => (
             <QueueColumn
               key={status.key}
@@ -132,10 +202,32 @@ const EventQueueBoard = ({ events, isToday, onStatusChange, onCompleteEvent, onC
               isToday={isToday}
               sortMode={sortModeByStatus[status.key]}
               onSortChange={(mode) => handleSortChange(status.key, mode)}
-              onAddEvent={openCreateModal}
+              onAddEvent={() => navigate("/create-event")}
               onOpenEvent={(id) => navigate(`/brigade/${id}`)}
             />
           ))}
+
+          {/* Portal-rendered, so it's never clipped by a column's own
+              overflow — see EventQueueCard's docstring for why that clipping
+              made the dragged card disappear once it crossed into another
+              column without this. */}
+          <DragOverlay>
+            {activeEvent && (
+              <Box
+                style={{
+                  width: activeWidth ?? undefined,
+                  backgroundColor: "var(--app-color-surface-high)",
+                  border: "1px solid var(--app-color-primary)",
+                  borderRadius: "var(--mantine-radius-sm)",
+                  padding: "0.55rem 0.65rem",
+                  boxShadow: "0 12px 28px rgba(0, 0, 0, 0.4)",
+                  cursor: "grabbing",
+                }}
+              >
+                <EventQueueCardContent event={activeEvent} />
+              </Box>
+            )}
+          </DragOverlay>
         </DndContext>
       </Box>
 
@@ -175,63 +267,7 @@ const EventQueueBoard = ({ events, isToday, onStatusChange, onCompleteEvent, onC
           </Button>
         </Group>
       </Modal>
-
-      <Modal
-        opened={createOpen}
-        onClose={() => setCreateOpen(false)}
-        centered
-        radius="sm"
-        title={
-          <Group gap="xs" wrap="nowrap">
-            <IconShieldHalfFilled size={20} stroke={1.8} color="var(--app-color-primary)" />
-            <Text fw={700} fz="lg" c="var(--app-color-text)">
-              אירוע חדש
-            </Text>
-          </Group>
-        }
-        styles={{
-          content: {
-            border: "1px solid color-mix(in srgb, var(--app-color-primary) 40%, transparent)",
-            backgroundColor: "var(--app-color-surface)",
-          },
-          header: { backgroundColor: "var(--app-color-surface)" },
-        }}
-      >
-        <Text fz="xs" c="var(--app-color-text-muted)" mb="md">
-          כל אירוע חדש נפתח בסטטוס <strong>מוערך</strong> — לא ניתן לפתוח אירוע ישירות בסטטוס אחר.
-        </Text>
-
-        <TextInput
-          label="שם האירוע"
-          placeholder='לדוגמה: "פיצוץ ליד ציר 90"'
-          value={createName}
-          onChange={(event) => setCreateName(event.currentTarget.value)}
-          mb="sm"
-          autoFocus
-        />
-
-        <Select label="סוג אירוע" data={TYPE_OPTIONS} value={createType} onChange={setCreateType} allowDeselect={false} mb="lg" />
-
-        <Group justify="flex-end" gap="sm">
-          <Button variant="default" onClick={() => setCreateOpen(false)}>
-            ביטול
-          </Button>
-          <Button
-            disabled={!createName.trim()}
-            styles={{
-              root: {
-                backgroundColor: "var(--app-color-primary)",
-                color: "var(--app-color-primary-text)",
-                "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
-              },
-            }}
-            onClick={handleCreateConfirm}
-          >
-            פתח אירוע
-          </Button>
-        </Group>
-      </Modal>
-    </>
+    </Stack>
   );
 };
 
