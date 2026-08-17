@@ -32,6 +32,8 @@ import { useDispatch, useSelector } from "react-redux";
 // Internal application modules
 import Layout from "../../components/layout/Layout";
 import EventHeaderCard from "../../components/brigade/EventHeaderCard";
+import EventNameBlock from "../../components/brigade/EventNameBlock";
+import EventTimerChip from "../../components/brigade/EventTimerChip";
 import EventActionButtons from "../../components/brigade/EventActionButtons";
 import EventMapCard from "../../components/brigade/EventMapCard";
 import CasualtiesTableCard from "../../components/brigade/CasualtiesTableCard";
@@ -47,8 +49,8 @@ import {
   updateEvacuation,
   deleteEvacuation,
 } from "../../features/evacuations/evacuationsSlice";
+import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
-import { mockCasualties } from "./mockEventDashboardData";
 
 // Styles
 
@@ -56,18 +58,18 @@ import { mockCasualties } from "./mockEventDashboardData";
 const EMPTY_ARRAY = [];
 
 /**
- * Renders the brigade single-event dashboard: a top bar (title, theme
- * toggle, open-event button, and the close-event action), the event header
- * (name, status dropdown, timer), a 4-tile stat row (total casualties,
+ * Renders the brigade single-event dashboard: a top bar (title on the
+ * right, the elapsed-time chip centered, and the theme toggle/open-event/
+ * close-event actions on the left), the event header (name, status
+ * dropdown), a 4-tile stat row (total casualties,
  * critical count, evacuated count, active evacuation teams), then one row
  * split 1/5-2/5-2/5 between the event map, the casualties table, and the
  * evacuation team table. The whole page is pinned to the viewport height
  * with no page-level scroll; the bottom row fills whatever space is left
  * and each of its three cards scrolls its own content internally instead.
- * The event (by :eventId), locations, aerial missions, and evacuations are
- * all fetched from the API; casualties are still hardcoded mock data, owned
- * by a teammate's in-progress work elsewhere. An approved aerial mission
- * with no evacuation row yet auto-creates one in the background.
+ * The event (by :eventId), locations, aerial missions, evacuations, and
+ * casualties are all fetched from the API. An approved aerial mission with
+ * no evacuation row yet auto-creates one in the background.
  *
  * @returns {JSX.Element} The brigade event dashboard page.
  */
@@ -77,7 +79,6 @@ const EventDashboardPage = () => {
   const dispatch = useDispatch();
   const { eventId } = useParams();
 
-  const [casualties] = useState(mockCasualties);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
   // Recorded locally at the moment the brigade actually closes the event,
@@ -97,6 +98,7 @@ const EventDashboardPage = () => {
   const locations = useSelector((state) => state.locations.locations);
   const aerialMissions = useSelector((state) => state.aerialMission.byEventId[eventId]) || EMPTY_ARRAY;
   const evacuations = useSelector((state) => state.evacuations.byEventId[eventId]) || EMPTY_ARRAY;
+  const casualties = useSelector((state) => state.casualties.byEventId[eventId]) || EMPTY_ARRAY;
 
   // The airforce only ever writes the decision to the aerial_mission row,
   // never back onto the event — so once a mission exists for this event,
@@ -151,6 +153,18 @@ const EventDashboardPage = () => {
     return () => clearInterval(intervalId);
   }, [eventId, dispatch]);
 
+  useEffect(() => {
+    dispatch(fetchCasualtiesByEvent(eventId));
+
+    // Medics add/update casualties from their own page throughout the event,
+    // so keep polling instead of fetching once.
+    const intervalId = setInterval(() => {
+      dispatch(fetchCasualtiesByEvent(eventId));
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [eventId, dispatch]);
+
   // Auto-creates an evacuation row for any approved aerial mission that
   // doesn't have one yet, prefilled with whatever the airforce/event already
   // gave us — the brigade fills in the rest. Guarded against both a mission
@@ -191,22 +205,16 @@ const EventDashboardPage = () => {
 
   // Setting status to "completed" via the dropdown leads to the same
   // confirmation as the close-event button, since both result in the event
-  // closing. Moving off "completed" (reopening) needs no confirmation,
-  // clears closure_at (a stale "closed at" timestamp would be misleading for
-  // an active event), and clears the locally-tracked one too, so a future
-  // close captures a fresh timestamp instead of reusing this one.
+  // closing. The dropdown itself never offers "completed" as a target once
+  // the event is already closed — closing is final, not reversible from
+  // here — so there's no reopening branch to handle.
   const handleStatusChange = (nextStatus) => {
     if (nextStatus === COMPLETED_STATUS) {
       setCloseConfirmOpen(true);
       return;
     }
 
-    const changes = { status: nextStatus };
-    if (event.status === COMPLETED_STATUS) {
-      changes.closure_at = null;
-      setLocalClosureAt(null);
-    }
-    dispatch(updateEvent({ id: eventId, changes }));
+    dispatch(updateEvent({ id: eventId, changes: { status: nextStatus } }));
   };
 
   const handleRequestAerialEvac = () => {
@@ -266,20 +274,41 @@ const EventDashboardPage = () => {
         }}
       >
         <Stack align="stretch" gap="sm" style={{ flex: 1, minHeight: 0 }}>
-          <Group justify="space-between" wrap="wrap" gap="sm">
-            <Group gap="xs" wrap="nowrap">
-              <IconShieldHalfFilled
-                aria-hidden="true"
-                size={28}
-                stroke={1.6}
-                color="var(--app-color-primary)"
-              />
-              <Title order={1} c="var(--app-color-primary)" fz="1.5rem" fw={700}>
-                לוח בקרה: חטיבה
-              </Title>
-            </Group>
+          {/* A 3-column grid (not `justify="space-between"`) so the timer
+              chip in the middle column sits truly centered on the page,
+              regardless of the title and action groups on either side
+              having different widths. */}
+          <Box
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto 1fr",
+              alignItems: "center",
+              gap: "var(--mantine-spacing-sm)",
+            }}
+          >
+            <Stack gap={2} style={{ justifySelf: "start" }}>
+              <Group gap="xs" wrap="nowrap">
+                <IconShieldHalfFilled
+                  aria-hidden="true"
+                  size={28}
+                  stroke={1.6}
+                  color="var(--app-color-primary)"
+                />
+                <Title order={1} c="var(--app-color-primary)" fz="1.5rem" fw={700}>
+                  לוח בקרה: חטיבה
+                </Title>
+              </Group>
 
-            <Group gap="xs" wrap="nowrap">
+              {!isInitialLoad && isShowingCurrentEvent && event && <EventNameBlock event={event} />}
+            </Stack>
+
+            <Box style={{ justifySelf: "center" }}>
+              {!isInitialLoad && isShowingCurrentEvent && event && (
+                <EventTimerChip event={event} localClosureAt={localClosureAt} />
+              )}
+            </Box>
+
+            <Group gap="xs" wrap="nowrap" style={{ justifySelf: "end" }}>
               <ActionIcon
                 aria-label="החלף מצב תצוגה"
                 title="החלף מצב תצוגה"
@@ -322,7 +351,7 @@ const EventDashboardPage = () => {
                 <EventActionButtons isCompleted={isEventCompleted} onCloseEvent={() => setCloseConfirmOpen(true)} />
               )}
             </Group>
-          </Group>
+          </Box>
 
           {isInitialLoad && (
             <Stack align="center" gap="sm" py="xl">
@@ -344,7 +373,6 @@ const EventDashboardPage = () => {
               <EventHeaderCard
                 event={event}
                 aerialEvacStatus={aerialEvacStatus}
-                localClosureAt={localClosureAt}
                 onStatusChange={handleStatusChange}
               />
 

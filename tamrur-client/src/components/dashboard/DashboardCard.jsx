@@ -21,7 +21,9 @@ import { Box, Group, Paper, Stack, Title } from "@mantine/core";
  *
  * @param {{
  *   title: string,
+ *   titleContent?: React.ReactNode,
  *   headerExtra?: React.ReactNode,
+ *   headerAlign?: string,
  *   aside?: React.ReactNode,
  *   children: React.ReactNode,
  *   padding?: import("@mantine/core").StyleProp<import("@mantine/core").MantineSpacing>,
@@ -31,15 +33,28 @@ import { Box, Group, Paper, Stack, Title } from "@mantine/core";
  * }} props
  * @returns {JSX.Element} The dashboard card.
  */
-const DashboardCard = ({ title, headerExtra, aside, children, padding = "lg", gap = "md", fullHeight = false, h }) => {
+const DashboardCard = ({
+  title,
+  titleContent,
+  headerExtra,
+  headerAlign = "center",
+  aside,
+  children,
+  padding = "lg",
+  gap = "md",
+  fullHeight = false,
+  h,
+}) => {
   const stretchContent = fullHeight || h !== undefined;
 
   const content = (
     <Stack gap={gap} pt={aside ? undefined : "xs"} style={stretchContent ? { flex: 1, minHeight: 0 } : undefined}>
-      <Group justify="space-between" wrap="wrap" gap="sm">
-        <Title order={2} fz="lg" fw={700} c="var(--app-color-text)">
-          {title}
-        </Title>
+      <Group justify="space-between" align={headerAlign} wrap="wrap" gap="sm">
+        {titleContent ?? (
+          <Title order={2} fz="lg" fw={700} c="var(--app-color-text)">
+            {title}
+          </Title>
+        )}
         {headerExtra}
       </Group>
 
