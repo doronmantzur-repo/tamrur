@@ -10,35 +10,25 @@ import {
   Group,
   Loader,
   Modal,
-  SimpleGrid,
   Stack,
   Text,
   Title,
   useMantineColorScheme,
 } from "@mantine/core";
-import {
-  IconAlertTriangle,
-  IconAmbulance,
-  IconMoon,
-  IconPlus,
-  IconShieldHalfFilled,
-  IconSun,
-  IconTruck,
-  IconUsers,
-} from "@tabler/icons-react";
+import { IconAlertTriangle, IconMoon, IconPlus, IconShieldHalfFilled, IconSun } from "@tabler/icons-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
-import EventHeaderCard from "../../components/brigade/EventHeaderCard";
-import EventNameBlock from "../../components/brigade/EventNameBlock";
+import EventDescriptionBlock from "../../components/brigade/EventDescriptionBlock";
+import EventBadgesRow from "../../components/brigade/EventBadgesRow";
+import EvacuationProgressCard from "../../components/brigade/EvacuationProgressCard";
 import EventTimerChip from "../../components/brigade/EventTimerChip";
 import EventActionButtons from "../../components/brigade/EventActionButtons";
 import EventMapCard from "../../components/brigade/EventMapCard";
 import CasualtiesTableCard from "../../components/brigade/CasualtiesTableCard";
 import EvacuationsTable from "../../components/brigade/EvacuationsTable";
-import StatTile from "../../components/brigade/StatTile";
 import { COMPLETED_STATUS } from "../../constants/eventStatus";
 import { fetchLocations } from "../../features/locations/locationsSlice";
 import { fetchEventById, updateEvent } from "../../features/events/eventsSlice";
@@ -58,18 +48,24 @@ import { POLL_INTERVAL_MS } from "../../constants/polling";
 const EMPTY_ARRAY = [];
 
 /**
- * Renders the brigade single-event dashboard: a top bar (title on the
- * right, the elapsed-time chip centered, and the theme toggle/open-event/
- * close-event actions on the left), the event header (name, status
- * dropdown), a 4-tile stat row (total casualties,
- * critical count, evacuated count, active evacuation teams), then one row
- * split 1/5-2/5-2/5 between the event map, the casualties table, and the
- * evacuation team table. The whole page is pinned to the viewport height
- * with no page-level scroll; the bottom row fills whatever space is left
- * and each of its three cards scrolls its own content internally instead.
- * The event (by :eventId), locations, aerial missions, evacuations, and
- * casualties are all fetched from the API. An approved aerial mission with
- * no evacuation row yet auto-creates one in the background.
+ * Renders the brigade single-event dashboard: a top bar (the shield icon
+ * and event name sharing one row on the right, description and status
+ * badges stacked beneath that row; the elapsed-time chip centered; the
+ * theme toggle/open-event/close-event actions on the left), then an
+ * evacuation-progress card — a segmented bar by evacuated/urgency, a "טרם
+ * פונו" bracket, the evacuated percentage, and a row of compact stat tiles
+ * (total/urgent/evacuated/non-urgent/deceased) that double as the bar's
+ * legend. That single card replaces both the old badges-only header card
+ * and the page's separate 4-tile stat row — the active-teams count that
+ * used to be a tile here now lives as a badge in EvacuationsTable's own
+ * header instead. Below that, one row split 1/5-2/5-2/5 between the event
+ * map, the casualties table, and the evacuation team table. The whole page
+ * is pinned to the viewport height with no page-level scroll; the bottom
+ * row fills whatever space is left and each of its three cards scrolls its
+ * own content internally instead. The event (by :eventId), locations,
+ * aerial missions, evacuations, and casualties are all fetched from the
+ * API. An approved aerial mission with no evacuation row yet auto-creates
+ * one in the background.
  *
  * @returns {JSX.Element} The brigade event dashboard page.
  */
@@ -230,9 +226,6 @@ const EventDashboardPage = () => {
   };
 
   const isEventCompleted = event?.status === COMPLETED_STATUS;
-  const criticalCount = casualties.filter((casualty) => casualty.urgency === "urgent").length;
-  const evacuatedCount = evacuations.filter((evac) => evac.status === "completed").length;
-  const activeTeamsCount = evacuations.filter((evac) => evac.status === "started").length;
 
   return (
     <Layout>
@@ -282,31 +275,54 @@ const EventDashboardPage = () => {
             style={{
               display: "grid",
               gridTemplateColumns: "1fr auto 1fr",
-              alignItems: "center",
+              // The left column now stacks the icon, name, description, and
+              // badges, so it's much taller than the timer chip or the
+              // button row — top-aligning (not centering) keeps those two
+              // flush with the icon/name instead of centered against the
+              // whole tall block.
+              alignItems: "start",
               gap: "var(--mantine-spacing-sm)",
             }}
           >
             <Stack gap={2} style={{ justifySelf: "start" }}>
-              <Group gap="xs" wrap="nowrap">
-                <IconShieldHalfFilled
-                  aria-hidden="true"
-                  size={28}
-                  stroke={1.6}
-                  color="var(--app-color-primary)"
-                />
-                <Title order={1} c="var(--app-color-primary)" fz="1.5rem" fw={700}>
-                  לוח בקרה: חטיבה
-                </Title>
-              </Group>
+              {!isInitialLoad && isShowingCurrentEvent && event ? (
+                <>
+                  {/* Icon and event name share one row (instead of the icon
+                      sitting alone above a separate name row) so the
+                      description and badges below both move up a row —
+                      keeping this section's total height from growing
+                      compared to before the progress bar/tiles were added
+                      below it. */}
+                  <Group gap="xs" wrap="nowrap">
+                    <IconShieldHalfFilled
+                      aria-hidden="true"
+                      size={28}
+                      stroke={1.6}
+                      color="var(--app-color-primary)"
+                    />
+                    <Title order={1} c="var(--app-color-text)" fz="1.5rem" fw={700}>
+                      {event.name || "אירוע ללא שם"}
+                    </Title>
+                  </Group>
 
-              {!isInitialLoad && isShowingCurrentEvent && event && <EventNameBlock event={event} />}
+                  <EventDescriptionBlock />
+                  <EventBadgesRow event={event} aerialEvacStatus={aerialEvacStatus} onStatusChange={handleStatusChange} />
+                </>
+              ) : (
+                <IconShieldHalfFilled aria-hidden="true" size={28} stroke={1.6} color="var(--app-color-primary)" />
+              )}
             </Stack>
 
-            <Box style={{ justifySelf: "center" }}>
+            <Stack gap={2} align="center" style={{ justifySelf: "center" }}>
               {!isInitialLoad && isShowingCurrentEvent && event && (
-                <EventTimerChip event={event} localClosureAt={localClosureAt} />
+                <>
+                  <EventTimerChip event={event} localClosureAt={localClosureAt} />
+                  <Text fw={800} fz="1.75rem" lh={1.1} c="var(--app-color-text)" ff='ui-monospace, "SF Mono", "Consolas", monospace'>
+                    {casualties.length} נפגעים
+                  </Text>
+                </>
               )}
-            </Box>
+            </Stack>
 
             <Group gap="xs" wrap="nowrap" style={{ justifySelf: "end" }}>
               <ActionIcon
@@ -370,39 +386,7 @@ const EventDashboardPage = () => {
 
           {!isInitialLoad && isShowingCurrentEvent && (
             <>
-              <EventHeaderCard
-                event={event}
-                aerialEvacStatus={aerialEvacStatus}
-                onStatusChange={handleStatusChange}
-              />
-
-              <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
-                <StatTile
-                  label="סך נפגעים"
-                  value={casualties.length}
-                  icon={IconUsers}
-                  accentColor="var(--app-color-primary)"
-                />
-                <StatTile
-                  label="דחוף"
-                  value={criticalCount}
-                  sub="פינוי מיידי"
-                  icon={IconAlertTriangle}
-                  accentColor="var(--app-color-error)"
-                />
-                <StatTile
-                  label="פונו"
-                  value={evacuatedCount}
-                  icon={IconAmbulance}
-                  accentColor="var(--app-color-success)"
-                />
-                <StatTile
-                  label="צוותים פעילים"
-                  value={`${activeTeamsCount}/${evacuations.length}`}
-                  icon={IconTruck}
-                  accentColor="var(--app-color-warning)"
-                />
-              </SimpleGrid>
+              <EvacuationProgressCard casualties={casualties} />
 
               <Grid
                 gutter="sm"

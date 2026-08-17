@@ -13,6 +13,7 @@ import {
   IconPlayerPlay,
   IconSend,
   IconTrash,
+  IconTruck,
   IconWalk,
   IconX,
 } from "@tabler/icons-react";
@@ -108,7 +109,10 @@ function describeLocationPoint(point, locations) {
  * column pulses a warning while a row is still missing brigade-entered
  * fields. Every column but the three time fields is sortable and filterable
  * (searchable pick-list); every column is sortable. Rows can be deleted via
- * a confirm modal. The card header also carries the "request aerial evac"
+ * a confirm modal. The card header also carries an active-teams count badge
+ * (evacuations currently "started" out of the total — this used to be its
+ * own stat tile on the page, moved here since it's this table's own data)
+ * and the "request aerial evac"
  * action — requesting one, once approved, is what auto-creates a row here
  * in the first place, so it lives with this table rather than the page's
  * other event-level actions.
@@ -266,6 +270,7 @@ const EvacuationsTable = ({
   });
 
   const deleteTarget = evacuations.find((evac) => evac.id === deleteTargetId) || null;
+  const activeCount = evacuations.filter((evac) => evac.status === "started").length;
 
   return (
     <DashboardCard
@@ -286,6 +291,20 @@ const EvacuationsTable = ({
             }}
           >
             {visibleEvacuations.length} מתוך {evacuations.length}
+          </Badge>
+
+          <Badge
+            leftSection={<IconTruck size={12} stroke={1.8} />}
+            variant="outline"
+            styles={{
+              root: {
+                backgroundColor: "var(--app-color-surface-high)",
+                borderColor: "var(--app-color-border)",
+                color: "var(--app-color-text-muted)",
+              },
+            }}
+          >
+            {activeCount} מתוך {evacuations.length} צוותים פעילים
           </Badge>
 
           <Button
