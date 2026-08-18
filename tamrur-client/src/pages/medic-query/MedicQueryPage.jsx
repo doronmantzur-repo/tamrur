@@ -1,5 +1,4 @@
 // React
-import { useState } from "react";
 
 // External libraries
 import { ActionIcon, Box, Stack, Title, useMantineColorScheme } from "@mantine/core";
@@ -7,9 +6,7 @@ import { IconMoon, IconSun } from "@tabler/icons-react";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
-import EventSelector from "../../components/dashboard/EventSelector";
 import PdfQaCard from "../../components/analyst/PdfQaCard";
-import EvacPriorityCard from "../../components/analyst/EvacPriorityCard";
 
 // Styles
 
@@ -20,7 +17,6 @@ import EvacPriorityCard from "../../components/analyst/EvacPriorityCard";
  */
 const MedicQueryPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-  const [selectedEventId, setSelectedEventId] = useState(null);
 
   const isDark = colorScheme === "dark";
 
@@ -89,12 +85,8 @@ const MedicQueryPage = () => {
         <Box w="100%" maw={1240} style={{ marginInline: "auto" }}>
           <Stack align="stretch" gap="xl">
             <Title order={1} c="var(--app-color-primary)" fz="1.75rem" fw={700}>
-              שאילתת חובש
+              ספר הטראומה והרפואה המבצעית
             </Title>
-
-            <EventSelector value={selectedEventId} onChange={setSelectedEventId} />
-
-            <EvacPriorityCard key={selectedEventId} eventId={selectedEventId} />
 
             <PdfQaCard />
           </Stack>
