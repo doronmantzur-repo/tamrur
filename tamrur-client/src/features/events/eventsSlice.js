@@ -143,7 +143,14 @@ const eventsSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchEvents.pending, (state) => {
-        state.status = "loading";
+        // Only the very first fetch should show as "loading" — several pages
+        // (e.g. the medic page) also dispatch this on a background poll just
+        // to keep per-event fields like gathering_status fresh, and flipping
+        // status on every tick would make EventSelector (which reads this
+        // same status for its spinner/disabled state) flash repeatedly.
+        if (state.status === "idle") {
+          state.status = "loading";
+        }
         state.error = null;
       })
       .addCase(fetchEvents.fulfilled, (state, action) => {
