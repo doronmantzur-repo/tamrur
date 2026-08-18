@@ -190,6 +190,7 @@ const SignUpForm = () => {
         leftSection={<IconLock size={20} stroke={1.8} />}
         leftSectionPointerEvents="none"
         required
+        autoComplete="new-password"
         dir="rtl"
         styles={{
           label: {
