@@ -130,8 +130,6 @@ const LoginForm = () => {
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          gap: "1rem",
           paddingTop: "0.25rem",
         }}
       >
@@ -151,18 +149,6 @@ const LoginForm = () => {
             },
           }}
         />
-
-        <Text
-          component="a"
-          href="#"
-          c="var(--app-color-primary)"
-          fz="md"
-          style={{
-            textDecoration: "none",
-          }}
-        >
-          שכחת סיסמה?
-        </Text>
       </div>
 
       <Button
