@@ -2,9 +2,24 @@
 import { useCallback, useEffect, useState } from "react";
 
 // External libraries
-import { ActionIcon, Alert, Box, Loader, Stack, Text, useMantineColorScheme } from "@mantine/core";
-import { IconAlertTriangle, IconMoon, IconSun } from "@tabler/icons-react";
+import {
+  ActionIcon,
+  Alert,
+  Box,
+  Group,
+  Loader,
+  Stack,
+  Text,
+  useMantineColorScheme,
+} from "@mantine/core";
+import {
+  IconAlertTriangle,
+  IconMessageQuestion,
+  IconMoon,
+  IconSun,
+} from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
@@ -28,6 +43,7 @@ import { POLL_INTERVAL_MS } from "../../constants/polling";
  */
 const MedicPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const navigate = useNavigate();
   const [selectedEventId, setSelectedEventId] = useState(null);
   // The last event whose records have finished loading. Comparing it against
   // the selection derives the loading flag, so a background poll — which
@@ -44,12 +60,17 @@ const MedicPage = () => {
   const selectedEvent = useSelector((state) =>
     state.events.events.find((event) => event.id === selectedEventId),
   );
-  const casualties = useSelector((state) => state.casualties.byEventId[selectedEventId] || []);
+  const casualties = useSelector(
+    (state) => state.casualties.byEventId[selectedEventId] || [],
+  );
   const recordsCasualty =
     casualties.find((casualty) => casualty.id === recordsCasualtyId) ?? null;
   const loadError = useSelector(
     (state) =>
-      state.casualties.error || state.treatments.error || state.vitals.error || state.drugs.error,
+      state.casualties.error ||
+      state.treatments.error ||
+      state.vitals.error ||
+      state.drugs.error,
   );
 
   const loadEventRecords = useCallback(
@@ -67,12 +88,15 @@ const MedicPage = () => {
   );
 
   const isEditorOpen = recordsCasualtyId !== null || isAdding;
-  const isLoadingEvent = Boolean(selectedEventId) && loadedEventId !== selectedEventId;
+  const isLoadingEvent =
+    Boolean(selectedEventId) && loadedEventId !== selectedEventId;
 
   useEffect(() => {
     if (!selectedEventId) return;
 
-    loadEventRecords(selectedEventId).finally(() => setLoadedEventId(selectedEventId));
+    loadEventRecords(selectedEventId).finally(() =>
+      setLoadedEventId(selectedEventId),
+    );
   }, [selectedEventId, loadEventRecords]);
 
   useEffect(() => {
@@ -92,29 +116,44 @@ const MedicPage = () => {
 
   return (
     <Layout>
-      <ActionIcon
-        aria-label="החלף מצב תצוגה"
-        title="החלף מצב תצוגה"
-        variant="default"
-        size={40}
-        radius="xl"
-        onClick={() => toggleColorScheme()}
-        pos="absolute"
-        top="md"
-        right="md"
-        style={{
-          zIndex: 20,
-          backgroundColor: "var(--app-color-surface)",
-          borderColor: "var(--app-color-border)",
-          color: "var(--app-color-text)",
-        }}
-      >
-        {isDark ? (
-          <IconSun aria-hidden="true" size={20} stroke={1.8} />
-        ) : (
-          <IconMoon aria-hidden="true" size={20} stroke={1.8} />
-        )}
-      </ActionIcon>
+      <Group pos="absolute" top="md" left="md" gap="sm" style={{ zIndex: 20 }}>
+        <ActionIcon
+          aria-label="שאילתת ספר הטראומה"
+          title="שאילתת ספר הטראומה"
+          variant="default"
+          size={40}
+          radius="xl"
+          onClick={() => navigate("/query")}
+          style={{
+            backgroundColor: "var(--app-color-surface)",
+            borderColor: "var(--app-color-border)",
+            color: "var(--app-color-text)",
+          }}
+        >
+          
+          <IconMessageQuestion aria-hidden="true" size={20} stroke={1.8} />
+        </ActionIcon>
+
+        <ActionIcon
+          aria-label="החלף מצב תצוגה"
+          title="החלף מצב תצוגה"
+          variant="default"
+          size={40}
+          radius="xl"
+          onClick={() => toggleColorScheme()}
+          style={{
+            backgroundColor: "var(--app-color-surface)",
+            borderColor: "var(--app-color-border)",
+            color: "var(--app-color-text)",
+          }}
+        >
+          {isDark ? (
+            <IconSun aria-hidden="true" size={20} stroke={1.8} />
+          ) : (
+            <IconMoon aria-hidden="true" size={20} stroke={1.8} />
+          )}
+        </ActionIcon>
+      </Group>
 
       <Box
         aria-hidden="true"
@@ -146,7 +185,8 @@ const MedicPage = () => {
         align="stretch"
         mih="100vh"
         px="var(--app-page-padding-mobile)"
-        py="md"
+        pt={64}
+        pb="md"
         pos="relative"
         style={{
           zIndex: 10,
@@ -154,7 +194,10 @@ const MedicPage = () => {
       >
         <Box w="100%" maw={1240} style={{ marginInline: "auto" }}>
           {/* Tight rhythm on purpose: everything above the casualty table is
-              chrome, and the table is what the medic actually works in. */}
+              chrome, and the table is what the medic actually works in. The
+              extra top offset (vs. the pb below) clears the absolutely
+              positioned corner buttons — otherwise the event dropdown here
+              can run under them on narrower viewports. */}
           <Stack align="stretch" gap="sm">
             <MedicEventBar
               selectedEventId={selectedEventId}
@@ -168,7 +211,8 @@ const MedicPage = () => {
                 title="טעינת נתוני האירוע נכשלה"
                 styles={{
                   root: {
-                    backgroundColor: "color-mix(in srgb, var(--app-color-error) 12%, transparent)",
+                    backgroundColor:
+                      "color-mix(in srgb, var(--app-color-error) 12%, transparent)",
                     borderInlineStart: "3px solid var(--app-color-error)",
                   },
                   title: { color: "var(--app-color-error)" },
