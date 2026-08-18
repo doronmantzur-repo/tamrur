@@ -10,10 +10,12 @@ import {
   TextInput,
 } from "@mantine/core";
 import { IconMail, IconLock, IconLogin } from "@tabler/icons-react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 // Internal application modules
 import { loginUser } from "../../../features/auth/authSlice";
+import { ROLE_HOME_ROUTES } from "../../../constants/roles";
 import AuthFormCard from "../AuthFormCard";
 
 // Styles
@@ -29,18 +31,26 @@ const LoginForm = () => {
   const [rememberMe, setRememberMe] = useState(false);
 
   const dispatch = useDispatch();
-  // const { status, error } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
+  const status = useSelector((state) => state.auth.status);
+  const isSubmitting = status === "loading";
   /**
-   * Handles login form submission.
-   *
-   * Authentication will be connected when the backend is implemented.
+   * Handles login form submission. Redirects to the logged-in user's home
+   * route on success; failures stay on the page (error is in redux state).
    *
    * @param {React.FormEvent<HTMLFormElement>} event - The form submission event.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    dispatch(loginUser({ email, password }));
+    try {
+      const { user } = await dispatch(
+        loginUser({ email, password, rememberMe }),
+      ).unwrap();
+      navigate(ROLE_HOME_ROUTES[user.role] ?? "/");
+    } catch {
+      // Rejection is already captured in redux auth state via loginUser.rejected.
+    }
   };
 
   return (
@@ -158,6 +168,7 @@ const LoginForm = () => {
       <Button
         type="submit"
         fullWidth
+        loading={isSubmitting}
         leftSection={<IconLogin size={20} stroke={1.8} />}
         mih="3rem"
         radius="sm"

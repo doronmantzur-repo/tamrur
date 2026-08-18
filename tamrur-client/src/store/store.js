@@ -2,7 +2,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 
 // Internal
-import authReducer from "../features/auth/authSlice";
+import authReducer, { logout } from "../features/auth/authSlice";
 import eventsReducer from "../features/events/eventsSlice";
 import casualtiesReducer from "../features/casualties/casualtiesSlice";
 import treatmentsReducer from "../features/treatments/treatmentsSlice";
@@ -11,7 +11,7 @@ import drugsReducer from "../features/drugs/drugsSlice";
 import aerialMissionReducer from "../features/aerialMission/aerialMissionSlice";
 import locationsReducer from "../features/locations/locationsSlice";
 import evacuationsReducer from "../features/evacuations/evacuationsSlice";
-import { setTokenGetter } from "../api/TamrurAPI";
+import { setTokenGetter, setUnauthorizedHandler } from "../api/TamrurAPI";
 
 /**
  * Root Redux store. Combines all feature reducers.
@@ -43,3 +43,11 @@ export const store = configureStore({
 // importing the store directly (which would create a circular import back
 // through authSlice.js -> TamrurAPI.js).
 setTokenGetter(() => store.getState().auth.token);
+
+// A 401 on any protected endpoint means the token is invalid/expired: clear
+// the session and hard-redirect to login (a full reload also resets every
+// other slice's in-memory state, avoiding stale-data bugs post-logout).
+setUnauthorizedHandler(() => {
+  store.dispatch(logout());
+  window.location.href = "/";
+});

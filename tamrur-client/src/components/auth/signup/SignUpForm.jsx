@@ -2,15 +2,58 @@
 import { useState } from "react";
 
 // External libraries
-import { Button, PasswordInput, Select, Text, TextInput } from "@mantine/core";
-import { IconMail, IconLock, IconLogin } from "@tabler/icons-react";
-import { useDispatch } from "react-redux";
+import {
+  Box,
+  Button,
+  PasswordInput,
+  Progress,
+  Select,
+  Text,
+  TextInput,
+} from "@mantine/core";
+import {
+  IconCheck,
+  IconLock,
+  IconLogin,
+  IconMail,
+  IconX,
+} from "@tabler/icons-react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 // Internal application modules
 import AuthFormCard from "../AuthFormCard";
 import { registerUser } from "../../../features/auth/authSlice";
+import { ROLE_HOME_ROUTES } from "../../../constants/roles";
 
 // Styles
+
+const PASSWORD_REQUIREMENTS = [
+  { re: /^.{7,}$/, label: "לפחות 7 תווים" },
+  { re: /[a-z]/, label: "אות קטנה (a-z)" },
+  { re: /[A-Z]/, label: "אות גדולה (A-Z)" },
+  { re: /[^A-Za-z0-9\s]/, label: "תו מיוחד (למשל !@#$%)" },
+];
+
+/**
+ * @param {string} password
+ * @returns {number} How many of PASSWORD_REQUIREMENTS the password satisfies.
+ */
+function countMetRequirements(password) {
+  return PASSWORD_REQUIREMENTS.filter((requirement) =>
+    requirement.re.test(password),
+  ).length;
+}
+
+/**
+ * @param {number} strength - Percentage 0-100.
+ * @returns {string} A CSS color var matching how strong the password is.
+ */
+function getStrengthColor(strength) {
+  if (strength === 100) return "var(--app-color-success)";
+  if (strength > 50) return "var(--app-color-warning)";
+  return "var(--app-color-error)";
+}
 
 /**
  * Renders the Tamrur signup form.
@@ -23,24 +66,42 @@ const SignUpForm = () => {
   const [role, setRole] = useState("");
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const status = useSelector((state) => state.auth.status);
+  const isSubmitting = status === "loading";
+
+  const metRequirementsCount = countMetRequirements(password);
+  const passwordStrength =
+    (metRequirementsCount / PASSWORD_REQUIREMENTS.length) * 100;
+  const isPasswordStrong = passwordStrength === 100;
 
   /**
-   * Handles signup form submission.
-   *
-   * Authentication will be connected when the backend is implemented.
+   * Handles signup form submission. Blocked until the password satisfies
+   * every entry in PASSWORD_REQUIREMENTS (the submit button is also
+   * disabled for this, this is a guard against e.g. an Enter-key submit).
+   * Redirects to the new user's home route on success; alerts on failure.
    *
    * @param {React.FormEvent<HTMLFormElement>} event - The form submission event.
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    dispatch(registerUser({ role, email, password }));
+    if (!isPasswordStrong) return;
+    try {
+      const { user } = await dispatch(
+        registerUser({ role, email, password }),
+      ).unwrap();
+      navigate(ROLE_HOME_ROUTES[user.role] ?? "/");
+    } catch (message) {
+      window.alert(message ?? "ההרשמה נכשלה");
+    }
   };
 
   const rolesOptions = [
     { value: "brigade", label: "חטיבה" },
     { value: "medic", label: "צוות רפואי" },
     { value: "airforce", label: "חיל האוויר" },
+    { value: "supervisor", label: "רמה ממונה" },
   ];
 
   return (
@@ -148,9 +209,46 @@ const SignUpForm = () => {
           },
         }}
       />
+
+      <Box>
+        <Progress
+          value={passwordStrength}
+          color={getStrengthColor(passwordStrength)}
+          size="sm"
+          radius="xl"
+        />
+        <Box mt="xs">
+          {PASSWORD_REQUIREMENTS.map((requirement) => {
+            const isMet = requirement.re.test(password);
+            return (
+              <Text
+                key={requirement.label}
+                fz="sm"
+                dir="rtl"
+                c={
+                  isMet
+                    ? "var(--app-color-success)"
+                    : "var(--app-color-text-muted)"
+                }
+                style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
+              >
+                {isMet ? (
+                  <IconCheck size={14} stroke={2} />
+                ) : (
+                  <IconX size={14} stroke={2} />
+                )}
+                {requirement.label}
+              </Text>
+            );
+          })}
+        </Box>
+      </Box>
+
       <Button
         type="submit"
         fullWidth
+        loading={isSubmitting}
+        disabled={!isPasswordStrong}
         leftSection={<IconLogin size={20} stroke={1.8} />}
         mih="3rem"
         radius="sm"
