@@ -3,6 +3,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 // Internal
 import TamrurAPI from "../../api/TamrurAPI";
+import { saveSession, loadSession, clearSession } from "./authStorage";
 
 /**
  * Registers a new user.
@@ -40,7 +41,7 @@ export const registerUser = createAsyncThunk(
  */
 export const loginUser = createAsyncThunk(
   "auth/login",
-  async ({ email, password }, { rejectWithValue }) => {
+  async ({ email, password, rememberMe = false }, { rejectWithValue }) => {
     try {
       const response = await TamrurAPI.post("/auth/login", {
         email,
@@ -53,10 +54,12 @@ export const loginUser = createAsyncThunk(
   },
 );
 
+const restored = loadSession();
+
 /** @type {{user: Object|null, token: string|null, status: string, error: string|null}} */
 const initialState = {
-  user: null,
-  token: null,
+  user: restored?.user ?? null,
+  token: restored?.token ?? null,
   status: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
   error: null,
 };
@@ -72,7 +75,7 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.token = null;
-      localStorage.removeItem("token"); // add this
+      clearSession();
       state.status = "idle";
       state.error = null;
     },
@@ -100,7 +103,11 @@ const authSlice = createSlice({
         state.status = "succeeded";
         state.user = action.payload.user;
         state.token = action.payload.token;
-        localStorage.setItem("token", action.payload.token); // add this
+        saveSession({
+          token: action.payload.token,
+          user: action.payload.user,
+          rememberMe: action.meta.arg.rememberMe,
+        });
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = "failed";
