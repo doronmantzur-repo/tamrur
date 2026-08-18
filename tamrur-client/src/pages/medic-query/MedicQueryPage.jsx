@@ -1,8 +1,9 @@
 // React
 
 // External libraries
-import { ActionIcon, Box, Stack, Title, useMantineColorScheme } from "@mantine/core";
-import { IconMoon, IconSun } from "@tabler/icons-react";
+import { ActionIcon, Box, Group, Stack, Title, useMantineColorScheme } from "@mantine/core";
+import { IconMoon, IconStethoscope, IconSun } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
@@ -17,34 +18,49 @@ import PdfQaCard from "../../components/analyst/PdfQaCard";
  */
 const MedicQueryPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const navigate = useNavigate();
 
   const isDark = colorScheme === "dark";
 
   return (
     <Layout>
-      <ActionIcon
-        aria-label="החלף מצב תצוגה"
-        title="החלף מצב תצוגה"
-        variant="default"
-        size={40}
-        radius="xl"
-        onClick={() => toggleColorScheme()}
-        pos="absolute"
-        top="md"
-        right="md"
-        style={{
-          zIndex: 20,
-          backgroundColor: "var(--app-color-surface)",
-          borderColor: "var(--app-color-border)",
-          color: "var(--app-color-text)",
-        }}
-      >
-        {isDark ? (
-          <IconSun aria-hidden="true" size={20} stroke={1.8} />
-        ) : (
-          <IconMoon aria-hidden="true" size={20} stroke={1.8} />
-        )}
-      </ActionIcon>
+      <Group pos="absolute" top="md" left="md" gap="sm" style={{ zIndex: 20 }}>
+        <ActionIcon
+          aria-label="חזרה לממשק הרפואי"
+          title="חזרה לממשק הרפואי"
+          variant="default"
+          size={40}
+          radius="xl"
+          onClick={() => navigate("/medic")}
+          style={{
+            backgroundColor: "var(--app-color-surface)",
+            borderColor: "var(--app-color-border)",
+            color: "var(--app-color-text)",
+          }}
+        >
+          <IconStethoscope aria-hidden="true" size={20} stroke={1.8} />
+        </ActionIcon>
+
+        <ActionIcon
+          aria-label="החלף מצב תצוגה"
+          title="החלף מצב תצוגה"
+          variant="default"
+          size={40}
+          radius="xl"
+          onClick={() => toggleColorScheme()}
+          style={{
+            backgroundColor: "var(--app-color-surface)",
+            borderColor: "var(--app-color-border)",
+            color: "var(--app-color-text)",
+          }}
+        >
+          {isDark ? (
+            <IconSun aria-hidden="true" size={20} stroke={1.8} />
+          ) : (
+            <IconMoon aria-hidden="true" size={20} stroke={1.8} />
+          )}
+        </ActionIcon>
+      </Group>
 
       <Box
         aria-hidden="true"
