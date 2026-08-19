@@ -21,6 +21,13 @@ import { streamPost } from "../../api/TamrurAPI";
  * is accumulated from the same stream of tokens but only shown once complete,
  * printed as a single block rather than growing token by token.
  *
+ * Only the current question and answer are shown, but every completed turn is
+ * kept in `historyRef` (a plain in-memory ref, not displayed) and sent back
+ * as `history` on the next question, so a follow-up ("and what about
+ * children?") is answered with the earlier conversation as context. That
+ * history lives only in this component's memory for as long as it's mounted
+ * — leaving the query page unmounts it and the context is gone.
+ *
  * @returns {JSX.Element} The PDF Q&A card.
  */
 const PdfQaCard = () => {
@@ -31,6 +38,8 @@ const PdfQaCard = () => {
   const [isAsking, setIsAsking] = useState(false);
   const [error, setError] = useState(null);
   const abortRef = useRef(null);
+  const historyRef = useRef([]);
+  const answerRef = useRef("");
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -39,6 +48,7 @@ const PdfQaCard = () => {
     if (!question.trim() || isAsking) return;
 
     const submittedQuestion = question.trim();
+    const history = historyRef.current;
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -46,20 +56,33 @@ const PdfQaCard = () => {
     setError(null);
     setSteps([]);
     setAnswer("");
+    answerRef.current = "";
     setAskedQuestion(submittedQuestion);
+
+    let streamFailed = false;
 
     streamPost(
       "/medic-query/ask",
-      { question: submittedQuestion },
+      { question: submittedQuestion, history },
       {
         signal: controller.signal,
         onEvent: (event, data) => {
           if (event === "step") setSteps((prev) => [...prev, data]);
-          else if (event === "token") setAnswer((prev) => prev + data.text);
-          else if (event === "error") setError(data.message || "השאלה נכשלה, נסה שוב");
+          else if (event === "token") {
+            answerRef.current += data.text;
+            setAnswer((prev) => prev + data.text);
+          } else if (event === "error") {
+            streamFailed = true;
+            setError(data.message || "השאלה נכשלה, נסה שוב");
+          }
         },
       },
     )
+      .then(() => {
+        if (streamFailed || !answerRef.current) return;
+        historyRef.current = [...history, { question: submittedQuestion, answer: answerRef.current }];
+        setSteps((prev) => [...prev, { key: "saved" }]);
+      })
       .catch((err) => {
         if (err.name === "AbortError") return;
         setError(err.message || "השאלה נכשלה, נסה שוב");

@@ -6,9 +6,11 @@ import {
   IconBrain,
   IconCheck,
   IconDatabase,
+  IconHistory,
   IconListNumbers,
   IconMathFunction,
   IconMessage2,
+  IconMessageCircleSearch,
   IconVectorTriangle,
 } from "@tabler/icons-react";
 
@@ -36,6 +38,16 @@ function describeStep(step) {
         detail: (
           <Text fz="sm" c="var(--app-color-text-muted)" dir="rtl">
             "{step.question}"
+          </Text>
+        ),
+      };
+    case "contextualize":
+      return {
+        icon: <IconMessageCircleSearch size={16} />,
+        title: "השאלה פורשה מחדש לאור השיחה הקודמת",
+        detail: (
+          <Text fz="sm" c="var(--app-color-text-muted)" dir="rtl">
+            שאילתת החיפוש: "{step.searchQuery}"
           </Text>
         ),
       };
@@ -115,6 +127,16 @@ function describeStep(step) {
       };
     case "done":
       return { icon: <IconCheck size={16} />, title: "התקבלה תשובה", detail: null };
+    case "saved":
+      return {
+        icon: <IconHistory size={16} />,
+        title: "השאלה והתשובה נשמרו בזיכרון ההקשר",
+        detail: (
+          <Text fz="sm" c="var(--app-color-text-muted)">
+            ישמשו כהקשר לשאלות המשך, כל עוד העמוד פתוח
+          </Text>
+        ),
+      };
     default:
       return null;
   }
