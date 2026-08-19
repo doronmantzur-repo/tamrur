@@ -9,7 +9,7 @@ import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
 // Internal application modules
-import { COMPLETED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS } from "../../constants/eventStatus";
+import { CLOSED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS } from "../../constants/eventStatus";
 import { FORCE_ICON_COLOR, FORCE_TYPE_META, FORCE_TYPE_ICONS, forceLabel } from "../../constants/forces";
 import { buildDivIcon, tablerSvg } from "../../utils/leafletIcons";
 import { toLatLng } from "../../utils/geo";
@@ -44,9 +44,9 @@ const ALERT_TRIANGLE_PATHS = [
  * Builds an event marker: a warning-triangle glyph on a circle colored by
  * the event's status (same status-color mapping as the table's badges),
  * replacing the old plain colored dot so severity actually reads as a
- * warning rather than just a colored point. Completed events are shown
- * mixed toward the background instead of full opacity, so they visually
- * recede without needing a separate "dimmed" rendering path.
+ * warning rather than just a colored point. Closed events are shown mixed
+ * toward the background instead of full opacity, so they visually recede
+ * without needing a separate "dimmed" rendering path.
  *
  * @param {{ color: string, dimmed?: boolean }} options
  * @returns {L.DivIcon}
@@ -167,11 +167,11 @@ function MapLegend({ isLayerOn }) {
  * @param {{ event: object, casualties: Array<object> }} props
  */
 function EventPopupContent({ event, casualties }) {
-  const isCompleted = event.status === COMPLETED_STATUS;
+  const isClosed = event.status === CLOSED_STATUS;
 
-  const [fallbackClosureAt] = useState(() => (isCompleted && !event.closure_at ? new Date().toISOString() : null));
+  const [fallbackClosureAt] = useState(() => (isClosed && !event.closure_at ? new Date().toISOString() : null));
 
-  const elapsedSeconds = useElapsedSeconds(event.created_at, isCompleted ? event.closure_at || fallbackClosureAt : null);
+  const elapsedSeconds = useElapsedSeconds(event.created_at, isClosed ? event.closure_at || fallbackClosureAt : null);
   const evacuatedCount = casualties.filter((casualty) => casualty.is_evacuated).length;
 
   return (
@@ -254,13 +254,13 @@ const EventQueueMap = ({ events, forces, casualtiesByEventId = {} }) => {
           {isLayerOn("events") &&
             positioned.map(({ event, latLng }) => {
               const color = EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)";
-              const isCompleted = event.status === COMPLETED_STATUS;
+              const isClosed = event.status === CLOSED_STATUS;
 
               return (
                 <Marker
                   key={event.id}
                   position={latLng}
-                  icon={buildEventIcon({ color, dimmed: isCompleted })}
+                  icon={buildEventIcon({ color, dimmed: isClosed })}
                   eventHandlers={{
                     click: () => navigate(`/brigade/${event.id}`),
                     ...OPEN_POPUP_ON_HOVER,

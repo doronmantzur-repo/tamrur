@@ -6,7 +6,12 @@ import { IconClock, IconLock } from "@tabler/icons-react";
 import { useDraggable } from "@dnd-kit/core";
 
 // Internal application modules
-import { COMPLETED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
+import {
+  CLOSED_STATUS,
+  EVENT_STATUS_COLOR_VARS,
+  EVENT_TYPE_LABELS,
+  FULL_EVACUATION_STATUS,
+} from "../../constants/eventStatus";
 
 // Styles
 
@@ -24,7 +29,12 @@ const timeFormatter = new Intl.DateTimeFormat("he-IL", { hour: "2-digit", minute
  * @returns {JSX.Element} The card's inner content.
  */
 export function EventQueueCardContent({ event }) {
-  const isLocked = event.status === COMPLETED_STATUS;
+  // Only the terminal state gets the "final" badge — the three earlier
+  // statuses aren't draggable either (see EventQueueCard below) but they're
+  // not final, they're mid-flight and will move columns on their own as
+  // gathering_status/evac_status change, so labeling them "final" would be
+  // wrong.
+  const isClosed = event.status === CLOSED_STATUS;
   const color = EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)";
 
   return (
@@ -55,7 +65,7 @@ export function EventQueueCardContent({ event }) {
         </Text>
       </Group>
 
-      {isLocked && (
+      {isClosed && (
         <Group gap={4} mt={6} c={color}>
           <IconLock size={10} stroke={2.4} />
           <Text fz="xs">סופי — לא ניתן להזיז</Text>
@@ -66,10 +76,13 @@ export function EventQueueCardContent({ event }) {
 }
 
 /**
- * One draggable card in the kanban board. Completed events (final, per the
- * app-wide "closing is one-way" rule — see EventBadgesRow) and anything on
- * a past date (the board is read-only history there) can't be dragged, so
- * the drag hook is disabled rather than just visually discouraged. Click
+ * One draggable card in the kanban board. `status` is derived server-side
+ * from gathering_status/evac_status for every status except full_evacuation
+ * (see EventBadgesRow) — a card is only ever draggable while it's at
+ * full_evacuation, since that's the one status with a manual transition
+ * (closing). Anything on a past date (the board is read-only history there)
+ * also can't be dragged, so the drag hook is disabled rather than just
+ * visually discouraged. Click
  * and drag share the element with no separate handle: the parent
  * `DndContext`'s `PointerSensor` uses a distance threshold, so a plain
  * click never starts a drag and this card's own `onClick` fires normally.
@@ -86,11 +99,11 @@ export function EventQueueCardContent({ event }) {
  * @returns {JSX.Element} The kanban card.
  */
 const EventQueueCard = ({ event, isToday, onOpen }) => {
-  const isLocked = event.status === COMPLETED_STATUS;
+  const isDraggable = event.status === FULL_EVACUATION_STATUS;
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: event.id,
-    disabled: isLocked || !isToday,
+    disabled: !isDraggable || !isToday,
   });
 
   return (
@@ -101,7 +114,7 @@ const EventQueueCard = ({ event, isToday, onOpen }) => {
         border: "1px solid var(--app-color-border)",
         borderRadius: "var(--mantine-radius-sm)",
         padding: "0.55rem 0.65rem",
-        cursor: isLocked || !isToday ? "default" : "grab",
+        cursor: !isDraggable || !isToday ? "default" : "grab",
         opacity: isDragging ? 0.4 : 1,
         transition: "border-color 0.15s ease, filter 0.15s ease",
       }}

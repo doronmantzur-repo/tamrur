@@ -1,26 +1,12 @@
 // External libraries
-import { Badge, Group, Menu, Stack, Text } from "@mantine/core";
-import { IconAmbulance, IconChevronDown, IconHelicopter, IconTarget, IconUsers } from "@tabler/icons-react";
+import { Badge, Group, Stack, Text } from "@mantine/core";
+import { IconHelicopter, IconTarget } from "@tabler/icons-react";
 
 // Internal application modules
-import {
-  COMPLETED_STATUS,
-  EVENT_STATUS_COLOR_VARS,
-  EVENT_STATUS_LABELS,
-  EVENT_TYPE_LABELS,
-} from "../../constants/eventStatus";
+import { EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
 import { AERIAL_EVAC_COLOR_VARS, AERIAL_EVAC_LABELS, PULSING_AERIAL_EVAC_STATUSES } from "../../constants/aerialEvacStatus";
-import {
-  EVAC_STATUS_COLOR_VARS,
-  EVAC_STATUS_LABELS,
-  GATHERING_STATUS_COLOR_VARS,
-  GATHERING_STATUS_LABELS,
-} from "../../constants/casualtyStatus";
 
 // Styles
-
-/** All statuses the brigade can manually set the event to, in their natural progression order. */
-const STATUS_OPTIONS = Object.entries(EVENT_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 
 /**
  * Shared chrome for every badge here, merged into each one's own colors:
@@ -60,85 +46,39 @@ function BadgeColumn({ label, children }) {
 }
 
 /**
- * Renders the type/status/aerial-evac/gathering/evac-status badges for the
- * top bar, sitting under the event name and description (see
- * `EventDescriptionBlock`) rather than in their own header card. The status badge
- * is itself the control: click it to open a menu of every non-completed
- * status and set the event to any of them directly, since progress here
- * isn't strictly linear — except "completed" is final: once the event is
- * closed, the badge turns into a plain, non-clickable label instead of a
- * menu, since closing is a one-way action the brigade can no longer undo
- * from here (per team decision, 2026-08-16).
+ * Renders the type/status/aerial-evac badges for the top bar, sitting under
+ * the event name and description (see `EventDescriptionBlock`) rather than in
+ * their own header card. The status badge is read-only — `status` is derived
+ * server-side from gathering_status/evac_status, so there is nothing for the
+ * brigade to pick here; closing the event (the one manual transition) is done
+ * via `EventActionButtons`, not this row.
  *
  * @param {{
  *   event: object,
  *   aerialEvacStatus: string | null | undefined,
- *   onStatusChange: (nextStatus: string) => void,
  * }} props
  * @returns {JSX.Element} The badges row.
  */
-const EventBadgesRow = ({ event, aerialEvacStatus, onStatusChange }) => {
-  const isCompleted = event.status === COMPLETED_STATUS;
-
+const EventBadgesRow = ({ event, aerialEvacStatus }) => {
   const showAerialEvacBadge = aerialEvacStatus && aerialEvacStatus !== "no_needed";
   const aerialEvacColor = AERIAL_EVAC_COLOR_VARS[aerialEvacStatus] || "var(--app-color-text-muted)";
-
-  const showGatheringBadge = Boolean(event.gathering_status);
-  const gatheringColor = GATHERING_STATUS_COLOR_VARS[event.gathering_status] || "var(--app-color-text-muted)";
-
-  const showEvacStatusBadge = event.evac_status !== null && event.evac_status !== undefined;
-  const evacStatusColor = EVAC_STATUS_COLOR_VARS[event.evac_status] || "var(--app-color-text-muted)";
+  const statusColor = EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)";
 
   return (
     <Group gap="md" align="flex-end">
       <BadgeColumn label="סטטוס אירוע">
-        {isCompleted ? (
-          <Badge
-            size="lg"
-            styles={{
-              root: {
-                ...badgeChromeStyles,
-                backgroundColor: `color-mix(in srgb, ${EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)"} 16%, transparent)`,
-                color: EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)",
-              },
-            }}
-          >
-            {EVENT_STATUS_LABELS[event.status] || event.status}
-          </Badge>
-        ) : (
-          <Menu shadow="md" position="bottom-start" withinPortal>
-            <Menu.Target>
-              <Badge
-                size="lg"
-                rightSection={<IconChevronDown size={14} stroke={2} />}
-                style={{ cursor: "pointer" }}
-                styles={{
-                  root: {
-                    ...badgeChromeStyles,
-                    backgroundColor: `color-mix(in srgb, ${EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)"} 16%, transparent)`,
-                    color: EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)",
-                  },
-                }}
-              >
-                {EVENT_STATUS_LABELS[event.status] || event.status}
-              </Badge>
-            </Menu.Target>
-            <Menu.Dropdown>
-              {STATUS_OPTIONS.map((option) => (
-                <Menu.Item
-                  key={option.value}
-                  onClick={() => onStatusChange(option.value)}
-                  disabled={option.value === event.status}
-                  styles={{
-                    itemLabel: { color: EVENT_STATUS_COLOR_VARS[option.value] || "var(--app-color-text)" },
-                  }}
-                >
-                  {option.label}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
-        )}
+        <Badge
+          size="lg"
+          styles={{
+            root: {
+              ...badgeChromeStyles,
+              backgroundColor: `color-mix(in srgb, ${statusColor} 16%, transparent)`,
+              color: statusColor,
+            },
+          }}
+        >
+          {EVENT_STATUS_LABELS[event.status] || event.status}
+        </Badge>
       </BadgeColumn>
 
       <BadgeColumn label="סוג אירוע">
@@ -174,42 +114,6 @@ const EventBadgesRow = ({ event, aerialEvacStatus, onStatusChange }) => {
             }}
           >
             {AERIAL_EVAC_LABELS[aerialEvacStatus] || aerialEvacStatus}
-          </Badge>
-        </BadgeColumn>
-      )}
-
-      {showGatheringBadge && (
-        <BadgeColumn label="איסוף נפגעים">
-          <Badge
-            size="lg"
-            leftSection={<IconUsers size={14} />}
-            styles={{
-              root: {
-                ...badgeChromeStyles,
-                backgroundColor: `color-mix(in srgb, ${gatheringColor} 16%, transparent)`,
-                color: gatheringColor,
-              },
-            }}
-          >
-            {GATHERING_STATUS_LABELS[event.gathering_status] || event.gathering_status}
-          </Badge>
-        </BadgeColumn>
-      )}
-
-      {showEvacStatusBadge && (
-        <BadgeColumn label="פינוי נפגעים">
-          <Badge
-            size="lg"
-            leftSection={<IconAmbulance size={14} />}
-            styles={{
-              root: {
-                ...badgeChromeStyles,
-                backgroundColor: `color-mix(in srgb, ${evacStatusColor} 16%, transparent)`,
-                color: evacStatusColor,
-              },
-            }}
-          >
-            {EVAC_STATUS_LABELS[event.evac_status] ?? event.evac_status}
           </Badge>
         </BadgeColumn>
       )}

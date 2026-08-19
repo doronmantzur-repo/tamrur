@@ -8,7 +8,7 @@ import { IconClock, IconTarget } from "@tabler/icons-react";
 import EventSelector from "../dashboard/EventSelector";
 import { MONO_FONT } from "./formStyles";
 import {
-  COMPLETED_STATUS,
+  CLOSED_STATUS,
   EVENT_STATUS_LABELS,
   EVENT_TYPE_LABELS,
 } from "../../constants/eventStatus";
@@ -40,10 +40,10 @@ const dateTimeFormatter = new Intl.DateTimeFormat("he-IL", {
  * @returns {JSX.Element} The medic page header bar.
  */
 const MedicEventBar = ({ selectedEventId, onSelectEvent, event }) => {
-  const isCompleted = event?.status === COMPLETED_STATUS;
-  // An unselected event has nothing to count from; a completed one freezes
+  const isClosed = event?.status === CLOSED_STATUS;
+  // An unselected event has nothing to count from; a closed one freezes
   // at its closure time instead of ticking against now.
-  const elapsedSeconds = useElapsedSeconds(event?.created_at, isCompleted ? event.closure_at : null);
+  const elapsedSeconds = useElapsedSeconds(event?.created_at, isClosed ? event.closure_at : null);
 
   return (
     <Group justify="space-between" align="center" wrap="wrap" gap="sm">
@@ -104,10 +104,10 @@ const MedicEventBar = ({ selectedEventId, onSelectEvent, event }) => {
               fz="sm"
               fw={700}
               ff={MONO_FONT}
-              c={isCompleted ? "var(--app-color-text-muted)" : "var(--app-color-primary)"}
-              title={isCompleted ? "מועד סיום האירוע" : "זמן שחלף מאז פתיחת האירוע"}
+              c={isClosed ? "var(--app-color-text-muted)" : "var(--app-color-primary)"}
+              title={isClosed ? "מועד סיום האירוע" : "זמן שחלף מאז פתיחת האירוע"}
             >
-              {isCompleted
+              {isClosed
                 ? dateTimeFormatter.format(new Date(event.closure_at ?? event.created_at))
                 : formatDuration(elapsedSeconds)}
             </Text>

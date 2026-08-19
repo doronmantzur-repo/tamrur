@@ -23,6 +23,15 @@ export const colorTokens = {
     // Same Tailwind step as the rest (500 in dark, 600 in light).
     info: "#0EA5E9",
     accent: "#8B5CF6",
+
+    // Event status palette: pastel/categorical by design (team decision), not
+    // a red/amber/green severity ramp — these are sequential workflow stages,
+    // not danger levels. Approved 2026-08-19.
+    statusGatheringCasualties: "#2292A4",
+    statusCasualtiesAssessment: "#7D5BA6",
+    statusEvacuationInitiated: "#DC9E82",
+    statusFullEvacuation: "#CDEAC0",
+    statusClosed: "#D8C9A3",
   },
 
   light: {
@@ -42,6 +51,12 @@ export const colorTokens = {
     success: "#16A34A",
     info: "#0284C7",
     accent: "#7C3AED",
+
+    statusGatheringCasualties: "#1B6E7C",
+    statusCasualtiesAssessment: "#5C4380",
+    statusEvacuationInitiated: "#A66B4D",
+    statusFullEvacuation: "#5C8F49",
+    statusClosed: "#8C7A54",
   },
 };
 
@@ -228,6 +243,12 @@ function createColorSchemeVariables(colors, effects) {
     "--app-color-success": colors.success,
     "--app-color-info": colors.info,
     "--app-color-accent": colors.accent,
+
+    "--app-color-status-gathering-casualties": colors.statusGatheringCasualties,
+    "--app-color-status-casualties-assessment": colors.statusCasualtiesAssessment,
+    "--app-color-status-evacuation-initiated": colors.statusEvacuationInitiated,
+    "--app-color-status-full-evacuation": colors.statusFullEvacuation,
+    "--app-color-status-closed": colors.statusClosed,
 
     "--app-effect-hover-background": effects.hoverBackground,
     "--app-effect-hover-border": effects.hoverBorder,

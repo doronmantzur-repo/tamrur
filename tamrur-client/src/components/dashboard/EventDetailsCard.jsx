@@ -6,7 +6,7 @@ import { IconTarget } from "@tabler/icons-react";
 
 // Internal application modules
 import DashboardCard from "./DashboardCard";
-import { COMPLETED_STATUS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
+import { CLOSED_STATUS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
 import { formatDuration } from "../../utils/duration";
 
@@ -23,14 +23,14 @@ function formatDateTime(isoString) {
 
 /**
  * Renders the selected event's details: name, status, type, and either its
- * start/end times (once completed) or a live counter since it was created.
+ * start/end times (once closed) or a live counter since it was created.
  *
  * @param {{ event: object }} props
  * @returns {JSX.Element} The event details card.
  */
 const EventDetailsCard = ({ event }) => {
-  const isCompleted = event.status === COMPLETED_STATUS;
-  const elapsedSeconds = useElapsedSeconds(event.created_at, isCompleted ? event.closure_at : null);
+  const isClosed = event.status === CLOSED_STATUS;
+  const elapsedSeconds = useElapsedSeconds(event.created_at, isClosed ? event.closure_at : null);
 
   return (
     <DashboardCard
@@ -63,7 +63,7 @@ const EventDetailsCard = ({ event }) => {
         </Group>
       }
     >
-      {isCompleted ? (
+      {isClosed ? (
         <Group gap="xl">
           <Stack gap={2}>
             <Text fz="0.68rem" tt="uppercase" lts="0.04em" c="var(--app-color-text-muted)">

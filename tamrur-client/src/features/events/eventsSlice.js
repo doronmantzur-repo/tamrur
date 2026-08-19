@@ -62,7 +62,9 @@ export const fetchEventById = createAsyncThunk(
 );
 
 /**
- * Updates an event (status, name, type, location, closure_at, aerialEvac).
+ * Updates an event (name, type, location, aerialEvac, gatheringStatus).
+ * `status` is not settable here — it's derived server-side; use `closeEvent`
+ * for the one manual transition (full_evacuation -> closed).
  * @param {{ id: string, changes: Object }} params
  * @returns {Promise<Object>}
  */
@@ -75,6 +77,27 @@ export const updateEvent = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message ?? "Failed to update event",
+      );
+    }
+  },
+);
+
+/**
+ * Closes an event — the one manual, one-way status transition. Only succeeds
+ * server-side while the event's current (derived) status is full_evacuation;
+ * the server stamps closure_at itself, so no body is sent.
+ * @param {string} id
+ * @returns {Promise<Object>} The updated event row.
+ */
+export const closeEvent = createAsyncThunk(
+  "events/close",
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await TamrurAPI.post(`/events/${id}/close`);
+      return response.data.event;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message ?? "Failed to close event",
       );
     }
   },
@@ -207,6 +230,26 @@ const eventsSlice = createSlice({
         state.updateStatus = "failed";
         state.updateError = action.payload;
       })
+      .addCase(closeEvent.pending, (state) => {
+        state.updateStatus = "loading";
+        state.updateError = null;
+      })
+      .addCase(closeEvent.fulfilled, (state, action) => {
+        state.updateStatus = "succeeded";
+        // Same merge pattern as updateEvent.fulfilled — partial response,
+        // don't overwrite location.
+        if (state.currentEvent?.id === action.payload.id) {
+          state.currentEvent = { ...state.currentEvent, ...action.payload };
+        }
+        const index = state.events.findIndex((event) => event.id === action.payload.id);
+        if (index !== -1) {
+          state.events[index] = { ...state.events[index], ...action.payload };
+        }
+      })
+      .addCase(closeEvent.rejected, (state, action) => {
+        state.updateStatus = "failed";
+        state.updateError = action.payload;
+      })
       .addCase(updateEventGatheringStatus.pending, (state) => {
         state.updateStatus = "loading";
         state.updateError = null;
@@ -214,12 +257,15 @@ const eventsSlice = createSlice({
       .addCase(updateEventGatheringStatus.fulfilled, (state, action) => {
         state.updateStatus = "succeeded";
 
-        // Patch just these two fields. update_event returns the raw row, whose
+        // Patch just these fields. update_event returns the raw row, whose
         // `location` has not been through ST_AsGeoJSON — merging the whole
         // response would replace the map coordinates with raw geography.
+        // `status` is included because gathering_status is one of its two
+        // derivation inputs server-side, so it can change in the same write.
         const patch = {
           gathering_status: action.payload.gathering_status,
           evac_status: action.payload.evac_status,
+          status: action.payload.status,
         };
 
         if (state.currentEvent?.id === action.payload.id) {

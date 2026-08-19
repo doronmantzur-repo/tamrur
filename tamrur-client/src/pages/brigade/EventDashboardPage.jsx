@@ -29,10 +29,10 @@ import EventMapCard from "../../components/brigade/EventMapCard";
 import CasualtiesTableCard from "../../components/brigade/CasualtiesTableCard";
 import EvacuatedCasualtiesCard from "../../components/brigade/EvacuatedCasualtiesCard";
 import EvacuationsTable from "../../components/brigade/EvacuationsTable";
-import { COMPLETED_STATUS } from "../../constants/eventStatus";
+import { CLOSED_STATUS, FULL_EVACUATION_STATUS } from "../../constants/eventStatus";
 import { fetchLocations } from "../../features/locations/locationsSlice";
 import { fetchForces } from "../../features/forces/forcesSlice";
-import { fetchEventById, updateEvent } from "../../features/events/eventsSlice";
+import { fetchEventById, updateEvent, closeEvent } from "../../features/events/eventsSlice";
 import { fetchAerialMissionsByEvent } from "../../features/aerialMission/aerialMissionSlice";
 import {
   fetchEvacuationsByEvent,
@@ -169,26 +169,14 @@ const EventDashboardPage = () => {
 
   const isDark = colorScheme === "dark";
 
-  // The actual close dispatch, only ever called once the confirmation modal is accepted.
+  // The actual close dispatch, only ever called once the confirmation modal is
+  // accepted. closure_at is stamped server-side now (see POST /events/:id/close),
+  // so localClosureAt just captures "now" for the timer to freeze against
+  // without waiting on the response round-trip.
   const confirmCloseEvent = () => {
-    const closureAt = new Date().toISOString();
-    dispatch(updateEvent({ id: eventId, changes: { status: COMPLETED_STATUS, closure_at: closureAt } }));
-    setLocalClosureAt(closureAt);
+    dispatch(closeEvent(eventId));
+    setLocalClosureAt(new Date().toISOString());
     setCloseConfirmOpen(false);
-  };
-
-  // Setting status to "completed" via the dropdown leads to the same
-  // confirmation as the close-event button, since both result in the event
-  // closing. The dropdown itself never offers "completed" as a target once
-  // the event is already closed — closing is final, not reversible from
-  // here — so there's no reopening branch to handle.
-  const handleStatusChange = (nextStatus) => {
-    if (nextStatus === COMPLETED_STATUS) {
-      setCloseConfirmOpen(true);
-      return;
-    }
-
-    dispatch(updateEvent({ id: eventId, changes: { status: nextStatus } }));
   };
 
   const handleRequestAerialEvac = () => {
@@ -203,7 +191,8 @@ const EventDashboardPage = () => {
     dispatch(deleteEvacuation({ id: evacId, eventId }));
   };
 
-  const isEventCompleted = event?.status === COMPLETED_STATUS;
+  const isEventClosed = event?.status === CLOSED_STATUS;
+  const isEventFullEvacuation = event?.status === FULL_EVACUATION_STATUS;
 
   // Split once here, same as the medic page's own active/evacuated split —
   // CasualtiesTableCard gets the active half, EvacuatedCasualtiesCard the
@@ -290,7 +279,7 @@ const EventDashboardPage = () => {
                   </Group>
 
                   <EventDescriptionBlock />
-                  <EventBadgesRow event={event} aerialEvacStatus={aerialEvacStatus} onStatusChange={handleStatusChange} />
+                  <EventBadgesRow event={event} aerialEvacStatus={aerialEvacStatus} />
                 </>
               ) : (
                 <IconShieldHalfFilled aria-hidden="true" size={28} stroke={1.6} color="var(--app-color-primary)" />
@@ -348,7 +337,11 @@ const EventDashboardPage = () => {
               </Button>
 
               {!isInitialLoad && isShowingCurrentEvent && event && (
-                <EventActionButtons isCompleted={isEventCompleted} onCloseEvent={() => setCloseConfirmOpen(true)} />
+                <EventActionButtons
+                  isCompleted={isEventClosed}
+                  canClose={isEventFullEvacuation}
+                  onCloseEvent={() => setCloseConfirmOpen(true)}
+                />
               )}
             </Group>
           </Box>
@@ -394,7 +387,7 @@ const EventDashboardPage = () => {
                         evacuations={evacuations}
                         locations={locations}
                         aerialMissions={aerialMissions}
-                        isCompleted={isEventCompleted}
+                        isCompleted={isEventClosed}
                         aerialEvacStatus={aerialEvacStatus}
                         onUpdateEvacuation={handleUpdateEvacuation}
                         onDeleteEvacuation={handleDeleteEvacuation}
@@ -434,7 +427,7 @@ const EventDashboardPage = () => {
         }}
       >
         <Text fz="sm" c="var(--app-color-text-muted)" mb="lg">
-          האם אתה בטוח שברצונך לסגור את האירוע? האירוע יסומן כהושלם. ניתן יהיה לפתוח אותו מחדש מאוחר יותר במידת הצורך.
+          האם אתה בטוח שברצונך לסגור את האירוע? הפעולה סופית ולא ניתנת לביטול.
         </Text>
         <Group justify="flex-end" gap="sm">
           <Button variant="default" onClick={() => setCloseConfirmOpen(false)}>

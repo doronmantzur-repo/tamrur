@@ -6,7 +6,7 @@ import { Box, Group, Stack, Text } from "@mantine/core";
 import { IconClockPause, IconStopwatch } from "@tabler/icons-react";
 
 // Internal application modules
-import { COMPLETED_STATUS } from "../../constants/eventStatus";
+import { CLOSED_STATUS } from "../../constants/eventStatus";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
 import { formatDuration } from "../../utils/duration";
 
@@ -56,10 +56,10 @@ const statLabelStyles = {
 /**
  * Renders the event's elapsed-time chip for the dashboard's top bar, at the
  * same row as the open/close-event actions rather than inside the header
- * card. Freezes once the event is completed, using whichever closure
+ * card. Freezes once the event is closed, using whichever closure
  * timestamp is available first: the brigade's own just-closed moment
  * (`localClosureAt`), then the server's `closure_at`, then — only if neither
- * exists yet on first render of an already-completed event — the moment
+ * exists yet on first render of an already-closed event — the moment
  * this component first mounted, captured once so the timer doesn't tick
  * forever or show 0.
  *
@@ -67,25 +67,25 @@ const statLabelStyles = {
  * @returns {JSX.Element} The timer chip.
  */
 const EventTimerChip = ({ event, localClosureAt }) => {
-  const isCompleted = event.status === COMPLETED_STATUS;
+  const isClosed = event.status === CLOSED_STATUS;
 
   const [fallbackClosureAt] = useState(() =>
-    event.status === COMPLETED_STATUS && !localClosureAt && !event.closure_at ? new Date().toISOString() : null,
+    event.status === CLOSED_STATUS && !localClosureAt && !event.closure_at ? new Date().toISOString() : null,
   );
 
   const elapsedSeconds = useElapsedSeconds(
     event.created_at,
-    isCompleted ? localClosureAt || event.closure_at || fallbackClosureAt : null,
+    isClosed ? localClosureAt || event.closure_at || fallbackClosureAt : null,
   );
 
   return (
     <Box style={timerChipStyles}>
       <Group gap="sm" wrap="nowrap">
         <Box style={timerIconWrapperStyles}>
-          {isCompleted ? <IconClockPause size={24} stroke={2} /> : <IconStopwatch size={24} stroke={2} />}
+          {isClosed ? <IconClockPause size={24} stroke={2} /> : <IconStopwatch size={24} stroke={2} />}
         </Box>
         <Stack gap={0}>
-          <Text {...statLabelStyles}>{isCompleted ? "אירוע הסתיים" : "מתחילת האירוע"}</Text>
+          <Text {...statLabelStyles}>{isClosed ? "אירוע הסתיים" : "מתחילת האירוע"}</Text>
           <Text {...statNumberStyles}>{formatDuration(elapsedSeconds, { showDays: false })}</Text>
         </Stack>
       </Group>

@@ -7,6 +7,7 @@ import { useDroppable } from "@dnd-kit/core";
 
 // Internal application modules
 import EventQueueCard from "./EventQueueCard";
+import { CLOSED_STATUS } from "../../constants/eventStatus";
 
 // Styles
 
@@ -20,16 +21,19 @@ const QUEUE_SORT_OPTIONS = [
 
 /**
  * One droppable queue column: a colored header bar naming the status and
- * how many events are in it, an optional "+" (evaluated only — every new
- * event starts there, never dropped straight into another status), a
- * per-column sort picker, and the scrollable card list itself. Disabled as
- * a drop target on a past date, same as its cards are disabled as drag
- * sources then — the board is read-only history away from today.
+ * how many events are in it, an optional "+" (gathering_casualties only —
+ * every new event starts there, never dropped straight into another
+ * status), a per-column sort picker, and the scrollable card list itself.
+ * Only the closed column ever accepts a drop — every other status is
+ * derived server-side, so dragging a card there wouldn't mean anything (see
+ * EventQueueCard's `isDraggable`, which restricts the drag side of the same
+ * restriction) — and, same as before, disabled entirely on a past date,
+ * since the board is read-only history away from today.
  *
  * @param {{
  *   status: { key: string, label: string, color: string },
  *   events: Array<object>,
- *   isEvaluatedColumn: boolean,
+ *   isGatheringCasualtiesColumn: boolean,
  *   isToday: boolean,
  *   sortMode: string,
  *   onSortChange: (mode: string) => void,
@@ -38,8 +42,20 @@ const QUEUE_SORT_OPTIONS = [
  * }} props
  * @returns {JSX.Element} The queue column.
  */
-const QueueColumn = ({ status, events, isEvaluatedColumn, isToday, sortMode, onSortChange, onAddEvent, onOpenEvent }) => {
-  const { setNodeRef, isOver } = useDroppable({ id: status.key, disabled: !isToday });
+const QueueColumn = ({
+  status,
+  events,
+  isGatheringCasualtiesColumn,
+  isToday,
+  sortMode,
+  onSortChange,
+  onAddEvent,
+  onOpenEvent,
+}) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: status.key,
+    disabled: !isToday || status.key !== CLOSED_STATUS,
+  });
 
   return (
     <Stack
@@ -75,7 +91,7 @@ const QueueColumn = ({ status, events, isEvaluatedColumn, isToday, sortMode, onS
             >
               {events.length}
             </Badge>
-            {isEvaluatedColumn && (
+            {isGatheringCasualtiesColumn && (
               <ActionIcon
                 size="sm"
                 radius="xl"
