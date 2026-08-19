@@ -23,7 +23,6 @@ import { useDispatch, useSelector } from "react-redux";
 import Layout from "../../components/layout/Layout";
 import EventDescriptionBlock from "../../components/brigade/EventDescriptionBlock";
 import EventBadgesRow from "../../components/brigade/EventBadgesRow";
-import EvacuationProgressCard from "../../components/brigade/EvacuationProgressCard";
 import EventTimerChip from "../../components/brigade/EventTimerChip";
 import EventActionButtons from "../../components/brigade/EventActionButtons";
 import EventMapCard from "../../components/brigade/EventMapCard";
@@ -52,26 +51,20 @@ const EMPTY_ARRAY = [];
  * Renders the brigade single-event dashboard: a top bar (the shield icon
  * and event name sharing one row on the right, description and status
  * badges stacked beneath that row; the elapsed-time chip centered; the
- * theme toggle/open-event/close-event actions on the left), then an
- * evacuation-progress card — a segmented bar by evacuated/urgency, a "טרם
- * פונו" bracket, the evacuated percentage, and a row of compact stat tiles
- * (total/urgent/evacuated/non-urgent/deceased) that double as the bar's
- * legend. That single card replaces both the old badges-only header card
- * and the page's separate 4-tile stat row — the active-teams count that
- * used to be a tile here now lives as a badge in EvacuationsTable's own
- * header instead. Below that, one row split 1/5-2/5-2/5 between the event
- * map, the casualties table (not-yet-evacuated casualties only), and the
- * evacuation team column — which itself stacks EvacuationsTable (the
- * working table, most of the column's height) above EvacuatedCasualtiesCard
- * (a compact read-only reference of who's already evacuated and when,
- * mirroring the medic page's own active/evacuated split — casualties are
- * split into the two halves once here and handed to each card separately).
- * The whole page is pinned to the viewport height with no page-level
- * scroll; the bottom row fills whatever space is left and each card
- * scrolls its own content internally instead. The event (by :eventId),
- * locations, aerial missions, evacuations, and casualties are all fetched
- * from the API. An approved aerial mission with no evacuation row yet
- * auto-creates one in the background.
+ * theme toggle/open-event/close-event actions on the left), then one row
+ * split 1/5-2/5-2/5 between the event map, the casualties table (not-yet-
+ * evacuated casualties only), and the evacuation team column — which itself
+ * stacks EvacuationsTable (the working table, most of the column's height)
+ * above EvacuatedCasualtiesCard (a compact read-only reference of who's
+ * already evacuated and when, mirroring the medic page's own
+ * active/evacuated split — casualties are split into the two halves once
+ * here and handed to each card separately). The active-teams count lives as
+ * a badge in EvacuationsTable's own header. The whole page is pinned to the
+ * viewport height with no page-level scroll; the bottom row fills whatever
+ * space is left and each card scrolls its own content internally instead.
+ * The event (by :eventId), locations, aerial missions, evacuations, and
+ * casualties are all fetched from the API. An approved aerial mission with
+ * no evacuation row yet auto-creates one in the background.
  *
  * @returns {JSX.Element} The brigade event dashboard page.
  */
@@ -101,6 +94,7 @@ const EventDashboardPage = () => {
   const aerialMissions = useSelector((state) => state.aerialMission.byEventId[eventId]) || EMPTY_ARRAY;
   const evacuations = useSelector((state) => state.evacuations.byEventId[eventId]) || EMPTY_ARRAY;
   const casualties = useSelector((state) => state.casualties.byEventId[eventId]) || EMPTY_ARRAY;
+  const evacuatedCount = casualties.filter((casualty) => casualty.is_evacuated).length;
 
   // The airforce only ever writes the decision to the aerial_mission row,
   // never back onto the event — so once a mission exists for this event,
@@ -330,7 +324,7 @@ const EventDashboardPage = () => {
                 <>
                   <EventTimerChip event={event} localClosureAt={localClosureAt} />
                   <Text fw={800} fz="1.75rem" lh={1.1} c="var(--app-color-text)" ff='ui-monospace, "SF Mono", "Consolas", monospace'>
-                    {casualties.length} נפגעים
+                    {`פונו ${evacuatedCount} מתוך ${casualties.length} נפגעים`}
                   </Text>
                 </>
               )}
@@ -398,8 +392,6 @@ const EventDashboardPage = () => {
 
           {!isInitialLoad && isShowingCurrentEvent && (
             <>
-              <EvacuationProgressCard casualties={casualties} />
-
               <Grid
                 gutter="sm"
                 columns={10}
