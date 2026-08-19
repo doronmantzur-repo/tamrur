@@ -85,8 +85,8 @@ const EventTimerChip = ({ event, localClosureAt }) => {
           {isCompleted ? <IconClockPause size={24} stroke={2} /> : <IconStopwatch size={24} stroke={2} />}
         </Box>
         <Stack gap={0}>
-          <Text {...statLabelStyles}>{isCompleted ? "אירוע הסתיים" : "זמן שחלף"}</Text>
-          <Text {...statNumberStyles}>{formatDuration(elapsedSeconds)}</Text>
+          <Text {...statLabelStyles}>{isCompleted ? "אירוע הסתיים" : "מתחילת האירוע"}</Text>
+          <Text {...statNumberStyles}>{formatDuration(elapsedSeconds, { showDays: false })}</Text>
         </Stack>
       </Group>
     </Box>
