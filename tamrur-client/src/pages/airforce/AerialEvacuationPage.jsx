@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 
 // External libraries
-import { ActionIcon, Box, Stack, useMantineColorScheme } from "@mantine/core";
+import { ActionIcon, Box, SimpleGrid, Stack, useMantineColorScheme } from "@mantine/core";
 import { IconMoon, IconSun } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -127,24 +127,28 @@ const AerialEvacuationPage = () => {
           zIndex: 10,
         }}
       >
-        <Box w="100%" maw={448}>
+        <Box w="100%" maw={1240}>
           <Stack align="stretch" gap="xl">
             <AuthHeader />
 
-            <Stack align="stretch" gap="xl">
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl" verticalSpacing="xl">
               {aerialEvacEvents.map((event) => (
                 <Stack key={event.id} align="stretch" gap="md">
                   <AerialEvacCard
                     event={event}
                     mission={missionsByEventId[event.id]?.[0]}
                   />
-                  {/* Airforce only needs to see who's actually waiting on them. */}
+                  {/* Airforce only needs to see who's actually waiting on them,
+                      broken down by evacuation posture rather than triage
+                      urgency — that's what determines how each casualty
+                      loads onto the helicopter. */}
                   <CasualtiesCard
                     casualties={(casualtiesByEventId[event.id] || []).filter((casualty) => casualty.helivac)}
+                    statBreakdown="ability"
                   />
                 </Stack>
               ))}
-            </Stack>
+            </SimpleGrid>
 
             <AuthFooter />
           </Stack>
