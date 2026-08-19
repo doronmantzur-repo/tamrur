@@ -38,6 +38,7 @@ import {
   DEFAULT_CASUALTY_SORT,
   EVAC_STATUS_COLOR_VARS,
   EVAC_STATUS_LABELS,
+  EVAC_STATUS_PENDING,
   GATHERING_COMPLETED,
   GATHERING_IN_PROGRESS,
   GATHERING_STATUS_LABELS,
@@ -132,7 +133,7 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
   const eventId = event.id;
   const gatheringStatus = event.gathering_status ?? GATHERING_IN_PROGRESS;
   const isGatheringComplete = gatheringStatus === GATHERING_COMPLETED;
-  const evacStatus = event.evac_status ?? 0;
+  const evacStatus = event.evac_status ?? EVAC_STATUS_PENDING;
 
   const { active, evacuated } = useMemo(
     () => ({

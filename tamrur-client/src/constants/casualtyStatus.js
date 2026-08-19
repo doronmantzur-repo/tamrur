@@ -251,7 +251,7 @@ export function labelFor(labels, value) {
   return labels[value] ?? value;
 }
 // איסוף נפגעים — whether medics are still collecting casualties at the scene.
-// Drives the event's derived evac_status; see the server's 003 migration.
+// Drives the event's derived evac_status; see the server's 006 migration.
 export const GATHERING_IN_PROGRESS = "in_progress";
 export const GATHERING_COMPLETED = "completed";
 
@@ -265,20 +265,24 @@ export const GATHERING_STATUS_COLOR_VARS = {
   [GATHERING_COMPLETED]: "var(--app-color-success)",
 };
 
-// evac_status is derived server-side and never written by the client:
-//   0 = no casualty evacuated yet
-//   1 = evacuation under way
-//   2 = gathering closed and every casualty evacuated
+// evac_status is derived server-side and never written by the client. It is a
+// Postgres enum ("event-evac-status") — the integers 0/1/2 it used to hold were
+// migrated in the server's 006 migration, so nothing sends or compares numbers
+// any more.
+export const EVAC_STATUS_PENDING = "pending"; // no casualty evacuated yet
+export const EVAC_STATUS_INITIATED = "initiated"; // evacuation under way
+export const EVAC_STATUS_FULL = "full"; // gathering closed, everyone evacuated
+
 export const EVAC_STATUS_LABELS = {
-  0: "פינוי טרם החל",
-  1: "פינוי בתהליך",
-  2: "פינוי הושלם",
+  [EVAC_STATUS_PENDING]: "פינוי טרם החל",
+  [EVAC_STATUS_INITIATED]: "פינוי בתהליך",
+  [EVAC_STATUS_FULL]: "פינוי הושלם",
 };
 
 export const EVAC_STATUS_COLOR_VARS = {
-  0: "var(--app-color-text-muted)",
-  1: "var(--app-color-warning)",
-  2: "var(--app-color-success)",
+  [EVAC_STATUS_PENDING]: "var(--app-color-text-muted)",
+  [EVAC_STATUS_INITIATED]: "var(--app-color-warning)",
+  [EVAC_STATUS_FULL]: "var(--app-color-success)",
 };
 
 // ---------------------------------------------------------------------------
