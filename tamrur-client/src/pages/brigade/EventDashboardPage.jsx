@@ -171,7 +171,7 @@ const EventDashboardPage = () => {
     aerialMissions
       .filter((mission) => mission["request-status"] === "approved")
       .forEach((mission) => {
-        const alreadyExists = evacuations.some((evac) => evac.aerialMissionId === mission.id);
+        const alreadyExists = evacuations.some((evac) => evac["aerial_mission_id"] === mission.id);
         if (alreadyExists || autoCreatedMissionIds.current.has(mission.id)) return;
 
         autoCreatedMissionIds.current.add(mission.id);
