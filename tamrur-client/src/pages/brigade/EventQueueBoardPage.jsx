@@ -14,6 +14,8 @@ import EventQueueMap from "../../components/brigade/EventQueueMap";
 import EventQueueBoard from "../../components/brigade/EventQueueBoard";
 import { COMPLETED_STATUS } from "../../constants/eventStatus";
 import { fetchEvents, updateEvent } from "../../features/events/eventsSlice";
+import { fetchForces } from "../../features/forces/forcesSlice";
+import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
 import { isEventActiveOnDate, isSameDay, startOfDay } from "../../utils/eventQueueDate";
 
@@ -50,6 +52,8 @@ const EventQueueBoardPage = () => {
   const events = useSelector((state) => state.events.events);
   const apiStatus = useSelector((state) => state.events.status);
   const apiError = useSelector((state) => state.events.error);
+  const forces = useSelector((state) => state.forces.forces);
+  const casualtiesByEventId = useSelector((state) => state.casualties.byEventId);
 
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,10 +63,12 @@ const EventQueueBoardPage = () => {
 
   useEffect(() => {
     dispatch(fetchEvents());
+    dispatch(fetchForces());
 
     // Other brigade members can open/close events at any time, so keep
     // polling instead of fetching once — same pattern every other brigade
-    // page already uses.
+    // page already uses. Forces are static reference data, so they're
+    // fetched once here, not polled.
     const intervalId = setInterval(() => {
       dispatch(fetchEvents());
     }, POLL_INTERVAL_MS);
@@ -78,6 +84,17 @@ const EventQueueBoardPage = () => {
       (event) => isEventActiveOnDate(event, selectedDate) && (!query || event.name.toLowerCase().includes(query)),
     );
   }, [events, selectedDate, searchQuery]);
+
+  // The map view's event popups show each event's evacuated/total casualty
+  // count, which the event list itself doesn't carry — only fetched while
+  // the map is actually being viewed, to avoid firing one request per
+  // visible event on every poll tick when nobody's looking at the map.
+  useEffect(() => {
+    if (viewMode !== "map") return;
+    visibleEvents.forEach((event) => {
+      dispatch(fetchCasualtiesByEvent(event.id));
+    });
+  }, [dispatch, viewMode, visibleEvents]);
 
   // Both return the dispatch's promise (rather than catching here) so
   // EventQueueBoard can await it: it needs to know success/failure itself,
@@ -252,7 +269,9 @@ const EventQueueBoardPage = () => {
 
         {!isInitialLoad && viewMode === "table" && <EventQueueTable events={visibleEvents} />}
 
-        {!isInitialLoad && viewMode === "map" && <EventQueueMap events={visibleEvents} />}
+        {!isInitialLoad && viewMode === "map" && (
+          <EventQueueMap events={visibleEvents} forces={forces} casualtiesByEventId={casualtiesByEventId} />
+        )}
 
         {!isInitialLoad && viewMode === "board" && (
           <EventQueueBoard
