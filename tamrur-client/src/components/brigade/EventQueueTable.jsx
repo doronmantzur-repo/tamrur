@@ -6,6 +6,7 @@ import { Badge, Box, Table } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 
 // Internal application modules
+import DashboardCard from "../dashboard/DashboardCard";
 import ColumnHeader from "../dashboard/ColumnHeader";
 import { EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
@@ -36,9 +37,14 @@ const COLUMN_ACCESSORS = {
 /**
  * A flat, sortable and filterable list of every event visible on the queue
  * board's currently selected date — the table view alongside the map and
- * kanban views still to come. Read-only: clicking a row opens that event's
- * single-event dashboard, matching how a kanban card or map marker will
- * open it too.
+ * kanban views. Read-only: clicking a row opens that event's single-event
+ * dashboard, matching how a kanban card or map marker opens it too. Wrapped
+ * in `DashboardCard`, the same card chrome (surface, border, gold accent bar,
+ * title row) every table on that single-event dashboard already uses
+ * (`CasualtiesTableCard`, `EvacuationsTable`), so this page's table reads as
+ * the same app rather than a bare bordered box — the outer `Box`'s
+ * `flex: 1, minHeight: 0` is what actually makes it fill the page, same as
+ * before; `DashboardCard`'s own `fullHeight` just fills that.
  *
  * @param {{ events: Array<object> }} props
  * @returns {JSX.Element} The event queue table.
@@ -94,84 +100,94 @@ const EventQueueTable = ({ events }) => {
   });
 
   return (
-    <Box
-      style={{
-        flex: 1,
-        minHeight: 0,
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "var(--app-color-surface)",
-        border: "1px solid var(--app-color-border)",
-        borderRadius: "var(--mantine-radius-sm)",
-        overflow: "hidden",
-      }}
-    >
-      <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-        <Table verticalSpacing="xs" fz="sm" style={{ width: "100%" }}>
-          <Table.Thead>
-            <Table.Tr>
-              <ColumnHeader label="שם אירוע" {...sortProps("name")} />
-              <ColumnHeader label="סוג" {...sortProps("type")} {...filterProps("type", TYPE_FILTER_OPTIONS)} />
-              <ColumnHeader label="סטטוס" {...sortProps("status")} {...filterProps("status", STATUS_FILTER_OPTIONS)} />
-              <ColumnHeader label="נפתח" {...sortProps("created_at")} />
-              <ColumnHeader label="נסגר" {...sortProps("closure_at")} />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {rows.map((event) => (
-              <Table.Tr
-                key={event.id}
-                className="app-fade-in"
-                onClick={() => navigate(`/brigade/${event.id}`)}
-                style={{ cursor: "pointer" }}
-              >
-                <Table.Td fw={600}>{event.name}</Table.Td>
-                <Table.Td>
-                  <Badge
-                    size="sm"
-                    variant="outline"
-                    styles={{
-                      root: {
-                        backgroundColor: "var(--app-color-surface-high)",
-                        borderColor: "var(--app-color-border)",
-                        color: "var(--app-color-text-muted)",
-                      },
-                    }}
-                  >
-                    {EVENT_TYPE_LABELS[event.type] || event.type}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>
-                  <Badge
-                    size="sm"
-                    styles={{
-                      root: {
-                        backgroundColor: `color-mix(in srgb, ${EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)"} 16%, transparent)`,
-                        color: EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)",
-                      },
-                    }}
-                  >
-                    {EVENT_STATUS_LABELS[event.status] || event.status}
-                  </Badge>
-                </Table.Td>
-                <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
-                  {dateTimeFormatter.format(new Date(event.created_at))}
-                </Table.Td>
-                <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
-                  {event.closure_at ? dateTimeFormatter.format(new Date(event.closure_at)) : "פעיל"}
-                </Table.Td>
-              </Table.Tr>
-            ))}
-            {rows.length === 0 && (
+    <Box style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+      <DashboardCard
+        title="אירועים"
+        padding="md"
+        gap="sm"
+        fullHeight
+        headerExtra={
+          <Badge
+            variant="outline"
+            styles={{
+              root: {
+                backgroundColor: "var(--app-color-surface-high)",
+                borderColor: "var(--app-color-border)",
+                color: "var(--app-color-text-muted)",
+              },
+            }}
+          >
+            {rows.length} מתוך {events.length}
+          </Badge>
+        }
+      >
+        <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+          <Table verticalSpacing="sm" fz="sm" style={{ width: "100%" }}>
+            <Table.Thead>
               <Table.Tr>
-                <Table.Td colSpan={5} c="var(--app-color-text-muted)" ta="center" py="xl">
-                  {events.length === 0 ? "אין אירועים להצגה בתאריך זה" : "אין אירועים התואמים לסינון"}
-                </Table.Td>
+                <ColumnHeader label="שם אירוע" {...sortProps("name")} />
+                <ColumnHeader label="סוג" {...sortProps("type")} {...filterProps("type", TYPE_FILTER_OPTIONS)} />
+                <ColumnHeader label="סטטוס" {...sortProps("status")} {...filterProps("status", STATUS_FILTER_OPTIONS)} />
+                <ColumnHeader label="נפתח" {...sortProps("created_at")} />
+                <ColumnHeader label="נסגר" {...sortProps("closure_at")} />
               </Table.Tr>
-            )}
-          </Table.Tbody>
-        </Table>
-      </Box>
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.map((event, index) => (
+                <Table.Tr
+                  key={event.id}
+                  className="app-fade-in"
+                  style={{ animationDelay: `${index * 30}ms`, cursor: "pointer" }}
+                  onClick={() => navigate(`/brigade/${event.id}`)}
+                >
+                  <Table.Td fw={600}>{event.name}</Table.Td>
+                  <Table.Td>
+                    <Badge
+                      size="sm"
+                      variant="outline"
+                      styles={{
+                        root: {
+                          backgroundColor: "var(--app-color-surface-high)",
+                          borderColor: "var(--app-color-border)",
+                          color: "var(--app-color-text-muted)",
+                        },
+                      }}
+                    >
+                      {EVENT_TYPE_LABELS[event.type] || event.type}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge
+                      size="sm"
+                      styles={{
+                        root: {
+                          backgroundColor: `color-mix(in srgb, ${EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)"} 16%, transparent)`,
+                          color: EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)",
+                        },
+                      }}
+                    >
+                      {EVENT_STATUS_LABELS[event.status] || event.status}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
+                    {dateTimeFormatter.format(new Date(event.created_at))}
+                  </Table.Td>
+                  <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
+                    {event.closure_at ? dateTimeFormatter.format(new Date(event.closure_at)) : "פעיל"}
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+              {rows.length === 0 && (
+                <Table.Tr>
+                  <Table.Td colSpan={5} c="var(--app-color-text-muted)" ta="center" py="xl">
+                    {events.length === 0 ? "אין אירועים להצגה בתאריך זה" : "אין אירועים התואמים לסינון"}
+                  </Table.Td>
+                </Table.Tr>
+              )}
+            </Table.Tbody>
+          </Table>
+        </Box>
+      </DashboardCard>
     </Box>
   );
 };

@@ -261,6 +261,7 @@ const EventQueueMap = ({ events, forces, casualtiesByEventId = {} }) => {
                   key={event.id}
                   position={latLng}
                   icon={buildEventIcon({ color, dimmed: isClosed })}
+                  zIndexOffset={1000}
                   eventHandlers={{
                     click: () => navigate(`/brigade/${event.id}`),
                     ...OPEN_POPUP_ON_HOVER,
