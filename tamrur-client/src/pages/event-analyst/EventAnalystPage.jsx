@@ -10,15 +10,15 @@ import Layout from "../../components/layout/Layout";
 import EventSelector from "../../components/dashboard/EventSelector";
 import EventReportCard from "../../components/analyst/EventReportCard";
 import ReportsFolderCard from "../../components/analyst/ReportsFolderCard";
-import { COMPLETED_STATUS } from "../../constants/eventStatus";
+import { CLOSED_STATUS } from "../../constants/eventStatus";
 
 // Styles
 
-const REPORTABLE_STATUSES = [COMPLETED_STATUS];
+const REPORTABLE_STATUSES = [CLOSED_STATUS];
 
 /**
  * Renders the event-analyst page. Reports can only be generated for
- * completed events, so the dropdown here is restricted to those.
+ * closed events, so the dropdown here is restricted to those.
  *
  * @returns {JSX.Element} The event-analyst page.
  */

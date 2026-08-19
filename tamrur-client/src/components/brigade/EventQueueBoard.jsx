@@ -10,7 +10,7 @@ import { DndContext, DragOverlay, PointerSensor, closestCenter, useSensor, useSe
 // Internal application modules
 import QueueColumn from "./QueueColumn";
 import { EventQueueCardContent } from "./EventQueueCard";
-import { COMPLETED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
+import { CLOSED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
 
 // Styles
 
@@ -29,42 +29,43 @@ const SORTERS = {
 };
 
 /**
- * The kanban view: five status queues the brigade drags events between.
- * Every queue sorts independently (`sortModeByStatus`, not one board-wide
- * order). Dropping into "completed" opens a confirm modal first — that
- * status is final everywhere else in the app (EventBadgesRow) — every
- * other move applies immediately.
+ * The kanban view: five status queues showing the brigade's events. `status`
+ * is derived server-side from gathering_status/evac_status for every column
+ * except the manual transition into "closed" — so dragging is restricted to
+ * exactly one move, full_evacuation -> closed (enforced in EventQueueCard's
+ * `isDraggable` and QueueColumn's `useDroppable`, not here); everything else
+ * moves columns on its own as the underlying data changes. Dropping onto the
+ * closed column opens a confirm modal first, since closing is final
+ * everywhere else in the app (EventBadgesRow).
  *
  * Moves are optimistic: `statusOverrides` shows a card in its new column
  * the instant it's dropped, laid on top of the real `events` prop from
- * Redux (`effectiveEvents`), while `onStatusChange`/`onCompleteEvent`
- * dispatch the real `updateEvent` update in the background. The override
- * clears once that resolves (by then the store has the real value anyway)
- * or, on failure, clears and reverts the card to its actual status while
- * showing an error banner — otherwise a card would visibly snap back to
- * its old column for a moment and then jump to the new one once the
- * network round-trip finished, since nothing here has any control over
- * how long that takes.
+ * Redux (`effectiveEvents`), while `onCloseEvent` dispatches the real close
+ * in the background. The override clears once that resolves (by then the
+ * store has the real value anyway) or, on failure, clears and reverts the
+ * card to its actual status while showing an error banner — otherwise a
+ * card would visibly snap back to its old column for a moment and then jump
+ * to the new one once the network round-trip finished, since nothing here
+ * has any control over how long that takes.
  *
- * The "+" (evaluated column only — new events can only ever start there)
- * navigates to the existing `/create-event` page rather than opening its
- * own form: that page already collects the location `createEvent`
+ * The "+" (gathering_casualties column only — new events can only ever start
+ * there) navigates to the existing `/create-event` page rather than opening
+ * its own form: that page already collects the location `createEvent`
  * requires (a lightweight inline form here couldn't, with no location
  * picker of its own) and already guarantees new events start as
- * "evaluated" since it never sends a status. The whole board is read-only
- * (no drag, no "+") while `isToday` is false, since dragging changes an
- * event's *current* status, which isn't meaningful while browsing a past
- * day.
+ * "gathering_casualties" since it never sends a status. The whole board is
+ * read-only (no drag, no "+") while `isToday` is false, since dragging
+ * changes an event's *current* status, which isn't meaningful while
+ * browsing a past day.
  *
  * @param {{
  *   events: Array<object>,
  *   isToday: boolean,
- *   onStatusChange: (id: string|number, status: string) => Promise<unknown>,
- *   onCompleteEvent: (id: string|number) => Promise<unknown>,
+ *   onCloseEvent: (id: string|number) => Promise<unknown>,
  * }} props
  * @returns {JSX.Element} The kanban board.
  */
-const EventQueueBoard = ({ events, isToday, onStatusChange, onCompleteEvent }) => {
+const EventQueueBoard = ({ events, isToday, onCloseEvent }) => {
   const navigate = useNavigate();
 
   const [sortModeByStatus, setSortModeByStatus] = useState(() =>
@@ -132,28 +133,25 @@ const EventQueueBoard = ({ events, isToday, onStatusChange, onCompleteEvent }) =
     setActiveWidth(null);
   };
 
+  // EventQueueCard's isDraggable and QueueColumn's useDroppable already
+  // restrict drags to full_evacuation -> closed, so any drop that lands here
+  // is that one move — just confirm it.
   const handleDragEnd = ({ active, over }) => {
     clearActiveDrag();
 
     if (!over) return;
     const eventId = active.id;
-    const toStatus = over.id;
     const source = effectiveEvents.find((event) => event.id === eventId);
-    if (!source || source.status === toStatus) return;
+    if (!source || source.status === over.id) return;
 
-    if (toStatus === COMPLETED_STATUS) {
-      setPendingDrop({ eventId, name: source.name });
-      return;
-    }
-
-    applyOptimisticMove(eventId, toStatus, () => onStatusChange(eventId, toStatus));
+    setPendingDrop({ eventId, name: source.name });
   };
 
-  const handleConfirmComplete = () => {
+  const handleConfirmClose = () => {
     if (!pendingDrop) return;
     const { eventId } = pendingDrop;
     setPendingDrop(null);
-    applyOptimisticMove(eventId, COMPLETED_STATUS, () => onCompleteEvent(eventId));
+    applyOptimisticMove(eventId, CLOSED_STATUS, () => onCloseEvent(eventId));
   };
 
   return (
@@ -198,7 +196,7 @@ const EventQueueBoard = ({ events, isToday, onStatusChange, onCompleteEvent }) =
               key={status.key}
               status={status}
               events={columnEvents}
-              isEvaluatedColumn={status.key === "evaluated"}
+              isGatheringCasualtiesColumn={status.key === "gathering_casualties"}
               isToday={isToday}
               sortMode={sortModeByStatus[status.key]}
               onSortChange={(mode) => handleSortChange(status.key, mode)}
@@ -253,7 +251,7 @@ const EventQueueBoard = ({ events, isToday, onStatusChange, onCompleteEvent }) =
         }}
       >
         <Text fz="sm" c="var(--app-color-text-muted)" mb="lg">
-          להעביר את &laquo;{pendingDrop?.name}&raquo; לסטטוס <strong>הושלם</strong>? האירוע יסומן כהושלם ולא ניתן יהיה לשנות זאת.
+          לסגור את &laquo;{pendingDrop?.name}&raquo;? הפעולה סופית ולא ניתנת לביטול.
         </Text>
         <Group justify="flex-end" gap="sm">
           <Button variant="default" onClick={() => setPendingDrop(null)}>
@@ -261,7 +259,7 @@ const EventQueueBoard = ({ events, isToday, onStatusChange, onCompleteEvent }) =
           </Button>
           <Button
             styles={{ root: { backgroundColor: "var(--app-color-warning)", color: "#FFFFFF" } }}
-            onClick={handleConfirmComplete}
+            onClick={handleConfirmClose}
           >
             סגור אירוע
           </Button>

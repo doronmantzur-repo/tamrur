@@ -12,8 +12,7 @@ import DateNavBar from "../../components/brigade/DateNavBar";
 import EventQueueTable from "../../components/brigade/EventQueueTable";
 import EventQueueMap from "../../components/brigade/EventQueueMap";
 import EventQueueBoard from "../../components/brigade/EventQueueBoard";
-import { COMPLETED_STATUS } from "../../constants/eventStatus";
-import { fetchEvents, updateEvent } from "../../features/events/eventsSlice";
+import { fetchEvents, closeEvent } from "../../features/events/eventsSlice";
 import { fetchForces } from "../../features/forces/forcesSlice";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
@@ -32,15 +31,16 @@ const VIEW_OPTIONS = [
  * The brigade's event queue board — every event, filterable by date and by
  * name, switchable between a table, a map, and a kanban board. All three
  * views now read the same real event list (`fetchEvents`, polled like every
- * other brigade page — see `POLL_INTERVAL_MS`). Kanban's drag actions
- * dispatch `updateEvent` (via `handleStatusChange`/`handleCompleteEvent`
- * below, both returning the dispatch's promise) — the optimistic move and
- * the revert-on-failure both live in EventQueueBoard itself, since it's the
- * one that needs to react to success/failure, not this page. Kanban's "+"
- * doesn't have its own create form — it navigates to the existing
- * `/create-event` page (`CreateEventForm`), since that already handles the
- * one thing a lightweight inline form couldn't (a required location pin)
- * and already guarantees new events start as "evaluated" (status is never
+ * other brigade page — see `POLL_INTERVAL_MS`). Kanban's only drag action
+ * (full_evacuation -> closed, everything else being server-derived) dispatches
+ * `closeEvent` (via `handleCloseEvent` below, returning the dispatch's
+ * promise) — the optimistic move and the revert-on-failure both live in
+ * EventQueueBoard itself, since it's the one that needs to react to
+ * success/failure, not this page. Kanban's "+" doesn't have its own create
+ * form — it navigates to the existing `/create-event` page
+ * (`CreateEventForm`), since that already handles the one thing a
+ * lightweight inline form couldn't (a required location pin) and already
+ * guarantees new events start as "gathering_casualties" (status is never
  * sent from that form — the server always decides it).
  *
  * @returns {JSX.Element} The event queue board page.
@@ -96,14 +96,10 @@ const EventQueueBoardPage = () => {
     });
   }, [dispatch, viewMode, visibleEvents]);
 
-  // Both return the dispatch's promise (rather than catching here) so
+  // Returns the dispatch's promise (rather than catching here) so
   // EventQueueBoard can await it: it needs to know success/failure itself,
-  // to revert its own optimistic move if the update fails.
-  const handleStatusChange = (eventId, status) =>
-    dispatch(updateEvent({ id: eventId, changes: { status } })).unwrap();
-
-  const handleCompleteEvent = (eventId) =>
-    dispatch(updateEvent({ id: eventId, changes: { status: COMPLETED_STATUS, closure_at: new Date().toISOString() } })).unwrap();
+  // to revert its own optimistic move if the close fails.
+  const handleCloseEvent = (eventId) => dispatch(closeEvent(eventId)).unwrap();
 
   const isDark = colorScheme === "dark";
 
@@ -274,12 +270,7 @@ const EventQueueBoardPage = () => {
         )}
 
         {!isInitialLoad && viewMode === "board" && (
-          <EventQueueBoard
-            events={visibleEvents}
-            isToday={isToday}
-            onStatusChange={handleStatusChange}
-            onCompleteEvent={handleCompleteEvent}
-          />
+          <EventQueueBoard events={visibleEvents} isToday={isToday} onCloseEvent={handleCloseEvent} />
         )}
       </Stack>
     </Layout>

@@ -7,13 +7,13 @@ import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import { fetchEvents } from "../../features/events/eventsSlice";
-import { COMPLETED_STATUS, EVENT_STATUS_LABELS } from "../../constants/eventStatus";
+import { CLOSED_STATUS, EVENT_STATUS_LABELS } from "../../constants/eventStatus";
 
 // Styles
 
 /**
- * Renders a dropdown listing events, with completed events shown in a muted
- * color and active (non-completed) events highlighted in the app's primary
+ * Renders a dropdown listing events, with closed events shown in a muted
+ * color and active (non-closed) events highlighted in the app's primary
  * accent, so status reads at a glance.
  *
  * `compact` drops the field label and shortens the control, for pages that sit
@@ -25,7 +25,7 @@ import { COMPLETED_STATUS, EVENT_STATUS_LABELS } from "../../constants/eventStat
  *   filterStatuses?: string[],
  *   compact?: boolean,
  * }} props - `filterStatuses`, if given, restricts the list to events whose
- *   status is in that array (e.g. `[COMPLETED_STATUS]` for a reports page).
+ *   status is in that array (e.g. `[CLOSED_STATUS]` for a reports page).
  * @returns {JSX.Element} The event selector dropdown.
  */
 const EventSelector = ({ value, onChange, filterStatuses, compact = false }) => {
@@ -67,7 +67,7 @@ const EventSelector = ({ value, onChange, filterStatuses, compact = false }) => 
       w={compact ? { base: "100%", xs: 260 } : { base: "100%", sm: 340 }}
       comboboxProps={{ shadow: "md" }}
       renderOption={({ option, checked }) => {
-        const isCompleted = option.status === COMPLETED_STATUS;
+        const isClosed = option.status === CLOSED_STATUS;
         return (
           <Group
             justify="space-between"
@@ -77,7 +77,7 @@ const EventSelector = ({ value, onChange, filterStatuses, compact = false }) => 
             py={6}
             style={{
               borderRadius: "var(--mantine-radius-sm)",
-              backgroundColor: isCompleted
+              backgroundColor: isClosed
                 ? "var(--app-color-surface-high)"
                 : "color-mix(in srgb, var(--app-color-primary) 14%, transparent)",
               border: `1px solid ${checked ? "var(--app-color-primary)" : "transparent"}`,
@@ -86,7 +86,7 @@ const EventSelector = ({ value, onChange, filterStatuses, compact = false }) => 
             <Text
               fz="sm"
               fw={checked ? 700 : 500}
-              c={isCompleted ? "var(--app-color-text-muted)" : "var(--app-color-text)"}
+              c={isClosed ? "var(--app-color-text-muted)" : "var(--app-color-text)"}
               truncate
             >
               {option.label}
@@ -95,10 +95,10 @@ const EventSelector = ({ value, onChange, filterStatuses, compact = false }) => 
               size="xs"
               styles={{
                 root: {
-                  backgroundColor: isCompleted
+                  backgroundColor: isClosed
                     ? "var(--app-color-surface)"
                     : "color-mix(in srgb, var(--app-color-primary) 30%, transparent)",
-                  color: isCompleted ? "var(--app-color-text-muted)" : "var(--app-color-primary)",
+                  color: isClosed ? "var(--app-color-text-muted)" : "var(--app-color-primary)",
                 },
               }}
             >
