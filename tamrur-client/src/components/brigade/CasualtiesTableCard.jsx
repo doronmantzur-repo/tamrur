@@ -3,13 +3,7 @@ import { Fragment, useMemo, useState } from "react";
 
 // External libraries
 import { ActionIcon, Badge, Box, Group, Stack, Table, Text } from "@mantine/core";
-import {
-  IconBandage,
-  IconCheck,
-  IconChevronDown,
-  IconChevronUp,
-  IconX,
-} from "@tabler/icons-react";
+import { IconCheck, IconChevronDown, IconChevronUp, IconX } from "@tabler/icons-react";
 
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
@@ -219,27 +213,7 @@ const CasualtiesTableCard = ({ casualties }) => {
   });
 
   return (
-    <DashboardCard
-      title="נפגעים"
-      padding="md"
-      gap="sm"
-      fullHeight
-      headerExtra={
-        <Badge
-          leftSection={<IconBandage size={12} />}
-          variant="outline"
-          styles={{
-            root: {
-              backgroundColor: "var(--app-color-surface-high)",
-              borderColor: "var(--app-color-border)",
-              color: "var(--app-color-text-muted)",
-            },
-          }}
-        >
-          {visibleCasualties.length} מתוך {casualties.length}
-        </Badge>
-      }
-    >
+    <DashboardCard title={`נפגעים שטרם פונו (${casualties.length})`} padding="md" gap="sm" fullHeight>
       <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
         <Table verticalSpacing="sm" fz="sm">
           <Table.Thead>
