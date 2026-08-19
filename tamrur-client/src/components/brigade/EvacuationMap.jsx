@@ -14,16 +14,29 @@ import { toLatLng } from "../../utils/geo";
 // Styles
 import "leaflet/dist/leaflet.css";
 
-const DEFAULT_ZOOM = 14;
-
 /** CARTO basemap tiles, matching whichever mode the app is in. Same tile family (and attribution) in both modes, just the dark/light variant. */
 const TILE_URLS = {
   dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
   light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
 };
 
-/** Used only if an event somehow has no location, so the map still has somewhere to center on. */
-const FALLBACK_CENTER = { lat: 31.7683, lng: 35.2137 };
+/**
+ * The map's fixed reference frame: the border-area AO these training
+ * scenarios are set in. Bint Jbeil anchors the view; Dovev sits south of it,
+ * so mirroring Bint Jbeil's latitude across Dovev's for the north edge (i.e.
+ * the box spans exactly as far north of Bint Jbeil as Dovev sits south of
+ * it) puts Bint Jbeil at the vertical center and Dovev right on the bottom
+ * edge, however tall the map card actually renders — fitBounds computes
+ * zoom from the real container size, so this holds regardless of viewport,
+ * unlike a hardcoded center+zoom pair.
+ */
+const BINT_JBEIL = { lat: 33.1214, lng: 35.4247 };
+const DOVEV = { lat: 33.0522, lng: 35.3859 };
+const LNG_HALF_SPAN = 0.05;
+const MAP_BOUNDS = [
+  [DOVEV.lat, BINT_JBEIL.lng - LNG_HALF_SPAN],
+  [2 * BINT_JBEIL.lat - DOVEV.lat, BINT_JBEIL.lng + LNG_HALF_SPAN],
+];
 
 /**
  * Builds a small circular div-icon marker. Colors are CSS vars, safe here
@@ -165,6 +178,12 @@ function MapLegend() {
  * Evacuation routes and live force tracking aren't supported yet, so both
  * stay as disabled placeholder chips until routing is available.
  *
+ * The initial view is a fixed frame (see MAP_BOUNDS) rather than centering
+ * on the event: Bint Jbeil sits at vertical center, Dovev right at the
+ * bottom edge — neither is marked, this only shapes the initial viewport.
+ * The event marker still renders wherever the event actually is, but if
+ * that's outside this frame it won't be visible without panning/zooming out.
+ *
  * @param {{ event: object, locations: Array<object> }} props
  * @returns {JSX.Element} The evacuation map.
  */
@@ -218,11 +237,7 @@ const EvacuationMap = ({ event, locations }) => {
           border: "1px solid var(--app-color-border)",
         }}
       >
-        <MapContainer
-          center={eventLatLng || FALLBACK_CENTER}
-          zoom={DEFAULT_ZOOM}
-          style={{ height: "100%", width: "100%" }}
-        >
+        <MapContainer bounds={MAP_BOUNDS} style={{ height: "100%", width: "100%" }}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
             url={colorScheme === "dark" ? TILE_URLS.dark : TILE_URLS.light}
