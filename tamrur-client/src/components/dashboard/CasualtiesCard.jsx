@@ -7,7 +7,9 @@ import { IconBandage, IconCheck, IconX } from "@tabler/icons-react";
 // Internal application modules
 import DashboardCard from "./DashboardCard";
 import {
+  EVAC_ABILITY_COLOR_VARS,
   EVAC_ABILITY_LABELS,
+  EVAC_ABILITY_ORDER,
   EVAC_DEST_LABELS,
   URGENCY_COLOR_VARS,
   URGENCY_LABELS,
@@ -29,14 +31,26 @@ function YesNo({ value }) {
 }
 
 /**
- * Renders the selected event's casualties: an urgency-breakdown stat row plus a per-casualty table.
+ * Renders the selected event's casualties: a stat row plus a per-casualty
+ * table. The stat row breaks down by urgency (default — every other page)
+ * or by evacuation ability, i.e. lie/sit counts (`statBreakdown="ability"` —
+ * the airforce page, which cares about physical evacuation posture more
+ * than triage urgency).
  *
- * @param {{ casualties: Array<object> }} props
+ * @param {{ casualties: Array<object>, statBreakdown?: "urgency" | "ability" }} props
  * @returns {JSX.Element} The casualties card.
  */
-const CasualtiesCard = ({ casualties }) => {
-  const countsByUrgency = URGENCY_ORDER.reduce((acc, key) => {
-    acc[key] = casualties.filter((casualty) => casualty.urgency === key).length;
+const CasualtiesCard = ({ casualties, statBreakdown = "urgency" }) => {
+  const isAbilityBreakdown = statBreakdown === "ability";
+  const statKeys = isAbilityBreakdown ? EVAC_ABILITY_ORDER : URGENCY_ORDER;
+  const statLabels = isAbilityBreakdown ? EVAC_ABILITY_LABELS : URGENCY_LABELS;
+  const statColors = isAbilityBreakdown ? EVAC_ABILITY_COLOR_VARS : URGENCY_COLOR_VARS;
+  const statAccessor = isAbilityBreakdown
+    ? (casualty) => casualty["evac-ability"]
+    : (casualty) => casualty.urgency;
+
+  const statCounts = statKeys.reduce((acc, key) => {
+    acc[key] = casualties.filter((casualty) => statAccessor(casualty) === key).length;
     return acc;
   }, {});
 
@@ -59,8 +73,8 @@ const CasualtiesCard = ({ casualties }) => {
         </Badge>
       }
     >
-      <SimpleGrid cols={4} spacing="sm">
-        {URGENCY_ORDER.map((key) => (
+      <SimpleGrid cols={statKeys.length} spacing="sm">
+        {statKeys.map((key) => (
           <Stack
             key={key}
             gap={4}
@@ -68,15 +82,15 @@ const CasualtiesCard = ({ casualties }) => {
             style={{
               backgroundColor: "var(--app-color-surface-high)",
               border: "1px solid var(--app-color-border)",
-              borderInlineStart: `3px solid ${URGENCY_COLOR_VARS[key]}`,
+              borderInlineStart: `3px solid ${statColors[key]}`,
               borderRadius: "var(--mantine-radius-sm)",
             }}
           >
             <Text fz="1.35rem" fw={700} lh={1} ff='ui-monospace, "SF Mono", "Consolas", monospace'>
-              {countsByUrgency[key]}
+              {statCounts[key]}
             </Text>
             <Text fz="0.68rem" c="var(--app-color-text-muted)">
-              {URGENCY_LABELS[key]}
+              {statLabels[key]}
             </Text>
           </Stack>
         ))}

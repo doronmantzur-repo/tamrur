@@ -80,6 +80,11 @@ export const EVAC_ABILITY_LABELS = {
   walk: "הליכה",
 };
 
+export const EVAC_ABILITY_COLOR_VARS = {
+  sit: "var(--app-color-success)",
+  lie: "var(--app-color-warning)",
+};
+
 // recommended-evac-dest is free text, not a fixed enum — translate the known
 // values and fall back to showing whatever else comes through as-is.
 export const EVAC_DEST_LABELS = {
