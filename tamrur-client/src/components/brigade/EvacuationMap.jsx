@@ -239,8 +239,14 @@ const EvacuationMap = ({ event, locations }) => {
       >
         <MapContainer bounds={MAP_BOUNDS} style={{ height: "100%", width: "100%" }}>
           <TileLayer
+            // Keyed on colorScheme so switching modes fully remounts this layer
+            // instead of updating one in place — Leaflet only sets a GridLayer's
+            // container className once, in _initContainer, so an in-place prop
+            // change left the dark-mode brightness class stuck on in light mode.
+            key={colorScheme}
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
             url={colorScheme === "dark" ? TILE_URLS.dark : TILE_URLS.light}
+            className={colorScheme === "dark" ? "app-map-tiles-dark" : undefined}
           />
 
           {isLayerOn("location") && eventLatLng && (

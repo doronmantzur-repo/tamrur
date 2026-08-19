@@ -251,7 +251,11 @@ table {
    Leaflet's default white box, and collapsed to a small marker until
    hovered/focused so it doesn't compete with the map. */
 .leaflet-control-attribution {
-  background-color: color-mix(in srgb, var(--app-color-surface) 85%, transparent) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--app-color-surface) 85%,
+    transparent
+  ) !important;
   color: var(--app-color-text-muted) !important;
   border: 1px solid var(--app-color-border);
   border-radius: var(--mantine-radius-sm);
@@ -272,4 +276,11 @@ table {
 
 .leaflet-control-attribution a {
   color: var(--app-color-text-muted) !important;
+}
+
+/* CARTO's dark_all basemap is quite dim — a small brightness lift makes the
+   brigade map read more clearly in dark mode. Not applied in light mode,
+   where the same lift washed the tiles out instead of helping. */
+.app-map-tiles-dark {
+  filter: brightness(4);
 }
