@@ -286,6 +286,7 @@ const EvacuationMap = ({ event, locations, forces }) => {
             <Marker
               position={eventLatLng}
               icon={EVENT_ICON}
+              zIndexOffset={1000}
               eventHandlers={OPEN_POPUP_ON_HOVER}
             >
               <Popup>{event.name}</Popup>
