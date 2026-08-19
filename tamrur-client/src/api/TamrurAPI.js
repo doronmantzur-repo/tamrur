@@ -62,13 +62,26 @@ export function setUnauthorizedHandler(handler) {
 }
 
 /**
+ * Reads the JWT from the Redux auth state, falling back to whichever storage
+ * (localStorage or sessionStorage, depending on "remember me") holds the
+ * session for the brief window before `setTokenGetter` has been wired up.
+ * Shared by the axios interceptor below and by `streamPost`, which can't go
+ * through axios (browsers don't expose a streaming response body for it).
+ *
+ * @returns {string | null} The auth token, or null if there's no session.
+ */
+function resolveAuthToken() {
+  return getToken() ?? loadSession()?.token;
+}
+
+/**
  * Request interceptor: attaches the JWT from the Redux auth state. Falls
  * back to whichever storage (localStorage or sessionStorage, depending on
  * "remember me") holds the session, for the brief window before
  * `setTokenGetter` has been wired up.
  */
 TamrurAPI.interceptors.request.use((config) => {
-  const token = getToken() ?? loadSession()?.token;
+  const token = resolveAuthToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -91,5 +104,71 @@ TamrurAPI.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+/**
+ * POSTs to a Server-Sent-Events endpoint and calls `onEvent` for each event
+ * as it arrives, instead of waiting for the whole response like a normal
+ * request. Bypasses axios — browsers don't expose a readable streaming body
+ * through XHR, which is what axios uses in the browser. Used for
+ * `/medic-query/ask`, which streams its RAG pipeline's progress and the
+ * answer's own tokens live.
+ *
+ * @param {string} path - Endpoint path, relative to the API base URL.
+ * @param {object} body - JSON request body.
+ * @param {{ onEvent?: (event: string, data: unknown) => void, signal?: AbortSignal }} handlers
+ * @returns {Promise<void>} Resolves once the stream ends.
+ */
+export async function streamPost(path, body, { onEvent, signal } = {}) {
+  const token = resolveAuthToken();
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  if (response.status === 401) {
+    onUnauthorized();
+  }
+
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => null);
+    let message = text;
+    try {
+      message = JSON.parse(text)?.message ?? text;
+    } catch {
+      // Not JSON — fall back to the raw text.
+    }
+    throw new Error(message || `Request failed with status ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const rawEvents = buffer.split("\n\n");
+    buffer = rawEvents.pop() ?? "";
+
+    for (const rawEvent of rawEvents) {
+      let eventName = "message";
+      const dataLines = [];
+      for (const line of rawEvent.split("\n")) {
+        if (line.startsWith("event:")) eventName = line.slice("event:".length).trim();
+        else if (line.startsWith("data:")) dataLines.push(line.slice("data:".length).trim());
+      }
+      if (dataLines.length === 0) continue;
+      onEvent?.(eventName, JSON.parse(dataLines.join("\n")));
+    }
+  }
+}
 
 export default TamrurAPI;
