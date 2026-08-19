@@ -1,5 +1,5 @@
 // React
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 // External libraries
 import {
@@ -35,7 +35,6 @@ import { fetchEventById, updateEvent } from "../../features/events/eventsSlice";
 import { fetchAerialMissionsByEvent } from "../../features/aerialMission/aerialMissionSlice";
 import {
   fetchEvacuationsByEvent,
-  createEvacuation,
   updateEvacuation,
   deleteEvacuation,
 } from "../../features/evacuations/evacuationsSlice";
@@ -63,8 +62,9 @@ const EMPTY_ARRAY = [];
  * viewport height with no page-level scroll; the bottom row fills whatever
  * space is left and each card scrolls its own content internally instead.
  * The event (by :eventId), locations, aerial missions, evacuations, and
- * casualties are all fetched from the API. An approved aerial mission with
- * no evacuation row yet auto-creates one in the background.
+ * casualties are all fetched from the API. An approved aerial mission's
+ * evacuation row is created server-side (not here) once the airforce
+ * approves it.
  *
  * @returns {JSX.Element} The brigade event dashboard page.
  */
@@ -81,11 +81,6 @@ const EventDashboardPage = () => {
   // (there's no backend in this repo to confirm it does) — this is what the
   // header's timer freezes against, so it doesn't depend on that round-trip.
   const [localClosureAt, setLocalClosureAt] = useState(null);
-
-  // Tracks mission ids we've already dispatched an auto-create for, so a
-  // slow create request doesn't get triggered again by the next poll tick
-  // before the new row has landed back in state.
-  const autoCreatedMissionIds = useRef(new Set());
 
   const event = useSelector((state) => state.events.currentEvent);
   const currentEventStatus = useSelector((state) => state.events.currentEventStatus);
@@ -140,8 +135,9 @@ const EventDashboardPage = () => {
   useEffect(() => {
     dispatch(fetchEvacuationsByEvent(eventId));
 
-    // The brigade edits rows inline, and an approval can auto-create one in
-    // the background, so keep polling instead of fetching once.
+    // The brigade edits rows inline, and the server creates one in the
+    // background on an approved aerial mission, so keep polling instead of
+    // fetching once.
     const intervalId = setInterval(() => {
       dispatch(fetchEvacuationsByEvent(eventId));
     }, POLL_INTERVAL_MS);
@@ -161,33 +157,12 @@ const EventDashboardPage = () => {
     return () => clearInterval(intervalId);
   }, [eventId, dispatch]);
 
-  // Auto-creates an evacuation row for any approved aerial mission that
-  // doesn't have one yet, prefilled with whatever the airforce/event already
-  // gave us — the brigade fills in the rest. Guarded against both a mission
-  // that already has a row (checked against the fetched evacuations) and a
-  // create that's in flight but hasn't landed back in state yet (checked
-  // against the ref).
-  useEffect(() => {
-    aerialMissions
-      .filter((mission) => mission["request-status"] === "approved")
-      .forEach((mission) => {
-        const alreadyExists = evacuations.some((evac) => evac["aerial_mission_id"] === mission.id);
-        if (alreadyExists || autoCreatedMissionIds.current.has(mission.id)) return;
-
-        autoCreatedMissionIds.current.add(mission.id);
-        const landingPad = locations.find((location) => location.id === mission.landing_pad_id);
-
-        dispatch(
-          createEvacuation({
-            eventId,
-            method: "aerial",
-            aerialMissionId: mission.id,
-            forceRadioSign: mission.radio_sign,
-            departurePoint: landingPad?.location,
-          }),
-        );
-      });
-  }, [aerialMissions, evacuations, locations, eventId, dispatch]);
+  // The evacuation row for an approved aerial mission is created server-side
+  // now (tamrur-server's aerialMissionController, on approval), atomically
+  // and idempotently via a partial unique index on evacuations.aerial_mission_id
+  // — not here. Client-side polling can't coordinate across multiple brigade
+  // tabs/sessions watching the same event, so a check-then-create done here
+  // was a race: two tabs could each see "no row yet" and both create one.
 
   const isDark = colorScheme === "dark";
 
