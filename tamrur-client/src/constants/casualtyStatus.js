@@ -80,11 +80,6 @@ export const EVAC_ABILITY_LABELS = {
   walk: "הליכה",
 };
 
-export const EVAC_ABILITY_COLOR_VARS = {
-  sit: "var(--app-color-success)",
-  lie: "var(--app-color-warning)",
-};
-
 // recommended-evac-dest is free text, not a fixed enum — translate the known
 // values and fall back to showing whatever else comes through as-is.
 export const EVAC_DEST_LABELS = {
@@ -109,6 +104,15 @@ export const URGENCY_OPTIONS = toSelectOptions(URGENCY_LABELS, URGENCY_ORDER);
 // Built from the explicit order, not from the label map, so the retired `walk`
 // label can stay readable without becoming selectable again.
 export const EVAC_ABILITY_OPTIONS = toSelectOptions(EVAC_ABILITY_LABELS, EVAC_ABILITY_ORDER);
+
+// A casualty who cannot sit up is the more acute of the two, so שכיבה carries
+// the amber and ישיבה the calm blue. `walk` is retired but still mapped, so a
+// legacy row keeps a colour rather than falling back to the muted default.
+export const EVAC_ABILITY_COLOR_VARS = {
+  sit: "var(--app-color-info)",
+  lie: "var(--app-color-warning)",
+  walk: "var(--app-color-success)",
+};
 
 export const EVAC_DEST_OPTIONS = toSelectOptions(EVAC_DEST_LABELS);
 
@@ -169,6 +173,16 @@ export const VENTILATION_LABELS = {
 
 export const VENTILATION_OPTIONS = toSelectOptions(VENTILATION_LABELS);
 
+// Airway management, escalating: unassisted, bag-valve-mask, endotracheal tube,
+// surgical airway. קוניוטום is the most invasive of the four, so it is the one
+// value rendered as a solid badge rather than a tint — see SOLID_STATUS_VALUES.
+export const VENTILATION_COLOR_VARS = {
+  none: "var(--app-color-text-muted)",
+  ambu: "var(--app-color-warning)",
+  tube: "var(--app-color-error)",
+  cric: "var(--app-color-error)",
+};
+
 // ליווי — free text in the database. `escort-type` records which escort, while
 // the older boolean `escort` column stays in sync server-side so the dashboard
 // and brigade tables keep rendering their yes/no column.
@@ -179,6 +193,44 @@ export const ESCORT_TYPE_LABELS = {
 };
 
 export const ESCORT_TYPE_OPTIONS = toSelectOptions(ESCORT_TYPE_LABELS);
+
+// Escort seniority, not severity — hence the two hues outside the red/amber/green
+// scale: a חובש is a medic, מט"ב the more advanced caregiver.
+export const ESCORT_TYPE_COLOR_VARS = {
+  none: "var(--app-color-text-muted)",
+  medic: "var(--app-color-info)",
+  matab: "var(--app-color-accent)",
+};
+
+/**
+ * Values rendered as a solid badge instead of a tint.
+ *
+ * Reserved for the single most acute value in a dimension, so it reads as an
+ * alert at a glance across a full table rather than as one tint among several.
+ */
+export const SOLID_STATUS_VALUES = new Set(["cric"]);
+
+/**
+ * Badge colours for a status value, tinted from one of the palette's hues.
+ *
+ * Mirrors `urgencyBadgeColors`: a 16% tint carries the hue without competing
+ * with the urgency badge beside it, and an unmapped value falls back to the
+ * muted neutral rather than producing `color-mix(..., undefined, ...)`, which
+ * is invalid CSS and silently drops all styling.
+ *
+ * @param {Record<string, string>} colorVars - Value -> CSS colour variable.
+ * @param {string | null | undefined} value
+ * @returns {{backgroundColor: string, color: string}} Badge root styles.
+ */
+export function statusBadgeColors(colorVars, value) {
+  const color = colorVars[value] ?? "var(--app-color-text-muted)";
+
+  if (SOLID_STATUS_VALUES.has(value)) {
+    return { backgroundColor: color, color: "var(--app-color-primary-text)" };
+  }
+
+  return { backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)`, color };
+}
 
 /**
  * Translates a stored value for display, falling back to the raw value so a
@@ -194,7 +246,7 @@ export function labelFor(labels, value) {
   return labels[value] ?? value;
 }
 // איסוף נפגעים — whether medics are still collecting casualties at the scene.
-// Drives the event's derived evac_status; see the server's 003 migration.
+// Drives the event's derived evac_status; see the server's 006 migration.
 export const GATHERING_IN_PROGRESS = "in_progress";
 export const GATHERING_COMPLETED = "completed";
 
@@ -208,18 +260,119 @@ export const GATHERING_STATUS_COLOR_VARS = {
   [GATHERING_COMPLETED]: "var(--app-color-success)",
 };
 
-// evac_status is derived server-side and never written by the client:
-//   0 = no casualty evacuated yet
-//   1 = evacuation under way
-//   2 = gathering closed and every casualty evacuated
+// evac_status is derived server-side and never written by the client. It is a
+// Postgres enum ("event-evac-status") — the integers 0/1/2 it used to hold were
+// migrated in the server's 006 migration, so nothing sends or compares numbers
+// any more.
+export const EVAC_STATUS_PENDING = "pending"; // no casualty evacuated yet
+export const EVAC_STATUS_INITIATED = "initiated"; // evacuation under way
+export const EVAC_STATUS_FULL = "full"; // gathering closed, everyone evacuated
+
 export const EVAC_STATUS_LABELS = {
-  0: "פינוי טרם החל",
-  1: "פינוי בתהליך",
-  2: "פינוי הושלם",
+  [EVAC_STATUS_PENDING]: "פינוי טרם החל",
+  [EVAC_STATUS_INITIATED]: "פינוי בתהליך",
+  [EVAC_STATUS_FULL]: "פינוי הושלם",
 };
 
 export const EVAC_STATUS_COLOR_VARS = {
-  0: "var(--app-color-text-muted)",
-  1: "var(--app-color-warning)",
-  2: "var(--app-color-success)",
+  [EVAC_STATUS_PENDING]: "var(--app-color-text-muted)",
+  [EVAC_STATUS_INITIATED]: "var(--app-color-warning)",
+  [EVAC_STATUS_FULL]: "var(--app-color-success)",
 };
+
+// ---------------------------------------------------------------------------
+// Casualty table view state — filtering and sorting
+//
+// Both are presentation only. They re-order and hide rows already in the store;
+// nothing here refetches, and the fetched array itself is never mutated.
+// ---------------------------------------------------------------------------
+
+/** Sentinel for "not triaged yet", since the stored value is `null`. */
+export const URGENCY_FILTER_NONE = "__none__";
+
+/**
+ * The urgency filter's checkboxes: every value the column can actually hold.
+ *
+ * Built from URGENCY_ORDER rather than hand-listed, so a future urgency level
+ * appears in the filter the moment it is added to the enum.
+ */
+export const URGENCY_FILTER_OPTIONS = [
+  ...URGENCY_ORDER.map((value) => ({ value, label: URGENCY_LABELS[value] })),
+  { value: URGENCY_FILTER_NONE, label: URGENCY_NONE_LABEL },
+];
+
+/**
+ * Sort options, keyed by the database column each one reads.
+ *
+ * All four are numeric, so one comparator covers them.
+ */
+export const CASUALTY_SORT_OPTIONS = [
+  { value: "casualty-number", label: "מספר פצוע" },
+  { value: "evac-priority", label: "קדימות לפינוי" },
+  { value: "ai_evacuation_priority", label: "קדימות לפינוי (AI)" },
+  { value: "treatment-priority", label: "קדימות לטיפול" },
+];
+
+export const DEFAULT_CASUALTY_SORT = "casualty-number";
+
+export const SORT_DIRECTIONS = { ASC: "asc", DESC: "desc" };
+
+/**
+ * Whether a casualty matches the urgency selection.
+ *
+ * An empty selection means "no filter applied", not "match nothing" — a medic
+ * who unticks the last box wants the whole table back, not an empty one.
+ *
+ * @param {Object} casualty
+ * @param {Array<string>} selected - URGENCY_FILTER_OPTIONS values that are ticked.
+ * @returns {boolean}
+ */
+export function matchesUrgencySelection(casualty, selected) {
+  if (!selected || selected.length === 0) return true;
+
+  // An untriaged casualty may hold null, undefined or "" depending on how the
+  // row was written; all three mean the same thing to the medic.
+  const isBlank =
+    casualty.urgency === null || casualty.urgency === undefined || casualty.urgency === "";
+
+  return isBlank ? selected.includes(URGENCY_FILTER_NONE) : selected.includes(casualty.urgency);
+}
+
+/**
+ * Sorts casualties by one numeric column, blanks last.
+ *
+ * Blanks sink to the bottom in *both* directions rather than following the sort:
+ * "no evacuation priority set" is not a low priority, it is missing information,
+ * and a medic scanning from the top should never have to page past it.
+ *
+ * Returns a new array — the store's array is frozen by RTK in development and
+ * sorting in place would throw.
+ *
+ * @param {Array<Object>} casualties
+ * @param {string} column - A CASUALTY_SORT_OPTIONS value.
+ * @param {"asc" | "desc"} direction
+ * @returns {Array<Object>} The sorted copy.
+ */
+export function sortCasualties(casualties, column, direction) {
+  const rank = (casualty) => {
+    const value = casualty[column];
+    if (value === null || value === undefined || value === "") return null;
+
+    // Postgres hands `numeric` back as a string, so coerce before comparing.
+    const asNumber = Number(value);
+    return Number.isNaN(asNumber) ? null : asNumber;
+  };
+
+  const sign = direction === SORT_DIRECTIONS.DESC ? -1 : 1;
+
+  return [...casualties].sort((a, b) => {
+    const left = rank(a);
+    const right = rank(b);
+
+    if (left === null && right === null) return 0;
+    if (left === null) return 1;
+    if (right === null) return -1;
+
+    return (left - right) * sign;
+  });
+}

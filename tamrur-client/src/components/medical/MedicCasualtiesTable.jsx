@@ -5,9 +5,11 @@ import { Fragment, useState } from "react";
 import {
   ActionIcon,
   Box,
+  Button,
   Checkbox,
   Group,
   Loader,
+  Popover,
   SimpleGrid,
   Stack,
   Table,
@@ -20,6 +22,8 @@ import {
   IconChevronsDown,
   IconChevronsUp,
   IconChevronUp,
+  IconFilter,
+  IconFilterFilled,
   IconPlus,
 } from "@tabler/icons-react";
 import { useSelector } from "react-redux";
@@ -37,6 +41,7 @@ import {
   renderCell,
   visibleFields,
 } from "./casualtyFields";
+import { URGENCY_FILTER_OPTIONS } from "../../constants/casualtyStatus";
 import { MONO_FONT } from "./formStyles";
 import { useCellSave } from "./useCellSave";
 
@@ -45,6 +50,75 @@ import { useCellSave } from "./useCellSave";
 const groupHeaderStyle = {
   backgroundColor: "var(--app-color-surface-high)",
   color: "var(--app-color-text-muted)",
+};
+
+/**
+ * The urgency column's own multi-select filter, opened from its header.
+ *
+ * Lives in the header rather than in a toolbar so the control sits on the
+ * column it filters. The trigger fills in and shows a count once anything is
+ * ticked, so a filtered table can never look like the whole table.
+ *
+ * @param {{ selected: Array<string>, onChange: (selected: Array<string>) => void }} props
+ * @returns {JSX.Element} The header filter.
+ */
+const UrgencyHeaderFilter = ({ selected, onChange }) => {
+  const isFiltering = selected.length > 0;
+
+  return (
+    <Popover position="bottom" withArrow shadow="md" withinPortal trapFocus>
+      <Popover.Target>
+        <ActionIcon
+          aria-label={isFiltering ? `סנן דחיפות (${selected.length} נבחרו)` : "סנן דחיפות"}
+          title={isFiltering ? `סנן דחיפות (${selected.length} נבחרו)` : "סנן דחיפות"}
+          variant="subtle"
+          size="1.4rem"
+        >
+          {isFiltering ? (
+            <IconFilterFilled size={14} color="var(--app-color-primary)" />
+          ) : (
+            <IconFilter size={14} color="var(--app-color-text-muted)" />
+          )}
+        </ActionIcon>
+      </Popover.Target>
+
+      <Popover.Dropdown
+        p="sm"
+        style={{
+          backgroundColor: "var(--app-color-surface)",
+          borderColor: "var(--app-color-border)",
+        }}
+      >
+        {/* dir=rtl so the checkbox sits to the right of its label, matching
+            every other control on the page. */}
+        <Stack gap="xs" dir="rtl">
+          <Checkbox.Group value={selected} onChange={onChange}>
+            <Stack gap={6}>
+              {URGENCY_FILTER_OPTIONS.map((option) => (
+                <Checkbox
+                  key={option.value}
+                  value={option.value}
+                  label={option.label}
+                  color="var(--app-color-primary)"
+                  styles={{ label: { fontSize: "0.8rem", color: "var(--app-color-text)" } }}
+                />
+              ))}
+            </Stack>
+          </Checkbox.Group>
+
+          <Button
+            size="compact-xs"
+            variant="subtle"
+            disabled={!isFiltering}
+            onClick={() => onChange([])}
+            styles={{ root: { color: "var(--app-color-primary)" } }}
+          >
+            נקה סינון
+          </Button>
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
+  );
 };
 
 /**
@@ -232,6 +306,8 @@ const CasualtyRow = ({
  *   onAddingChange: (isAdding: boolean) => void,
  *   onOpenRecords: (casualty: Object) => void,
  *   hideReadyForEvac?: boolean,
+ *   urgencyFilter?: Array<string>,
+ *   onUrgencyFilterChange?: (selected: Array<string>) => void,
  * }} props
  * @returns {JSX.Element} The casualty table.
  *
@@ -250,6 +326,8 @@ const MedicCasualtiesTable = ({
   onToggleEvacuated,
   emptyMessage = "לא נרשמו נפגעים באירוע זה",
   hideReadyForEvac = false,
+  urgencyFilter = [],
+  onUrgencyFilterChange,
 }) => {
   // Only one detail row is open at a time, mirroring the brigade table.
   // A set rather than a single id: "expand all" has no meaning in a
@@ -362,7 +440,19 @@ const MedicCasualtiesTable = ({
           <Table.Tr>
             {fields.map((field) => (
               <Table.Th key={field.key} ta={field.centered ? "center" : undefined}>
-                {tier === "compact" ? field.short : field.header}
+                {field.key === "urgency" && onUrgencyFilterChange ? (
+                  <Group gap={4} justify="center" wrap="nowrap">
+                    <span>{tier === "compact" ? field.short : field.header}</span>
+                    <UrgencyHeaderFilter
+                      selected={urgencyFilter}
+                      onChange={onUrgencyFilterChange}
+                    />
+                  </Group>
+                ) : tier === "compact" ? (
+                  field.short
+                ) : (
+                  field.header
+                )}
               </Table.Th>
             ))}
             <Table.Th ta="center" style={labelHeaderStyle}>

@@ -18,6 +18,11 @@ export const colorTokens = {
     warning: "#F59E0B",
     successLight: "#84CC16",
     success: "#22C55E",
+    // Two further status hues, for clinical dimensions the red/amber/green
+    // scale can't express: a casualty escorted by a medic is not "a warning".
+    // Same Tailwind step as the rest (500 in dark, 600 in light).
+    info: "#0EA5E9",
+    accent: "#8B5CF6",
   },
 
   light: {
@@ -35,6 +40,8 @@ export const colorTokens = {
     warning: "#D97706",
     successLight: "#65A30D",
     success: "#16A34A",
+    info: "#0284C7",
+    accent: "#7C3AED",
   },
 };
 
@@ -219,6 +226,8 @@ function createColorSchemeVariables(colors, effects) {
     "--app-color-warning": colors.warning,
     "--app-color-success-light": colors.successLight,
     "--app-color-success": colors.success,
+    "--app-color-info": colors.info,
+    "--app-color-accent": colors.accent,
 
     "--app-effect-hover-background": effects.hoverBackground,
     "--app-effect-hover-border": effects.hoverBorder,

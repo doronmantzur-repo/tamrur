@@ -170,6 +170,14 @@ table {
   justify-content: center;
 }
 
+/* The click wrapper's inline padding exists to give a text caret room. In a
+   centred badge column it only narrows the box the badge is measured against —
+   at 56px that pushed the מט"ב pill onto the cell border. The cell's own
+   padding already separates the content from the wall. */
+.medic-cell-center .medic-cell {
+  padding-inline: 0;
+}
+
 /* The touch-target rule above turns .medic-cell into a flex row, which then
    needs centring on its own axis too. */
 @media (pointer: coarse) {

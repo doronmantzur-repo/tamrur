@@ -3,21 +3,26 @@ import { useMemo, useState } from "react";
 
 // External libraries
 import {
+  ActionIcon,
   Alert,
   Badge,
   Button,
   Collapse,
   Group,
   Paper,
+  Select,
   SimpleGrid,
   Stack,
   Switch,
   Text,
+  Tooltip,
 } from "@mantine/core";
 import {
   IconAlertCircle,
   IconChevronDown,
   IconChevronUp,
+  IconSortAscending,
+  IconSortDescending,
   IconSparkles,
   IconUserPlus,
 } from "@tabler/icons-react";
@@ -29,8 +34,11 @@ import MedicCasualtyCards from "./MedicCasualtyCards";
 import MedicCasualtiesTable from "./MedicCasualtiesTable";
 import { MONO_FONT, primaryButtonStyles } from "./formStyles";
 import {
+  CASUALTY_SORT_OPTIONS,
+  DEFAULT_CASUALTY_SORT,
   EVAC_STATUS_COLOR_VARS,
   EVAC_STATUS_LABELS,
+  EVAC_STATUS_PENDING,
   GATHERING_COMPLETED,
   GATHERING_IN_PROGRESS,
   GATHERING_STATUS_LABELS,
@@ -39,6 +47,9 @@ import {
   URGENCY_NONE_COLOR_VAR,
   URGENCY_NONE_LABEL,
   URGENCY_ORDER,
+  matchesUrgencySelection,
+  SORT_DIRECTIONS,
+  sortCasualties,
 } from "../../constants/casualtyStatus";
 import {
   clearAiPriorityError,
@@ -49,6 +60,37 @@ import { fetchEvents, updateEventGatheringStatus } from "../../features/events/e
 import { CASUALTY_TIER, useCasualtyTier } from "../../hooks/useCasualtyTier";
 
 // Styles
+
+/**
+ * The shared height of every control in the toolbar row.
+ *
+ * 3rem is the theme's minimum touch target, which it applies to every Input
+ * root. Matching the button to the select is therefore the only way to line the
+ * two up: shrinking the select instead leaves its root at 3rem while the inner
+ * input gets smaller, which is what left the event dropdown's clear button
+ * floating outside its own border.
+ */
+const TOOLBAR_CONTROL_HEIGHT = "3rem";
+
+/**
+ * The sort select, matched to the direction button beside it.
+ *
+ * The explicit height is what makes the two line up. Mantine's Input root is
+ * held at 3rem by the theme but its visible input defaults to 2.25rem, leaving
+ * 12px of empty wrapper below — so a 3rem button sat flush at the top and hung
+ * 12px past the input's bottom border. Filling the input to its root matches the
+ * two *visible* boxes without shrinking anything below the touch target.
+ */
+const sortSelectStyles = {
+  input: {
+    height: TOOLBAR_CONTROL_HEIGHT,
+    minHeight: TOOLBAR_CONTROL_HEIGHT,
+    fontSize: "0.9375rem",
+    backgroundColor: "var(--app-color-surface-high)",
+    borderColor: "var(--app-color-border)",
+    color: "var(--app-color-text)",
+  },
+};
 
 /**
  * Renders the medic interface's casualty card.
@@ -74,6 +116,13 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
   const dispatch = useDispatch();
   const tier = useCasualtyTier();
   const [showEvacuated, setShowEvacuated] = useState(false);
+  // View state only: these re-order and hide rows already in the store, so
+  // changing either is instant and costs no request.
+  // An array now: the filter lives in the דחיפות column header and takes any
+  // combination of levels. Empty means no filter.
+  const [urgencyFilter, setUrgencyFilter] = useState([]);
+  const [sortColumn, setSortColumn] = useState(DEFAULT_CASUALTY_SORT);
+  const [sortDirection, setSortDirection] = useState(SORT_DIRECTIONS.ASC);
 
   const rowErrorById = useSelector((state) => state.casualties.rowErrorById);
   const savingById = useSelector((state) => state.casualties.savingById);
@@ -84,7 +133,7 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
   const eventId = event.id;
   const gatheringStatus = event.gathering_status ?? GATHERING_IN_PROGRESS;
   const isGatheringComplete = gatheringStatus === GATHERING_COMPLETED;
-  const evacStatus = event.evac_status ?? 0;
+  const evacStatus = event.evac_status ?? EVAC_STATUS_PENDING;
 
   const { active, evacuated } = useMemo(
     () => ({
@@ -93,6 +142,42 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
     }),
     [casualties],
   );
+
+  // Both lists get the same treatment: a medic who has filtered to "דחוף"
+  // means it of the whole event, not just the half still on scene.
+  const { visibleActive, visibleEvacuated } = useMemo(() => {
+    const shape = (list) =>
+      sortCasualties(
+        list.filter((casualty) => matchesUrgencySelection(casualty, urgencyFilter)),
+        sortColumn,
+        sortDirection,
+      );
+
+    return { visibleActive: shape(active), visibleEvacuated: shape(evacuated) };
+  }, [active, evacuated, urgencyFilter, sortColumn, sortDirection]);
+
+  const isFiltered = urgencyFilter.length > 0;
+  const hiddenCount = casualties.length - (visibleActive.length + visibleEvacuated.length);
+  const isAscending = sortDirection === SORT_DIRECTIONS.ASC;
+
+  // "none recorded" would be a lie when a filter is on, or once everyone has
+  // been evacuated — each empty table says why it is empty.
+  const activeEmptyMessage = isFiltered
+    ? "אין נפגעים התואמים לסינון"
+    : evacuated.length > 0
+      ? "כל הנפגעים פונו"
+      : "לא נרשמו נפגעים באירוע זה";
+
+  /**
+   * Flips the sort between ascending and descending.
+   *
+   * @returns {void}
+   */
+  function toggleSortDirection() {
+    setSortDirection((current) =>
+      current === SORT_DIRECTIONS.ASC ? SORT_DIRECTIONS.DESC : SORT_DIRECTIONS.ASC,
+    );
+  }
 
   // The tiles describe who is still on scene, matching the table beneath them.
   const countsByUrgency = URGENCY_ORDER.reduce((acc, key) => {
@@ -302,11 +387,17 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
       </Paper>
 
       <SimpleGrid cols={{ base: 2, sm: urgencyTiles.length > 4 ? 5 : 4 }} spacing="sm">
+        {/* Count and label side by side rather than stacked: the tiles are a
+            glanceable strip, and halving their height gives the table the
+            vertical room instead. */}
         {urgencyTiles.map((tile) => (
-          <Stack
+          <Group
             key={tile.key}
-            gap={4}
-            p="sm"
+            gap="xs"
+            align="baseline"
+            wrap="nowrap"
+            px="sm"
+            py="xs"
             style={{
               backgroundColor: "var(--app-color-surface-high)",
               border: "1px solid var(--app-color-border)",
@@ -314,20 +405,87 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
               borderRadius: "var(--mantine-radius-sm)",
             }}
           >
-            <Text fz="1.35rem" fw={700} lh={1} ff={MONO_FONT}>
+            <Text fz="1.35rem" fw={700} lh={1} ff={MONO_FONT} style={{ flexShrink: 0 }}>
               {tile.count}
             </Text>
-            <Text fz="0.68rem" c="var(--app-color-text-muted)">
+            <Text
+              fz="0.8125rem"
+              c="var(--app-color-text-muted)"
+              lh={1.2}
+              style={{ whiteSpace: "nowrap" }}
+            >
               {tile.label}
             </Text>
-          </Stack>
+          </Group>
         ))}
       </SimpleGrid>
+
+      {/* Sorting only — urgency is filtered from its own column header now.
+          One nowrap row: the label reads into the select it names, and the
+          direction button shares their height so the three read as one control
+          rather than three stacked ones. */}
+      <Group gap="xs" align="center" wrap="nowrap">
+        <Text
+          fz="0.875rem"
+          fw={500}
+          c="var(--app-color-text-muted)"
+          style={{ whiteSpace: "nowrap" }}
+        >
+          מיין לפי
+        </Text>
+
+        <Select
+          aria-label="מיין לפי"
+          data={CASUALTY_SORT_OPTIONS}
+          value={sortColumn}
+          onChange={(value) => setSortColumn(value ?? DEFAULT_CASUALTY_SORT)}
+          allowDeselect={false}
+          checkIconPosition="right"
+          comboboxProps={{ shadow: "md", withinPortal: true }}
+          w={190}
+          styles={sortSelectStyles}
+        />
+
+        <Tooltip label={isAscending ? "סדר עולה" : "סדר יורד"}>
+          <ActionIcon
+            aria-label={isAscending ? "סדר עולה — לחץ למיון יורד" : "סדר יורד — לחץ למיון עולה"}
+            variant="default"
+            w={TOOLBAR_CONTROL_HEIGHT}
+            h={TOOLBAR_CONTROL_HEIGHT}
+            mih={TOOLBAR_CONTROL_HEIGHT}
+            onClick={toggleSortDirection}
+            styles={{
+              root: {
+                flexShrink: 0,
+                backgroundColor: "var(--app-color-surface-high)",
+                border: "1px solid var(--app-color-border)",
+              },
+            }}
+          >
+            {isAscending ? (
+              <IconSortAscending size={18} color="var(--app-color-primary)" />
+            ) : (
+              <IconSortDescending size={18} color="var(--app-color-primary)" />
+            )}
+          </ActionIcon>
+        </Tooltip>
+
+        {/* The tiles above still count the whole event, so say plainly how many
+            rows the filter is holding back rather than letting the two
+            disagree silently. */}
+        {isFiltered && (
+          <Text fz="0.72rem" c="var(--app-color-text-muted)" style={{ whiteSpace: "nowrap" }}>
+            {hiddenCount > 0
+              ? `${hiddenCount} נפגעים מוסתרים על ידי הסינון`
+              : "כל הנפגעים תואמים לסינון"}
+          </Text>
+        )}
+      </Group>
 
       {tier === CASUALTY_TIER.CARD ? (
         <MedicCasualtyCards
           {...listProps}
-          casualties={active}
+          casualties={visibleActive}
           rowErrorById={rowErrorById}
           savingById={savingById}
           isAdding={isAdding}
@@ -335,11 +493,12 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
       ) : (
         <MedicCasualtiesTable
           {...listProps}
-          casualties={active}
+          casualties={visibleActive}
           tier={tier}
           isAdding={isAdding}
-          // "none recorded" is wrong once everyone has been evacuated.
-          emptyMessage={evacuated.length > 0 ? "כל הנפגעים פונו" : "לא נרשמו נפגעים באירוע זה"}
+          emptyMessage={activeEmptyMessage}
+          urgencyFilter={urgencyFilter}
+          onUrgencyFilterChange={setUrgencyFilter}
         />
       )}
 
@@ -370,7 +529,7 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
           {tier === CASUALTY_TIER.CARD ? (
             <MedicCasualtyCards
               {...listProps}
-              casualties={evacuated}
+              casualties={visibleEvacuated}
               rowErrorById={rowErrorById}
               savingById={savingById}
               isAdding={false}
@@ -379,11 +538,13 @@ const MedicCasualtiesCard = ({ event, casualties, isAdding, onAddingChange, onOp
           ) : (
             <MedicCasualtiesTable
               {...listProps}
-              casualties={evacuated}
+              casualties={visibleEvacuated}
               tier={tier}
               isAdding={false}
-              emptyMessage="לא פונו נפגעים עדיין"
+              emptyMessage={isFiltered ? "אין נפגעים שפונו התואמים לסינון" : "לא פונו נפגעים עדיין"}
               hideReadyForEvac
+              urgencyFilter={urgencyFilter}
+              onUrgencyFilterChange={setUrgencyFilter}
             />
           )}
         </Collapse>

@@ -15,15 +15,20 @@ import {
 } from "./casualtyCells";
 import { cellInputStyles, cellTextStyles } from "./formStyles";
 import {
+  ESCORT_TYPE_COLOR_VARS,
   ESCORT_TYPE_LABELS,
   ESCORT_TYPE_OPTIONS,
+  EVAC_ABILITY_COLOR_VARS,
   EVAC_ABILITY_LABELS,
   EVAC_ABILITY_OPTIONS,
+  labelFor,
+  statusBadgeColors,
   URGENCY_LABELS,
   URGENCY_NONE_PLACEHOLDER,
   URGENCY_OPTIONS,
   urgencyBadgeColors,
   urgencyLabel,
+  VENTILATION_COLOR_VARS,
   VENTILATION_LABELS,
   VENTILATION_OPTIONS,
 } from "../../constants/casualtyStatus";
@@ -53,11 +58,13 @@ function renderUrgencyBadge(value) {
       styles={{
         root: {
           ...urgencyBadgeColors(value),
-          // Mantine caps a Badge at 100% of its container and ellipsises the
-          // overflow, which inside a fixed-layout table cell clipped "לא דחוף"
-          // to "לא ...". The column is sized for the longest label, so let the
-          // badge size to its own content instead.
-          maxWidth: "none",
+          // The column is sized for the longest label and the cell no longer
+          // steals 12px of it, so 100% is now roomier than the widest badge — it
+          // bounds the pill inside the cell without ever ellipsising.
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          maxWidth: "100%",
           whiteSpace: "nowrap",
         },
         label: {
@@ -70,6 +77,48 @@ function renderUrgencyBadge(value) {
       {urgencyLabel(value)}
     </Badge>
   );
+}
+
+/**
+ * Builds a `renderValue` that shows a coded column as a colour-tinted badge.
+ *
+ * One factory for all three clinical dimensions, so a column is styled by
+ * naming its label and colour maps rather than by repeating badge markup.
+ * An empty value keeps the plain em dash the other cells use — a badge reading
+ * "—" would imply something was recorded.
+ *
+ * @param {Record<string, string>} labels - Value -> Hebrew label.
+ * @param {Record<string, string>} colorVars - Value -> CSS colour variable.
+ * @returns {(value: string | null) => JSX.Element} The cell renderer.
+ */
+function statusBadgeRenderer(labels, colorVars) {
+  return function renderStatusBadge(value) {
+    if (value === null || value === undefined || value === "") {
+      return <Text fz="sm">—</Text>;
+    }
+
+    return (
+      <Badge
+        styles={{
+          root: {
+            ...statusBadgeColors(colorVars, value),
+            // Bounded by the cell rather than by Mantine's default, and centred
+            // on its own axis: a Badge is inline-block by default, so its pill
+            // tracked the text baseline instead of the middle of the cell.
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            maxWidth: "100%",
+            whiteSpace: "nowrap",
+            paddingInline: "0.4rem",
+          },
+          label: { overflow: "visible", textOverflow: "clip" },
+        }}
+      >
+        {labelFor(labels, value)}
+      </Badge>
+    );
+  };
 }
 
 /**
@@ -101,7 +150,10 @@ function renderAiPriority(value) {
           backgroundColor: "color-mix(in srgb, var(--app-color-primary) 14%, transparent)",
           borderColor: "color-mix(in srgb, var(--app-color-primary) 45%, transparent)",
           color: "var(--app-color-primary)",
-          maxWidth: "none",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          maxWidth: "100%",
           paddingInline: "0.4rem",
         },
         label: { overflow: "visible", textOverflow: "clip" },
@@ -218,6 +270,7 @@ export const CASUALTY_FIELDS = [
     cell: "select",
     options: EVAC_ABILITY_OPTIONS,
     labels: EVAC_ABILITY_LABELS,
+    renderValue: statusBadgeRenderer(EVAC_ABILITY_LABELS, EVAC_ABILITY_COLOR_VARS),
     centered: true,
   },
   {
@@ -229,17 +282,21 @@ export const CASUALTY_FIELDS = [
     cell: "select",
     options: VENTILATION_OPTIONS,
     labels: VENTILATION_LABELS,
+    renderValue: statusBadgeRenderer(VENTILATION_LABELS, VENTILATION_COLOR_VARS),
     centered: true,
   },
   {
     key: "escort-type",
     header: "ליווי",
     group: "evac",
-    width: 56,
+    // Wide enough that the מט"ב badge clears both cell walls: at 56 the badge
+    // came within 1px of the border and read as bleeding through it.
+    width: 78,
     core: false,
     cell: "select",
     options: ESCORT_TYPE_OPTIONS,
     labels: ESCORT_TYPE_LABELS,
+    renderValue: statusBadgeRenderer(ESCORT_TYPE_LABELS, ESCORT_TYPE_COLOR_VARS),
     centered: true,
   },
   {

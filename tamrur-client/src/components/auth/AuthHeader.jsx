@@ -5,6 +5,7 @@ import { memo } from "react";
 import { Box, Stack, Text, Title } from "@mantine/core";
 
 // Internal application modules
+import { APP_NAME, APP_SUBTITLE } from "../../constants/branding";
 
 // Styles
 
@@ -36,20 +37,24 @@ const AuthHeader = () => {
         fz="2rem"
         fw={700}
         lh={1.25}
+        style={{ whiteSpace: "nowrap" }}
       >
-        תמרור
+        {APP_NAME}
       </Title>
 
+      {/* The expansion runs longer than the old tagline, so the letter-spacing
+          is eased and a max width lets it wrap to two centred lines on a narrow
+          screen instead of forcing the card wider. */}
       <Text
         c="var(--app-color-text-muted)"
         ta="center"
         fz="0.75rem"
         fw={700}
-        lh={1.33}
-        lts="0.1em"
-        tt="uppercase"
+        lh={1.4}
+        lts="0.06em"
+        maw="18rem"
       >
-        מערכת ניהול פינוי טקטית
+        {APP_SUBTITLE}
       </Text>
     </Stack>
   );
