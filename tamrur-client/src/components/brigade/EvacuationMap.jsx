@@ -38,23 +38,9 @@ const TILE_URLS = {
   light: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
 };
 
-/**
- * The map's fixed reference frame: the border-area AO these training
- * scenarios are set in. Bint Jbeil anchors the view; Dovev sits south of it,
- * so mirroring Bint Jbeil's latitude across Dovev's for the north edge (i.e.
- * the box spans exactly as far north of Bint Jbeil as Dovev sits south of
- * it) puts Bint Jbeil at the vertical center and Dovev right on the bottom
- * edge, however tall the map card actually renders — fitBounds computes
- * zoom from the real container size, so this holds regardless of viewport,
- * unlike a hardcoded center+zoom pair.
- */
-const BINT_JBEIL = { lat: 33.1214, lng: 35.4247 };
-const DOVEV = { lat: 33.0522, lng: 35.3859 };
-const LNG_HALF_SPAN = 0.05;
-const MAP_BOUNDS = [
-  [DOVEV.lat, BINT_JBEIL.lng - LNG_HALF_SPAN],
-  [2 * BINT_JBEIL.lat - DOVEV.lat, BINT_JBEIL.lng + LNG_HALF_SPAN],
-];
+/** Fallback center for the rare case an event has no location yet — a point on the Israel-Lebanon border itself, matching the training AO these scenarios are set in, rather than a specific town. */
+const ISRAEL_LEBANON_BORDER = { lat: 33.0868, lng: 35.4053 };
+const DEFAULT_ZOOM = 12;
 
 const HOSPITAL_ICON_PATHS = [
   "M3 21l18 0",
@@ -205,11 +191,14 @@ function MapLegend({ isLayerOn }) {
  * disabled placeholder until routing is available; forces, unlike that
  * placeholder, are static reference data, not live tracking.
  *
- * The initial view is a fixed frame (see MAP_BOUNDS) rather than centering
- * on the event: Bint Jbeil sits at vertical center, Dovev right at the
- * bottom edge — neither is marked, this only shapes the initial viewport.
- * The event marker still renders wherever the event actually is, but if
- * that's outside this frame it won't be visible without panning/zooming out.
+ * The initial view centers on the event's own location at a fixed regional
+ * zoom (see DEFAULT_ZOOM) — close enough to orient on the event, wide enough
+ * to still show nearby terrain/towns, not just a bare pin. Falls back to a
+ * point on the Israel-Lebanon border (ISRAEL_LEBANON_BORDER) for the rare
+ * case an event has no location yet. Like the fixed frame this replaces,
+ * `center`/`zoom` only apply once on mount — fine here since this component
+ * only ever mounts once the event (and its location) has already loaded,
+ * and a location doesn't change after an event is created.
  *
  * @param {{ event: object, locations: Array<object>, forces: Array<object> }} props
  * @returns {JSX.Element} The evacuation map.
@@ -276,7 +265,8 @@ const EvacuationMap = ({ event, locations, forces }) => {
         }}
       >
         <MapContainer
-          bounds={MAP_BOUNDS}
+          center={eventLatLng || ISRAEL_LEBANON_BORDER}
+          zoom={DEFAULT_ZOOM}
           style={{ height: "100%", width: "100%" }}
         >
           <TileLayer
