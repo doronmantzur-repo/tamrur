@@ -81,7 +81,7 @@ const EventTimerChip = ({ event, localClosureAt }) => {
   return (
     <Box style={timerChipStyles}>
       <Group gap="sm" wrap="nowrap">
-        <Box style={timerIconWrapperStyles} className={isCompleted ? undefined : "app-pulse-glow"}>
+        <Box style={timerIconWrapperStyles}>
           {isCompleted ? <IconClockPause size={24} stroke={2} /> : <IconStopwatch size={24} stroke={2} />}
         </Box>
         <Stack gap={0}>
