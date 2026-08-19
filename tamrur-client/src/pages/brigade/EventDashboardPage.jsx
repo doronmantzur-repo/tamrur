@@ -31,6 +31,7 @@ import EvacuatedCasualtiesCard from "../../components/brigade/EvacuatedCasualtie
 import EvacuationsTable from "../../components/brigade/EvacuationsTable";
 import { COMPLETED_STATUS } from "../../constants/eventStatus";
 import { fetchLocations } from "../../features/locations/locationsSlice";
+import { fetchForces } from "../../features/forces/forcesSlice";
 import { fetchEventById, updateEvent } from "../../features/events/eventsSlice";
 import { fetchAerialMissionsByEvent } from "../../features/aerialMission/aerialMissionSlice";
 import {
@@ -61,8 +62,8 @@ const EMPTY_ARRAY = [];
  * a badge in EvacuationsTable's own header. The whole page is pinned to the
  * viewport height with no page-level scroll; the bottom row fills whatever
  * space is left and each card scrolls its own content internally instead.
- * The event (by :eventId), locations, aerial missions, evacuations, and
- * casualties are all fetched from the API. An approved aerial mission's
+ * The event (by :eventId), locations, forces, aerial missions, evacuations,
+ * and casualties are all fetched from the API. An approved aerial mission's
  * evacuation row is created server-side (not here) once the airforce
  * approves it.
  *
@@ -86,6 +87,7 @@ const EventDashboardPage = () => {
   const currentEventStatus = useSelector((state) => state.events.currentEventStatus);
   const currentEventError = useSelector((state) => state.events.currentEventError);
   const locations = useSelector((state) => state.locations.locations);
+  const forces = useSelector((state) => state.forces.forces);
   const aerialMissions = useSelector((state) => state.aerialMission.byEventId[eventId]) || EMPTY_ARRAY;
   const evacuations = useSelector((state) => state.evacuations.byEventId[eventId]) || EMPTY_ARRAY;
   const casualties = useSelector((state) => state.casualties.byEventId[eventId]) || EMPTY_ARRAY;
@@ -107,6 +109,7 @@ const EventDashboardPage = () => {
 
   useEffect(() => {
     dispatch(fetchLocations());
+    dispatch(fetchForces());
   }, [dispatch]);
 
   useEffect(() => {
@@ -374,7 +377,7 @@ const EventDashboardPage = () => {
                 styles={{ root: { height: "100%" }, inner: { height: "100%" } }}
               >
                 <Grid.Col span={{ base: 10, md: 2 }} style={{ height: "100%" }}>
-                  <EventMapCard event={event} locations={locations} />
+                  <EventMapCard event={event} locations={locations} forces={forces} />
                 </Grid.Col>
                 <Grid.Col span={{ base: 10, md: 4 }} style={{ height: "100%" }}>
                   <CasualtiesTableCard casualties={activeCasualties} />

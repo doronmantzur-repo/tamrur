@@ -2,14 +2,32 @@
 import { useState } from "react";
 
 // External libraries
-import { Box, Chip, Group, Stack, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
-import { IconAmbulance, IconBuildingHospital } from "@tabler/icons-react";
-import L from "leaflet";
+import {
+  Box,
+  Chip,
+  Group,
+  SimpleGrid,
+  Stack,
+  Text,
+  Tooltip,
+  useMantineColorScheme,
+} from "@mantine/core";
+import {
+  IconAmbulance,
+  IconBuildingHospital,
+  IconUsers,
+} from "@tabler/icons-react";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 
 // Internal application modules
-import { LANDING_PAD_STATUS_COLOR_VARS, LANDING_PAD_STATUS_LABELS } from "../../constants/evacuationMethod";
+import {
+  LANDING_PAD_STATUS_COLOR_VARS,
+  LANDING_PAD_STATUS_LABELS,
+} from "../../constants/evacuationMethod";
+import { FORCE_ICON_COLOR, FORCE_TYPE_META, FORCE_TYPE_ICONS, forceLabel } from "../../constants/forces";
+import { buildDivIcon, tablerSvg } from "../../utils/leafletIcons";
 import { toLatLng } from "../../utils/geo";
+import { LegendEntry, LegendBadge } from "./MapLegendPrimitives";
 
 // Styles
 import "leaflet/dist/leaflet.css";
@@ -38,38 +56,6 @@ const MAP_BOUNDS = [
   [2 * BINT_JBEIL.lat - DOVEV.lat, BINT_JBEIL.lng + LNG_HALF_SPAN],
 ];
 
-/**
- * Builds a small circular div-icon marker. Colors are CSS vars, safe here
- * since Leaflet renders div-icons as real DOM elements (unlike its SVG path
- * renderer, which needs resolved hex values).
- *
- * @param {{ label: string, background: string, size?: number, glow?: boolean }} options
- * @returns {L.DivIcon}
- */
-function buildDivIcon({ label, background, size = 26, glow = false }) {
-  const boxShadow = glow
-    ? `0 0 0 2px var(--app-color-surface), 0 0 8px ${background}`
-    : "0 0 0 2px var(--app-color-surface)";
-
-  return L.divIcon({
-    html: `<div style="
-      width:${size}px;height:${size}px;border-radius:50%;
-      background:${background};box-shadow:${boxShadow};
-      display:flex;align-items:center;justify-content:center;
-      color:#fff;font-weight:700;font-size:${Math.round(size * 0.5)}px;
-      font-family:ui-monospace, 'SF Mono', 'Consolas', monospace;
-    ">${label}</div>`,
-    className: "",
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  });
-}
-
-/** Inline-renders a Tabler icon's path data as raw SVG markup, for use inside a Leaflet div-icon. */
-function tablerSvg(paths, size = 16) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths.map((d) => `<path d="${d}" />`).join("")}</svg>`;
-}
-
 const HOSPITAL_ICON_PATHS = [
   "M3 21l18 0",
   "M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16",
@@ -85,7 +71,12 @@ const AMBULANCE_ICON_PATHS = [
   "M6 10h4m-2 -2v4",
 ];
 
-const EVENT_ICON = buildDivIcon({ label: "!", background: "var(--app-color-error)", size: 28, glow: true });
+const EVENT_ICON = buildDivIcon({
+  label: "!",
+  background: "var(--app-color-error)",
+  size: 28,
+  glow: true,
+});
 const HOSPITAL_ICON = buildDivIcon({
   label: tablerSvg(HOSPITAL_ICON_PATHS),
   background: "var(--app-color-success)",
@@ -99,84 +90,120 @@ const OTHER_LOCATION_ICON = buildDivIcon({
   glow: true,
 });
 
+/** Opens a marker's popup on hover (not just click) and closes it when the pointer leaves, so the same popup content shows on both interactions instead of a separate tooltip. */
+const OPEN_POPUP_ON_HOVER = {
+  mouseover: (e) => e.target.openPopup(),
+  mouseout: (e) => e.target.closePopup(),
+};
+
 /**
- * Small legend explaining the map's symbols: the event marker, landing pad
- * status colors, and the other location marker types.
+ * Legend explaining the map's symbols, grouped into a "מיקומים" section
+ * (event/landing pads/hospitals/other locations) and a "כוחות" section
+ * (forces), each shown only while its layer(s) are actually toggled on --
+ * so the legend always matches what's currently drawn on the map instead of
+ * listing every possible symbol regardless of relevance.
+ *
+ * @param {{ isLayerOn: (key: string) => boolean }} props
  */
-function MapLegend() {
+function MapLegend({ isLayerOn }) {
+  const showLocations =
+    isLayerOn("location") ||
+    isLayerOn("pads") ||
+    isLayerOn("hospitals") ||
+    isLayerOn("other");
+  const showForces = isLayerOn("forces");
+
+  if (!showLocations && !showForces) return null;
+
   return (
-    <Group gap="lg" wrap="wrap" mt="xs">
-      <Group gap={6} wrap="nowrap">
-        <Box
-          style={{
-            width: 16,
-            height: 16,
-            borderRadius: "50%",
-            backgroundColor: "var(--app-color-error)",
-            color: "#fff",
-            fontSize: "0.6rem",
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          !
-        </Box>
-        <Text fz="xs" c="var(--app-color-text-muted)">
-          מיקום אירוע
-        </Text>
-      </Group>
-
-      {Object.entries(LANDING_PAD_STATUS_LABELS).map(([key, label]) => (
-        <Group key={key} gap={6} wrap="nowrap">
-          <Box
-            style={{
-              width: 16,
-              height: 16,
-              borderRadius: "50%",
-              backgroundColor: LANDING_PAD_STATUS_COLOR_VARS[key],
-              color: "#fff",
-              fontSize: "0.6rem",
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            H
-          </Box>
-          <Text fz="xs" c="var(--app-color-text-muted)">
-            משטח נחיתה {label}
+    <Stack gap="xs" mt="xs">
+      {showLocations && (
+        <Stack gap={6}>
+          <Text fz="xs" fw={700} c="var(--app-color-text-muted)">
+            מיקומים
           </Text>
-        </Group>
-      ))}
+          <SimpleGrid cols={3} spacing="sm" verticalSpacing={6}>
+            {isLayerOn("location") && (
+              <LegendEntry label="מיקום אירוע">
+                <LegendBadge background="var(--app-color-error)">!</LegendBadge>
+              </LegendEntry>
+            )}
 
-      <Group gap={6} wrap="nowrap">
-        <IconBuildingHospital size={16} stroke={1.8} color="var(--app-color-success)" />
-        <Text fz="xs" c="var(--app-color-text-muted)">
-          בית חולים
-        </Text>
-      </Group>
+            {isLayerOn("pads") &&
+              Object.entries(LANDING_PAD_STATUS_LABELS).map(([key, label]) => (
+                <LegendEntry key={key} label={`משטח נחיתה ${label}`}>
+                  <LegendBadge background={LANDING_PAD_STATUS_COLOR_VARS[key]}>
+                    H
+                  </LegendBadge>
+                </LegendEntry>
+              ))}
 
-      <Group gap={6} wrap="nowrap">
-        <IconAmbulance size={16} stroke={1.8} color="var(--app-color-text-muted)" />
-        <Text fz="xs" c="var(--app-color-text-muted)">
-          נקודת חילוף / מיקום אחר
-        </Text>
-      </Group>
-    </Group>
+            {isLayerOn("hospitals") && (
+              <LegendEntry label="בית חולים">
+                <IconBuildingHospital
+                  size={16}
+                  stroke={1.8}
+                  color="var(--app-color-success)"
+                />
+              </LegendEntry>
+            )}
+
+            {isLayerOn("other") && (
+              <LegendEntry label="נקודת חילוף / מיקום אחר">
+                <IconAmbulance
+                  size={16}
+                  stroke={1.8}
+                  color="var(--app-color-text-muted)"
+                />
+              </LegendEntry>
+            )}
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {showForces && (
+        <Stack gap={6}>
+          <Text fz="xs" fw={700} c="var(--app-color-text-muted)">
+            כוחות
+          </Text>
+          <SimpleGrid cols={3} spacing="sm" verticalSpacing={6}>
+            {Object.entries(FORCE_TYPE_META).map(([type, meta]) => (
+              <LegendEntry key={type} label={meta.label}>
+                <LegendBadge background={FORCE_ICON_COLOR}>
+                  {meta.image ? (
+                    <img
+                      src={meta.image}
+                      alt=""
+                      style={{
+                        width: "60%",
+                        height: "60%",
+                        objectFit: "contain",
+                        filter: "brightness(0) invert(1)",
+                      }}
+                    />
+                  ) : (
+                    <IconUsers size={10} stroke={2} color="#fff" />
+                  )}
+                </LegendBadge>
+              </LegendEntry>
+            ))}
+          </SimpleGrid>
+        </Stack>
+      )}
+    </Stack>
   );
 }
 
 /**
  * Renders the event map: the event location (exclamation marker), landing
- * pads (an "H" marker colored by pad status), hospitals, and other named
- * locations (e.g. an ambulance exchange point), each toggleable via a layer
- * chip row, plus a legend explaining the symbols. Tiles switch between
- * CARTO's dark and light basemap to match the app's own theme toggle.
- * Evacuation routes and live force tracking aren't supported yet, so both
- * stay as disabled placeholder chips until routing is available.
+ * pads (an "H" marker colored by pad status), hospitals, other named
+ * locations (e.g. an ambulance exchange point), and forces (the static
+ * reference table of units, one icon per `force_type`), each toggleable via
+ * a layer chip row, plus a legend explaining the symbols. Tiles switch
+ * between CARTO's dark and light basemap to match the app's own theme
+ * toggle. Evacuation routes aren't supported yet, so that chip stays a
+ * disabled placeholder until routing is available; forces, unlike that
+ * placeholder, are static reference data, not live tracking.
  *
  * The initial view is a fixed frame (see MAP_BOUNDS) rather than centering
  * on the event: Bint Jbeil sits at vertical center, Dovev right at the
@@ -184,19 +211,32 @@ function MapLegend() {
  * The event marker still renders wherever the event actually is, but if
  * that's outside this frame it won't be visible without panning/zooming out.
  *
- * @param {{ event: object, locations: Array<object> }} props
+ * @param {{ event: object, locations: Array<object>, forces: Array<object> }} props
  * @returns {JSX.Element} The evacuation map.
  */
-const EvacuationMap = ({ event, locations }) => {
+const EvacuationMap = ({ event, locations, forces }) => {
   const { colorScheme } = useMantineColorScheme();
-  const [visibleLayers, setVisibleLayers] = useState(["location", "pads", "hospitals", "other"]);
+  const [visibleLayers, setVisibleLayers] = useState([
+    "location",
+    "pads",
+    "hospitals",
+    "other",
+    "forces",
+  ]);
 
   const isLayerOn = (key) => visibleLayers.includes(key);
 
   const withCoords = locations.filter((location) => location.location);
-  const landingPads = withCoords.filter((location) => location.type === "landing_pad");
-  const hospitals = withCoords.filter((location) => location.type === "hospital");
-  const otherLocations = withCoords.filter((location) => location.type === "exchange_point");
+  const landingPads = withCoords.filter(
+    (location) => location.type === "landing_pad",
+  );
+  const hospitals = withCoords.filter(
+    (location) => location.type === "hospital",
+  );
+  const otherLocations = withCoords.filter(
+    (location) => location.type === "exchange_point",
+  );
+  const forcesWithCoords = forces.filter((force) => force.location);
   const eventLatLng = toLatLng(event.location);
 
   return (
@@ -215,29 +255,30 @@ const EvacuationMap = ({ event, locations }) => {
           <Chip value="other" size="xs">
             מיקומים נוספים
           </Chip>
+          <Chip value="forces" size="xs">
+            כוחות
+          </Chip>
         </Chip.Group>
         <Tooltip label="בקרוב, מסלולי פינוי טרם נתמכים">
           <Chip value="routes" size="xs" disabled checked={false}>
             מסלולי פינוי
           </Chip>
         </Tooltip>
-        <Tooltip label="בקרוב, מעקב כוחות טרם נתמך">
-          <Chip value="forces" size="xs" disabled checked={false}>
-            כוחות
-          </Chip>
-        </Tooltip>
       </Group>
 
       <Box
         style={{
-          flex: "1 0 14rem",
-          minHeight: "14rem",
+          flex: "1 1 auto",
+          minHeight: "10rem",
           borderRadius: "var(--mantine-radius-sm)",
           overflow: "hidden",
           border: "1px solid var(--app-color-border)",
         }}
       >
-        <MapContainer bounds={MAP_BOUNDS} style={{ height: "100%", width: "100%" }}>
+        <MapContainer
+          bounds={MAP_BOUNDS}
+          style={{ height: "100%", width: "100%" }}
+        >
           <TileLayer
             // Keyed on colorScheme so switching modes fully remounts this layer
             // instead of updating one in place — Leaflet only sets a GridLayer's
@@ -246,11 +287,17 @@ const EvacuationMap = ({ event, locations }) => {
             key={colorScheme}
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
             url={colorScheme === "dark" ? TILE_URLS.dark : TILE_URLS.light}
-            className={colorScheme === "dark" ? "app-map-tiles-dark" : undefined}
+            className={
+              colorScheme === "dark" ? "app-map-tiles-dark" : undefined
+            }
           />
 
           {isLayerOn("location") && eventLatLng && (
-            <Marker position={eventLatLng} icon={EVENT_ICON}>
+            <Marker
+              position={eventLatLng}
+              icon={EVENT_ICON}
+              eventHandlers={OPEN_POPUP_ON_HOVER}
+            >
               <Popup>{event.name}</Popup>
             </Marker>
           )}
@@ -267,6 +314,7 @@ const EvacuationMap = ({ event, locations }) => {
                     background: LANDING_PAD_STATUS_COLOR_VARS[padStatus],
                     glow: true,
                   })}
+                  eventHandlers={OPEN_POPUP_ON_HOVER}
                 >
                   <Popup>
                     {pad.name}, {LANDING_PAD_STATUS_LABELS[padStatus]}
@@ -277,21 +325,45 @@ const EvacuationMap = ({ event, locations }) => {
 
           {isLayerOn("hospitals") &&
             hospitals.map((hospital) => (
-              <Marker key={hospital.id} position={toLatLng(hospital.location)} icon={HOSPITAL_ICON}>
+              <Marker
+                key={hospital.id}
+                position={toLatLng(hospital.location)}
+                icon={HOSPITAL_ICON}
+                eventHandlers={OPEN_POPUP_ON_HOVER}
+              >
                 <Popup>{hospital.name}</Popup>
               </Marker>
             ))}
 
           {isLayerOn("other") &&
             otherLocations.map((location) => (
-              <Marker key={location.id} position={toLatLng(location.location)} icon={OTHER_LOCATION_ICON}>
+              <Marker
+                key={location.id}
+                position={toLatLng(location.location)}
+                icon={OTHER_LOCATION_ICON}
+                eventHandlers={OPEN_POPUP_ON_HOVER}
+              >
                 <Popup>{location.name}</Popup>
+              </Marker>
+            ))}
+
+          {isLayerOn("forces") &&
+            forcesWithCoords.map((force) => (
+              <Marker
+                key={force.id}
+                position={toLatLng(force.location)}
+                icon={FORCE_TYPE_ICONS[force.type]}
+                eventHandlers={OPEN_POPUP_ON_HOVER}
+              >
+                <Popup>{forceLabel(force)}</Popup>
               </Marker>
             ))}
         </MapContainer>
       </Box>
 
-      <MapLegend />
+      <Box style={{ flexShrink: 0, height: "12rem", overflow: "hidden" }}>
+        <MapLegend isLayerOn={isLayerOn} />
+      </Box>
     </Stack>
   );
 };

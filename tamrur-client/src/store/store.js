@@ -10,6 +10,7 @@ import vitalsReducer from "../features/vitals/vitalsSlice";
 import drugsReducer from "../features/drugs/drugsSlice";
 import aerialMissionReducer from "../features/aerialMission/aerialMissionSlice";
 import locationsReducer from "../features/locations/locationsSlice";
+import forcesReducer from "../features/forces/forcesSlice";
 import evacuationsReducer from "../features/evacuations/evacuationsSlice";
 import { setTokenGetter, setUnauthorizedHandler } from "../api/TamrurAPI";
 
@@ -23,6 +24,7 @@ import { setTokenGetter, setUnauthorizedHandler } from "../api/TamrurAPI";
  * @see features/drugs/drugsSlice.js
  * @see features/aerialMission/aerialMissionSlice.js
  * @see features/locations/locationsSlice.js
+ * @see features/forces/forcesSlice.js
  * @see features/evacuations/evacuationsSlice.js
  */
 export const store = configureStore({
@@ -35,6 +37,7 @@ export const store = configureStore({
     drugs: drugsReducer,
     aerialMission: aerialMissionReducer,
     locations: locationsReducer,
+    forces: forcesReducer,
     evacuations: evacuationsReducer,
   },
 });
