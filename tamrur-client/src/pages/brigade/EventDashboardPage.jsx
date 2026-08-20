@@ -16,7 +16,7 @@ import {
   useMantineColorScheme,
 } from "@mantine/core";
 import { IconAlertTriangle, IconMoon, IconPlus, IconShieldHalfFilled, IconSun } from "@tabler/icons-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
@@ -29,6 +29,7 @@ import EventMapCard from "../../components/brigade/EventMapCard";
 import CasualtiesTableCard from "../../components/brigade/CasualtiesTableCard";
 import EvacuatedCasualtiesCard from "../../components/brigade/EvacuatedCasualtiesCard";
 import EvacuationsTable from "../../components/brigade/EvacuationsTable";
+import CreateEventModal from "../../components/events/CreateEventModal";
 import { CLOSED_STATUS, FULL_EVACUATION_STATUS } from "../../constants/eventStatus";
 import { fetchLocations } from "../../features/locations/locationsSlice";
 import { fetchForces } from "../../features/forces/forcesSlice";
@@ -71,12 +72,12 @@ const EMPTY_ARRAY = [];
  */
 const EventDashboardPage = () => {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { eventId } = useParams();
 
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [isMapCollapsed, setIsMapCollapsed] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   // Recorded locally at the moment the brigade actually closes the event,
   // rather than trusting event.closure_at to round-trip back from the API
@@ -325,7 +326,7 @@ const EventDashboardPage = () => {
                 leftSection={<IconPlus size={18} stroke={1.8} />}
                 size="sm"
                 mih="2.5rem"
-                onClick={() => navigate("/create-event")}
+                onClick={() => setIsCreateOpen(true)}
                 styles={{
                   root: {
                     backgroundColor: "var(--app-color-primary)",
@@ -467,6 +468,12 @@ const EventDashboardPage = () => {
           </Button>
         </Group>
       </Modal>
+
+      <CreateEventModal
+        opened={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onCreated={() => setIsCreateOpen(false)}
+      />
     </Layout>
   );
 };

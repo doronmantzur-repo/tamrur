@@ -4,7 +4,6 @@ import SignupPage from "./pages/auth/SignupPage";
 import DashboardPage from "./pages/guest/DashboardPage";
 import MedicPage from "./pages/medical/MedicPage";
 import AerialEvacuationPage from "./pages/airforce/AerialEvacuationPage";
-import CreateEventForm from "./components/events/CreateEventForm";
 import EventDashboardPage from "./pages/brigade/EventDashboardPage";
 import EventQueueBoardPage from "./pages/brigade/EventQueueBoardPage";
 import EventAnalystPage from "./pages/event-analyst/EventAnalystPage";
@@ -15,14 +14,6 @@ const App = () => {
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
-      <Route
-        path="/create-event"
-        element={
-          <ProtectedRoute allowedRoles={["brigade", "medic"]}>
-            <CreateEventForm />
-          </ProtectedRoute>
-        }
-      />
       <Route
         path="/dashboard"
         element={

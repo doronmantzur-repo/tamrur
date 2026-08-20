@@ -36,12 +36,13 @@ const VIEW_OPTIONS = [
  * `closeEvent` (via `handleCloseEvent` below, returning the dispatch's
  * promise) — the optimistic move and the revert-on-failure both live in
  * EventQueueBoard itself, since it's the one that needs to react to
- * success/failure, not this page. Kanban's "+" doesn't have its own create
- * form — it navigates to the existing `/create-event` page
- * (`CreateEventForm`), since that already handles the one thing a
- * lightweight inline form couldn't (a required location pin) and already
- * guarantees new events start as "gathering_casualties" (status is never
- * sent from that form — the server always decides it).
+ * success/failure, not this page. Kanban's "+" opens the existing
+ * `CreateEventForm` in a modal (`CreateEventModal`, rendered inside
+ * `EventQueueBoard` itself) rather than a lightweight inline form of its
+ * own, since that form already handles the one thing a lighter one
+ * couldn't (a required location pin) and already guarantees new events
+ * start as "gathering_casualties" (status is never sent from that form —
+ * the server always decides it).
  *
  * @returns {JSX.Element} The event queue board page.
  */
