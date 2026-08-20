@@ -10,6 +10,7 @@ import { DndContext, DragOverlay, PointerSensor, closestCenter, useSensor, useSe
 // Internal application modules
 import QueueColumn from "./QueueColumn";
 import { EventQueueCardContent } from "./EventQueueCard";
+import CreateEventModal from "../events/CreateEventModal";
 import { CLOSED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
 
 // Styles
@@ -49,8 +50,8 @@ const SORTERS = {
  * has any control over how long that takes.
  *
  * The "+" (gathering_casualties column only — new events can only ever start
- * there) navigates to the existing `/create-event` page rather than opening
- * its own form: that page already collects the location `createEvent`
+ * there) opens `CreateEventForm` in `CreateEventModal` rather than an inline
+ * form of its own: that form already collects the location `createEvent`
  * requires (a lightweight inline form here couldn't, with no location
  * picker of its own) and already guarantees new events start as
  * "gathering_casualties" since it never sends a status. The whole board is
@@ -72,6 +73,7 @@ const EventQueueBoard = ({ events, isToday, onCloseEvent }) => {
     Object.fromEntries(STATUS_LIST.map((s) => [s.key, "created_desc"])),
   );
   const [pendingDrop, setPendingDrop] = useState(null); // { eventId, name } | null
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [activeEvent, setActiveEvent] = useState(null);
   const [activeWidth, setActiveWidth] = useState(null);
   const [statusOverrides, setStatusOverrides] = useState({}); // { [eventId]: status }
@@ -200,7 +202,7 @@ const EventQueueBoard = ({ events, isToday, onCloseEvent }) => {
               isToday={isToday}
               sortMode={sortModeByStatus[status.key]}
               onSortChange={(mode) => handleSortChange(status.key, mode)}
-              onAddEvent={() => navigate("/create-event")}
+              onAddEvent={() => setIsCreateOpen(true)}
               onOpenEvent={(id) => navigate(`/brigade/${id}`)}
             />
           ))}
@@ -265,6 +267,12 @@ const EventQueueBoard = ({ events, isToday, onCloseEvent }) => {
           </Button>
         </Group>
       </Modal>
+
+      <CreateEventModal
+        opened={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onCreated={() => setIsCreateOpen(false)}
+      />
     </Stack>
   );
 };
