@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 // External libraries
-import { Box, Button, Select, Text, TextInput } from "@mantine/core";
+import { Box, Button, Select, Stack, Text, TextInput } from "@mantine/core";
 import { IconAlertTriangle, IconPlus, IconTag } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -46,10 +46,15 @@ const inputStyles = {
  * always server-generated and are never sent from this form. On success,
  * navigates straight into the new event's brigade dashboard.
  *
- * @param {{ onCreated?: (event: Object) => void }} props
+ * `bare` drops the `AuthFormCard` wrapper (surface, border, gold accent bar)
+ * in favor of a plain form Stack, for callers that already provide their own
+ * framing — e.g. `CreateEventModal`, where the modal's own surface is the
+ * card, and a nested one just doubled up the border/accent bar.
+ *
+ * @param {{ onCreated?: (event: Object) => void, bare?: boolean }} props
  * @returns {JSX.Element} The create event form.
  */
-const CreateEventForm = ({ onCreated }) => {
+const CreateEventForm = ({ onCreated, bare = false }) => {
   const [name, setName] = useState("");
   const [type, setType] = useState("");
   const [position, setPosition] = useState(null);
@@ -94,18 +99,8 @@ const CreateEventForm = ({ onCreated }) => {
     });
   };
 
-  return (
-    <AuthFormCard handleSubmit={handleSubmit}>
-      <Box
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          insetInline: 0,
-          top: 0,
-          height: "4px",
-          backgroundColor: "var(--app-color-primary)",
-        }}
-      />
+  const fields = (
+    <>
       <TextInput
         id="name"
         name="name"
@@ -163,6 +158,30 @@ const CreateEventForm = ({ onCreated }) => {
       >
         פתח אירוע
       </Button>
+    </>
+  );
+
+  if (bare) {
+    return (
+      <Stack component="form" onSubmit={handleSubmit} gap="md">
+        {fields}
+      </Stack>
+    );
+  }
+
+  return (
+    <AuthFormCard handleSubmit={handleSubmit}>
+      <Box
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          insetInline: 0,
+          top: 0,
+          height: "4px",
+          backgroundColor: "var(--app-color-primary)",
+        }}
+      />
+      {fields}
     </AuthFormCard>
   );
 };
