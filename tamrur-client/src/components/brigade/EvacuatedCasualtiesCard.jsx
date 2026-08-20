@@ -23,6 +23,7 @@ const URGENCY_FILTER_OPTIONS = URGENCY_ORDER.map((key) => ({ value: key, label: 
 const COLUMN_ACCESSORS = {
   "casualty-number": (casualty) => casualty["casualty-number"],
   urgency: (casualty) => casualty.urgency,
+  "evac-priority": (casualty) => casualty["evac-priority"],
   evacuated_at: (casualty) => (casualty.evacuated_at ? new Date(casualty.evacuated_at).getTime() : null),
 };
 
@@ -33,11 +34,12 @@ const COLUMN_ACCESSORS = {
  * the medic page's own active/evacuated split. Deliberately smaller than
  * the other tables: just enough to answer "who's been evacuated and when,"
  * not a working table (no expand-per-row, no editing — those live on the
- * medic page, which owns this data). `casualty-number` and `urgency` are
- * both sortable and filterable, matching the other brigade tables;
- * `evacuated_at` is sort-only (a timestamp isn't a useful filter category)
- * — it's the one piece of information this view adds that nothing else on
- * the page shows.
+ * medic page, which owns this data). `casualty-number`, `urgency`, and
+ * `evac-priority` are all sortable and filterable, matching the other
+ * brigade tables (`evac-priority` mirrors CasualtiesTableCard's own column
+ * of the same name); `evacuated_at` is sort-only (a timestamp isn't a
+ * useful filter category) — it's the one piece of information this view
+ * adds that nothing else on the page shows.
  *
  * @param {{ casualties: Array<object> }} props
  * @returns {JSX.Element} The evacuated-casualties card.
@@ -48,6 +50,13 @@ const EvacuatedCasualtiesCard = ({ casualties }) => {
 
   const numberOptions = useMemo(() => {
     const values = [...new Set(casualties.map((casualty) => casualty["casualty-number"]).filter((v) => v != null))].sort(
+      (a, b) => a - b,
+    );
+    return values.map((value) => ({ value: String(value), label: String(value) }));
+  }, [casualties]);
+
+  const priorityOptions = useMemo(() => {
+    const values = [...new Set(casualties.map((casualty) => casualty["evac-priority"]).filter((v) => v != null))].sort(
       (a, b) => a - b,
     );
     return values.map((value) => ({ value: String(value), label: String(value) }));
@@ -121,7 +130,7 @@ const EvacuatedCasualtiesCard = ({ casualties }) => {
       }
     >
       <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-        {/* Explicit width prevents this table (only 3 narrow columns) from
+        {/* Explicit width prevents this table (only 4 narrow columns) from
             shrinking to its natural content width and — since the page is
             RTL — snapping flush to the right edge of its container with
             empty space on the left, instead of filling the card evenly. */}
@@ -137,6 +146,11 @@ const EvacuatedCasualtiesCard = ({ casualties }) => {
                 label="דחיפות"
                 {...sortProps("urgency")}
                 {...filterProps("urgency", URGENCY_FILTER_OPTIONS)}
+              />
+              <ColumnHeader
+                label="עדיפות לפינוי"
+                {...sortProps("evac-priority")}
+                {...filterProps("evac-priority", priorityOptions)}
               />
               <ColumnHeader label="שעת פינוי" {...sortProps("evacuated_at")} />
             </Table.Tr>
@@ -155,6 +169,7 @@ const EvacuatedCasualtiesCard = ({ casualties }) => {
                     {urgencyLabel(casualty.urgency)}
                   </Badge>
                 </Table.Td>
+                <Table.Td ff={MONO_FONT}>{casualty["evac-priority"] ?? "—"}</Table.Td>
                 <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
                   {casualty.evacuated_at ? timeFormatter.format(new Date(casualty.evacuated_at)) : "—"}
                 </Table.Td>
@@ -162,7 +177,7 @@ const EvacuatedCasualtiesCard = ({ casualties }) => {
             ))}
             {visibleCasualties.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={3} c="var(--app-color-text-muted)" ta="center">
+                <Table.Td colSpan={4} c="var(--app-color-text-muted)" ta="center">
                   {casualties.length === 0 ? "טרם פונו נפגעים" : "אין נפגעים התואמים לסינון"}
                 </Table.Td>
               </Table.Tr>

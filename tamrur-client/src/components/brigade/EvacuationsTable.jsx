@@ -145,6 +145,25 @@ const EvacuationsTable = ({
   const [sort, setSort] = useState({ key: null, direction: null });
   const [filters, setFilters] = useState({});
 
+  // The server returns scalar fields under their real DB column names
+  // (snake_case) — matching the app's convention elsewhere (e.g. events'
+  // gathering_status/evac_status) — while everything below this line
+  // already reads camelCase. Normalized once, at the boundary, instead of
+  // throughout the file. departurePoint/destinationPoint already arrive
+  // camelCase (they need ST_AsGeoJSON server-side regardless, see
+  // evacuationsModel.js), so they're untouched here.
+  const normalizedEvacuations = useMemo(
+    () =>
+      evacuations.map((evac) => ({
+        ...evac,
+        startTime: evac.start_time,
+        forceRadioSign: evac.force_radio_sign,
+        concludedAt: evac.concluded_at,
+        aerialMissionId: evac.aerial_mission_id,
+      })),
+    [evacuations],
+  );
+
   const locationOptions = locations.map((location) => ({ value: location.id, label: location.name }));
   const missionOptions = aerialMissions.map((mission) => ({
     value: mission.id,
@@ -167,19 +186,23 @@ const EvacuationsTable = ({
   );
 
   const departureOptions = useMemo(() => {
-    const values = [...new Set(evacuations.map((evac) => describeLocationPoint(evac.departurePoint, locations)))];
+    const values = [
+      ...new Set(normalizedEvacuations.map((evac) => describeLocationPoint(evac.departurePoint, locations))),
+    ];
     return values.map((value) => ({ value, label: value }));
-  }, [evacuations, locations]);
+  }, [normalizedEvacuations, locations]);
 
   const destinationOptions = useMemo(() => {
-    const values = [...new Set(evacuations.map((evac) => describeLocationPoint(evac.destinationPoint, locations)))];
+    const values = [
+      ...new Set(normalizedEvacuations.map((evac) => describeLocationPoint(evac.destinationPoint, locations))),
+    ];
     return values.map((value) => ({ value, label: value }));
-  }, [evacuations, locations]);
+  }, [normalizedEvacuations, locations]);
 
   const radioSignOptions = useMemo(() => {
-    const values = [...new Set(evacuations.map((evac) => evac.forceRadioSign || "—"))];
+    const values = [...new Set(normalizedEvacuations.map((evac) => evac.forceRadioSign || "—"))];
     return values.map((value) => ({ value, label: value }));
-  }, [evacuations]);
+  }, [normalizedEvacuations]);
 
   const startEdit = (evac) => {
     setEditingId(evac.id);
@@ -241,7 +264,7 @@ const EvacuationsTable = ({
   };
 
   const visibleEvacuations = useMemo(() => {
-    let rows = evacuations.filter((evac) =>
+    let rows = normalizedEvacuations.filter((evac) =>
       Object.entries(filters).every(([key, values]) => {
         if (!values || values.size === 0) return true;
         return values.has(String(columnAccessors[key](evac)));
@@ -255,7 +278,7 @@ const EvacuationsTable = ({
     }
 
     return rows;
-  }, [evacuations, filters, sort, columnAccessors]);
+  }, [normalizedEvacuations, filters, sort, columnAccessors]);
 
   const sortProps = (key) => ({
     sortDirection: sort.key === key ? sort.direction : null,
@@ -269,8 +292,8 @@ const EvacuationsTable = ({
     onClearFilter: () => handleClearFilter(key),
   });
 
-  const deleteTarget = evacuations.find((evac) => evac.id === deleteTargetId) || null;
-  const activeCount = evacuations.filter((evac) => evac.status === "started").length;
+  const deleteTarget = normalizedEvacuations.find((evac) => evac.id === deleteTargetId) || null;
+  const activeCount = normalizedEvacuations.filter((evac) => evac.status === "started").length;
 
   return (
     <DashboardCard
@@ -290,7 +313,7 @@ const EvacuationsTable = ({
               },
             }}
           >
-            {visibleEvacuations.length} מתוך {evacuations.length}
+            {visibleEvacuations.length} מתוך {normalizedEvacuations.length}
           </Badge>
 
           <Badge
@@ -304,7 +327,7 @@ const EvacuationsTable = ({
               },
             }}
           >
-            {activeCount} מתוך {evacuations.length} צוותים פעילים
+            {activeCount} מתוך {normalizedEvacuations.length} צוותים פעילים
           </Badge>
 
           <Button
@@ -354,7 +377,7 @@ const EvacuationsTable = ({
         <Table verticalSpacing="sm" fz="sm">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th></Table.Th>
+              <Table.Th w="2.25rem"></Table.Th>
               <ColumnHeader label="שעת יציאה" {...sortProps("startTime")} />
               <ColumnHeader label="סוג" {...sortProps("method")} {...filterProps("method", METHOD_FILTER_OPTIONS)} />
               <ColumnHeader
@@ -394,15 +417,20 @@ const EvacuationsTable = ({
 
               return (
                 <Table.Tr key={evac.id} className="app-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
-                  <Table.Td>
+                  <Table.Td w="2.25rem" style={{ textAlign: "center" }}>
                     {incomplete && (
                       <Tooltip label="חסרים נתונים בשורה זו">
-                        <IconAlertTriangle
-                          className="app-pulse-scale"
-                          size={18}
-                          stroke={1.8}
-                          color="var(--app-color-warning)"
-                        />
+                        {/* The pulse's 1.25x peak scale needs headroom of its own —
+                            centered in a fixed-width cell so it grows symmetrically
+                            instead of visually spilling into the next column. */}
+                        <Box style={{ display: "inline-flex" }}>
+                          <IconAlertTriangle
+                            className="app-pulse-scale"
+                            size={18}
+                            stroke={1.8}
+                            color="var(--app-color-warning)"
+                          />
+                        </Box>
                       </Tooltip>
                     )}
                   </Table.Td>
@@ -423,9 +451,17 @@ const EvacuationsTable = ({
                     ) : (
                       <Button
                         size="xs"
-                        variant="light"
+                        mih="1.75rem"
                         leftSection={<IconPlayerPlay size={14} stroke={1.8} />}
                         onClick={() => startNow(evac.id)}
+                        styles={{
+                          root: {
+                            backgroundColor: "var(--app-color-primary)",
+                            color: "var(--app-color-primary-text)",
+                            "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
+                            ...interactiveScaleStyles,
+                          },
+                        }}
                       >
                         התחל עכשיו
                       </Button>
@@ -633,7 +669,7 @@ const EvacuationsTable = ({
             {visibleEvacuations.length === 0 && (
               <Table.Tr>
                 <Table.Td colSpan={11} c="var(--app-color-text-muted)" ta="center">
-                  {evacuations.length === 0 ? "אין פינויים לאירוע זה" : "אין פינויים התואמים לסינון"}
+                  {normalizedEvacuations.length === 0 ? "אין פינויים לאירוע זה" : "אין פינויים התואמים לסינון"}
                 </Table.Td>
               </Table.Tr>
             )}
