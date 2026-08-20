@@ -76,6 +76,7 @@ const EventDashboardPage = () => {
   const { eventId } = useParams();
 
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+  const [isMapCollapsed, setIsMapCollapsed] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   // Recorded locally at the moment the brigade actually closes the event,
@@ -363,20 +364,45 @@ const EventDashboardPage = () => {
           )}
 
           {!isInitialLoad && isShowingCurrentEvent && (
-            <>
+            <Box
+              style={{
+                display: "flex",
+                gap: "var(--mantine-spacing-sm)",
+                flex: 1,
+                minHeight: 0,
+                height: "100%",
+              }}
+            >
+              {/* Folds to a slim strip (see EventMapCard) instead of the map
+                  card's usual 2/10 share, so the casualties/evacuation grid
+                  next to it can take that width back. Open by default. */}
+              <Box
+                style={{
+                  flex: isMapCollapsed ? "0 0 auto" : "0 0 20%",
+                  minWidth: 0,
+                  height: "100%",
+                  transition: "flex-basis 0.2s ease",
+                }}
+              >
+                <EventMapCard
+                  event={event}
+                  locations={locations}
+                  forces={forces}
+                  collapsed={isMapCollapsed}
+                  onToggleCollapsed={() => setIsMapCollapsed((collapsed) => !collapsed)}
+                />
+              </Box>
+
               <Grid
                 gutter="sm"
-                columns={10}
-                style={{ flex: 1, minHeight: 0 }}
+                columns={8}
+                style={{ flex: 1, minWidth: 0 }}
                 styles={{ root: { height: "100%" }, inner: { height: "100%" } }}
               >
-                <Grid.Col span={{ base: 10, md: 2 }} style={{ height: "100%" }}>
-                  <EventMapCard event={event} locations={locations} forces={forces} />
-                </Grid.Col>
-                <Grid.Col span={{ base: 10, md: 4 }} style={{ height: "100%" }}>
+                <Grid.Col span={{ base: 8, md: 4 }} style={{ height: "100%" }}>
                   <CasualtiesTableCard casualties={activeCasualties} />
                 </Grid.Col>
-                <Grid.Col span={{ base: 10, md: 4 }} style={{ height: "100%" }}>
+                <Grid.Col span={{ base: 8, md: 4 }} style={{ height: "100%" }}>
                   {/* Evacuations gets the larger share (it's still the
                       working table — inline editing, request buttons);
                       the evacuated-casualties card underneath is a
@@ -401,7 +427,7 @@ const EventDashboardPage = () => {
                   </Stack>
                 </Grid.Col>
               </Grid>
-            </>
+            </Box>
           )}
         </Stack>
       </Stack>
