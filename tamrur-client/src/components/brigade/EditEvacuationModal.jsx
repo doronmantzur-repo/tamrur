@@ -31,6 +31,25 @@ function fromLocalInputValue(value) {
 }
 
 /**
+ * Neither ETA nor the concluded time can sensibly land before the start
+ * time — arriving or finishing before you left isn't a real evacuation.
+ * Only checked against start time, not against each other: finishing sooner
+ * than the original ETA estimate is completely normal (team moved faster
+ * than expected), so there's no ordering constraint between eta and
+ * concludedAt themselves. Returns an error message, or null if the draft is
+ * fine to save.
+ */
+function validateOrdering(draft) {
+  if (draft.startTime && draft.eta && draft.eta < draft.startTime) {
+    return "זמן ה-ETA לא יכול להיות מוקדם משעת היציאה";
+  }
+  if (draft.startTime && draft.concludedAt && draft.concludedAt < draft.startTime) {
+    return "זמן הסיום לא יכול להיות מוקדם משעת היציאה";
+  }
+  return null;
+}
+
+/**
  * Edits only an evacuation's three timing fields (start time, ETA, concluded
  * time) — method, departure/destination, radio sign, aerial mission, and
  * status are all set through other flows (the aerial mission approval, the
@@ -40,7 +59,11 @@ function fromLocalInputValue(value) {
  * the server can tell "clear this" apart from "leave it alone" — see
  * `update_evacuation` in `evacuationsModel.js`, which used to COALESCE every
  * field against its old value regardless, making a clear indistinguishable
- * from a no-op.
+ * from a no-op. ETA/concluded time can't be set earlier than start time
+ * (see `validateOrdering`) — enforced here, not for the start-now/finish-
+ * evacuation quick actions, since those stamp the actual current moment
+ * rather than a hand-picked time and shouldn't be rejected for an earlier
+ * ETA estimate turning out wrong.
  *
  * @param {{
  *   evacuation: object | null,
@@ -76,6 +99,13 @@ const EditEvacuationModal = ({ evacuation, opened, onClose, onSave }) => {
   };
 
   const handleSave = async () => {
+    const validationError = validateOrdering(draft);
+    if (validationError) {
+      setStatus("error");
+      setErrorMessage(validationError);
+      return;
+    }
+
     setStatus("saving");
     setErrorMessage(null);
 
@@ -168,6 +198,7 @@ const EditEvacuationModal = ({ evacuation, opened, onClose, onSave }) => {
           label="ETA"
           type="datetime-local"
           styles={inputStyles}
+          min={toLocalInputValue(draft.startTime) || undefined}
           value={toLocalInputValue(draft.eta)}
           onChange={(e) => updateDraft("eta", fromLocalInputValue(e.currentTarget.value))}
         />
@@ -175,6 +206,7 @@ const EditEvacuationModal = ({ evacuation, opened, onClose, onSave }) => {
           label="זמן סיום"
           type="datetime-local"
           styles={inputStyles}
+          min={toLocalInputValue(draft.startTime) || undefined}
           value={toLocalInputValue(draft.concludedAt)}
           onChange={(e) => updateDraft("concludedAt", fromLocalInputValue(e.currentTarget.value))}
         />

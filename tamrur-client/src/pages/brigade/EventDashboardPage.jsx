@@ -181,9 +181,10 @@ const EventDashboardPage = () => {
     setCloseConfirmOpen(false);
   };
 
-  const handleRequestAerialEvac = () => {
-    dispatch(updateEvent({ id: eventId, changes: { aerialEvac: "needed" } }));
-  };
+  // Returns the dispatch's promise so EvacuationsTable can await it and
+  // release its own optimistic "requesting" disable once the request
+  // settles, rather than firing and forgetting.
+  const handleRequestAerialEvac = () => dispatch(updateEvent({ id: eventId, changes: { aerialEvac: "needed" } })).unwrap();
 
   // Returns the dispatch's promise so EvacuationsTable's inline row editor can
   // await it — a failed save needs to keep the row open with the user's

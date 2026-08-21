@@ -42,8 +42,14 @@ const STATUS_OPTIONS = Object.entries(EVAC_TEAM_STATUS_LABELS).map(([value, labe
 const STATUS_FILTER_OPTIONS = STATUS_OPTIONS;
 const METHOD_FILTER_OPTIONS = METHOD_OPTIONS;
 
-/** Fields the brigade must still fill in before the evacuation is actionable. */
-const REQUIRED_FIELDS = ["departurePoint", "destinationPoint", "startTime", "eta"];
+/**
+ * The three timing fields EditEvacuationModal edits — the only fields left
+ * for the brigade to fill in by hand (method/departure/destination/radio
+ * sign/aerial mission/status are all set through other flows now). A row
+ * stays flagged incomplete for its whole lifecycle until all three are set,
+ * i.e. until it's actually concluded.
+ */
+const REQUIRED_FIELDS = ["startTime", "eta", "concludedAt"];
 
 /** Subtle hover/tap feedback for the request-aerial-evac button, matching the top bar's action buttons. */
 const interactiveScaleStyles = {
@@ -138,6 +144,14 @@ const EvacuationsTable = ({
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [sort, setSort] = useState({ key: null, direction: null });
   const [filters, setFilters] = useState({});
+  // Closes the window between clicking "request aerial evac" and the PUT
+  // request's response actually updating aerialEvacStatus — without this,
+  // that gap is fully clickable and a fast double-click (or an impatient
+  // re-click) can fire the request twice. Only needed for the "not yet
+  // requested" -> "requested" transition, so it's cleared once the request
+  // settles either way, not tied to aerialEvacStatus itself (which handles
+  // the persistent already-requested disable on its own).
+  const [isRequestingAerialEvac, setIsRequestingAerialEvac] = useState(false);
 
   // The server returns scalar fields under their real DB column names
   // (snake_case) — matching the app's convention elsewhere (e.g. events'
@@ -197,6 +211,15 @@ const EvacuationsTable = ({
 
   const handleRequestRideEvac = () => {
     // TODO: wire up ride evacuation request once there's a backend flow for it (mirrors onRequestAerialEvac).
+  };
+
+  const handleRequestAerialEvacClick = async () => {
+    setIsRequestingAerialEvac(true);
+    try {
+      await onRequestAerialEvac?.();
+    } finally {
+      setIsRequestingAerialEvac(false);
+    }
   };
 
   const handleSortClick = (key) => {
@@ -292,8 +315,9 @@ const EvacuationsTable = ({
             }
             size="xs"
             mih="2rem"
-            disabled={isCompleted || aerialEvacStatus === "needed"}
-            onClick={onRequestAerialEvac}
+            loading={isRequestingAerialEvac}
+            disabled={isCompleted || aerialEvacStatus === "needed" || isRequestingAerialEvac}
+            onClick={handleRequestAerialEvacClick}
             styles={{
               root: {
                 backgroundColor: "var(--app-color-primary)",
