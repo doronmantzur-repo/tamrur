@@ -218,7 +218,7 @@ const EvacuationsTable = ({
   };
 
   const finishEvacuation = (evacId) => {
-    onUpdateEvacuation?.(evacId, { concludedAt: new Date().toISOString(), status: "completed" });
+    onUpdateEvacuation?.(evacId, { concludedAt: new Date().toISOString() });
   };
 
   const handleRequestRideEvac = () => {
