@@ -185,9 +185,10 @@ const EventDashboardPage = () => {
     dispatch(updateEvent({ id: eventId, changes: { aerialEvac: "needed" } }));
   };
 
-  const handleUpdateEvacuation = (evacId, changes) => {
-    dispatch(updateEvacuation({ id: evacId, changes }));
-  };
+  // Returns the dispatch's promise so EvacuationsTable's inline row editor can
+  // await it — a failed save needs to keep the row open with the user's
+  // input intact instead of silently discarding it.
+  const handleUpdateEvacuation = (evacId, changes) => dispatch(updateEvacuation({ id: evacId, changes })).unwrap();
 
   const handleDeleteEvacuation = (evacId) => {
     dispatch(deleteEvacuation({ id: evacId, eventId }));
