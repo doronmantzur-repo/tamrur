@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 
 // External libraries
-import { ActionIcon, Badge, Box, Button, Group, Modal, Select, Table, Text, TextInput, Tooltip } from "@mantine/core";
+import { ActionIcon, Badge, Box, Button, Group, Modal, Stack, Table, Text, Tooltip } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCar,
@@ -15,12 +15,12 @@ import {
   IconTrash,
   IconTruck,
   IconWalk,
-  IconX,
 } from "@tabler/icons-react";
 
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
 import ColumnHeader from "../dashboard/ColumnHeader";
+import EditEvacuationModal from "./EditEvacuationModal";
 import { EVAC_TEAM_STATUS_COLOR_VARS, EVAC_TEAM_STATUS_LABELS } from "../../constants/aerialEvacStatus";
 import { EVAC_METHOD_LABELS } from "../../constants/evacuationMethod";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
@@ -28,6 +28,7 @@ import { findLocationByPoint } from "../../utils/geo";
 
 // Styles
 
+const MONO_FONT = 'ui-monospace, "SF Mono", "Consolas", monospace';
 const timeFormatter = new Intl.DateTimeFormat("he-IL", { timeStyle: "short" });
 
 const METHOD_ICONS = {
@@ -51,33 +52,9 @@ const interactiveScaleStyles = {
   "&:active:not(:disabled)": { transform: "scale(0.97)" },
 };
 
-const inputStyles = {
-  input: {
-    minHeight: "2.25rem",
-    backgroundColor: "var(--app-color-background)",
-    color: "var(--app-color-text)",
-    borderColor: "var(--app-color-border)",
-    fontSize: "var(--mantine-font-size-sm)",
-  },
-};
-
 /** True if any field the brigade must fill in by hand is still empty. */
 function isIncomplete(evac) {
   return REQUIRED_FIELDS.some((field) => !evac[field]);
-}
-
-/** Converts an ISO timestamp to the `datetime-local` input value format. */
-function toLocalInputValue(iso) {
-  if (!iso) return "";
-  const date = new Date(iso);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-/** Converts a `datetime-local` input value back to an ISO timestamp, or null if empty. */
-function fromLocalInputValue(value) {
-  if (!value) return null;
-  return new Date(value).toISOString();
 }
 
 /**
@@ -97,25 +74,38 @@ function describeLocationPoint(point, locations) {
 }
 
 /**
- * Renders the event's evacuations as a full, inline-editable table (start
- * time, type, departure, destination, radio sign, ETA, concluded time,
- * aerial mission, status). Covers every evacuation method (walk/ride/
- * aerial), not just aerial teams. Fields mirror the real `evacuations`
- * schema — no casualty linkage, since the DB doesn't support that
- * relationship. Departure/destination are edited as a location picker but
- * stored as raw points, since the DB has no location foreign key: picking a
- * location resolves it to its coordinates on save, and displaying an
- * existing point reverse-matches it back to a location name. A leading
- * column pulses a warning while a row is still missing brigade-entered
- * fields. Every column but the three time fields is sortable and filterable
- * (searchable pick-list); every column is sortable. Rows can be deleted via
- * a confirm modal. The card header also carries an active-teams count badge
- * (evacuations currently "started" out of the total — this used to be its
- * own stat tile on the page, moved here since it's this table's own data)
- * and the "request aerial evac"
- * action — requesting one, once approved, is what auto-creates a row here
- * in the first place, so it lives with this table rather than the page's
- * other event-level actions.
+ * Renders the event's evacuations as a compact, read-only table (route,
+ * type, timeline, radio sign, aerial mission, status). Covers every
+ * evacuation method (walk/ride/aerial), not just aerial teams. Fields mirror
+ * the real `evacuations` schema — no casualty linkage, since the DB doesn't
+ * support that relationship.
+ *
+ * The pencil opens `EditEvacuationModal`, which only edits the exact
+ * start/ETA/concluded timestamps — method, departure/destination, radio
+ * sign, aerial mission, and status are all set through other flows (aerial
+ * mission approval, the start-now/finish-evacuation quick actions) and
+ * aren't meant to be hand-edited, per team decision. Those quick actions
+ * stay as direct one-tap controls in the table itself rather than living
+ * only in the modal, since they're time-critical enough that burying them
+ * behind "open the edit modal" would cost real seconds in an actual
+ * evacuation. Merging what used to be 3 separate time columns and 2
+ * separate departure/destination columns down to one "ציר זמן" and one
+ * "מסלול" column each is what lets this table fit its real available width
+ * (see EventDashboardPage's grid) without horizontal scroll; the old
+ * inline-editable version needed 11 columns wide enough to fit a
+ * Select/datetime-local input each, which this version never has to
+ * accommodate.
+ *
+ * A leading column pulses a warning while a row is still missing
+ * brigade-entered fields. Sorting/filtering on the merged route and
+ * timeline columns is scoped to one representative field each
+ * (departurePoint, startTime) rather than every field that went into the
+ * merge — a direct, accepted simplification of combining columns. Rows can
+ * be deleted via a confirm modal. The card header also carries an
+ * active-teams count badge (evacuations currently "started" out of the
+ * total) and the "request aerial evac" action — requesting one, once
+ * approved, is what auto-creates a row here in the first place, so it lives
+ * with this table rather than the page's other event-level actions.
  *
  * @param {{
  *   evacuations: Array<object>,
@@ -123,7 +113,7 @@ function describeLocationPoint(point, locations) {
  *   aerialMissions: Array<object>,
  *   isCompleted: boolean,
  *   aerialEvacStatus: string | null | undefined,
- *   onUpdateEvacuation: (evacId: string, changes: object) => void,
+ *   onUpdateEvacuation: (evacId: string, changes: object) => Promise<unknown>,
  *   onDeleteEvacuation: (evacId: string) => void,
  *   onRequestAerialEvac: () => void,
  * }} props
@@ -139,8 +129,12 @@ const EvacuationsTable = ({
   onDeleteEvacuation,
   onRequestAerialEvac,
 }) => {
-  const [editingId, setEditingId] = useState(null);
-  const [draft, setDraft] = useState(null);
+  const [editingEvacuation, setEditingEvacuation] = useState(null);
+  // Bumped on every open (not just when the row differs) so EditEvacuationModal
+  // remounts fresh each time via its `key` — its own draft/status state is
+  // seeded from lazy useState initializers, not a reset effect, so a fresh
+  // mount is what actually resets it (see that file's comment).
+  const [editOpenId, setEditOpenId] = useState(0);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [sort, setSort] = useState({ key: null, direction: null });
   const [filters, setFilters] = useState({});
@@ -164,23 +158,14 @@ const EvacuationsTable = ({
     [evacuations],
   );
 
-  const locationOptions = locations.map((location) => ({ value: location.id, label: location.name }));
-  const missionOptions = aerialMissions.map((mission) => ({
-    value: mission.id,
-    label: mission.radio_sign || "מסוק ללא כינוי קריאה",
-  }));
-
   const columnAccessors = useMemo(
     () => ({
       method: (evac) => evac.method,
       departurePoint: (evac) => describeLocationPoint(evac.departurePoint, locations),
-      destinationPoint: (evac) => describeLocationPoint(evac.destinationPoint, locations),
       forceRadioSign: (evac) => evac.forceRadioSign || "—",
       aerialMissionId: (evac) => evac.aerialMissionId || "—",
       status: (evac) => evac.status,
       startTime: (evac) => (evac.startTime ? new Date(evac.startTime).getTime() : null),
-      eta: (evac) => (evac.eta ? new Date(evac.eta).getTime() : null),
-      concludedAt: (evac) => (evac.concludedAt ? new Date(evac.concludedAt).getTime() : null),
     }),
     [locations],
   );
@@ -192,48 +177,15 @@ const EvacuationsTable = ({
     return values.map((value) => ({ value, label: value }));
   }, [normalizedEvacuations, locations]);
 
-  const destinationOptions = useMemo(() => {
-    const values = [
-      ...new Set(normalizedEvacuations.map((evac) => describeLocationPoint(evac.destinationPoint, locations))),
-    ];
-    return values.map((value) => ({ value, label: value }));
-  }, [normalizedEvacuations, locations]);
-
   const radioSignOptions = useMemo(() => {
     const values = [...new Set(normalizedEvacuations.map((evac) => evac.forceRadioSign || "—"))];
     return values.map((value) => ({ value, label: value }));
   }, [normalizedEvacuations]);
 
-  const startEdit = (evac) => {
-    setEditingId(evac.id);
-    setDraft({
-      ...evac,
-      departurePoint: findLocationByPoint(evac.departurePoint, locations)?.id || null,
-      destinationPoint: findLocationByPoint(evac.destinationPoint, locations)?.id || null,
-    });
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setDraft(null);
-  };
-
-  const saveEdit = () => {
-    const departureLocation = locations.find((location) => location.id === draft.departurePoint);
-    const destinationLocation = locations.find((location) => location.id === draft.destinationPoint);
-
-    onUpdateEvacuation?.(editingId, {
-      ...draft,
-      departurePoint: departureLocation?.location || null,
-      destinationPoint: destinationLocation?.location || null,
-    });
-    setEditingId(null);
-    setDraft(null);
-  };
-
-  const updateDraft = (field, value) => {
-    setDraft((prev) => ({ ...prev, [field]: value }));
-  };
+  const missionOptions = useMemo(
+    () => aerialMissions.map((mission) => ({ value: mission.id, label: mission.radio_sign || "מסוק ללא כינוי קריאה" })),
+    [aerialMissions],
+  );
 
   const startNow = (evacId) => {
     onUpdateEvacuation?.(evacId, { startTime: new Date().toISOString() });
@@ -374,44 +326,55 @@ const EvacuationsTable = ({
       }
     >
       <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-        <Table verticalSpacing="sm" fz="sm">
+        {/* table-layout: fixed + an explicit width per column keeps the
+            table's overall size constant, and — now that editing lives in
+            EditEvacuationModal instead of inline cells — every column only
+            has to fit compact display content (badges, short mono times,
+            two-line text), not a Select/datetime-local input. That's what
+            actually closes most of the horizontal-scroll gap; this table
+            used to need ~11 columns' worth of edit-input-sized width. */}
+        <Table verticalSpacing="sm" fz="xs" style={{ tableLayout: "fixed" }}>
           <Table.Thead>
             <Table.Tr>
               <Table.Th w="2.25rem"></Table.Th>
-              <ColumnHeader label="שעת יציאה" {...sortProps("startTime")} />
-              <ColumnHeader label="סוג" {...sortProps("method")} {...filterProps("method", METHOD_FILTER_OPTIONS)} />
+              <ColumnHeader label="ציר זמן" w="6.5rem" {...sortProps("startTime")} />
               <ColumnHeader
-                label="יציאה"
+                label="סוג"
+                w="5.5rem"
+                {...sortProps("method")}
+                {...filterProps("method", METHOD_FILTER_OPTIONS)}
+              />
+              <ColumnHeader
+                label="מסלול"
+                w="7rem"
                 {...sortProps("departurePoint")}
                 {...filterProps("departurePoint", departureOptions)}
               />
               <ColumnHeader
-                label="יעד"
-                {...sortProps("destinationPoint")}
-                {...filterProps("destinationPoint", destinationOptions)}
-              />
-              <ColumnHeader
                 label="קריאת קשר"
+                w="5rem"
                 {...sortProps("forceRadioSign")}
                 {...filterProps("forceRadioSign", radioSignOptions)}
               />
-              <ColumnHeader label="ETA" {...sortProps("eta")} />
-              <ColumnHeader label="זמן סיום" {...sortProps("concludedAt")} />
               <ColumnHeader
                 label="משימה אווירית"
+                w="6rem"
                 {...sortProps("aerialMissionId")}
                 {...filterProps("aerialMissionId", missionOptions)}
               />
-              <ColumnHeader label="סטטוס" {...sortProps("status")} {...filterProps("status", STATUS_FILTER_OPTIONS)} />
-              <Table.Th></Table.Th>
+              <ColumnHeader
+                label="סטטוס"
+                w="6rem"
+                {...sortProps("status")}
+                {...filterProps("status", STATUS_FILTER_OPTIONS)}
+              />
+              <Table.Th w="3.5rem"></Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {visibleEvacuations.map((evac, index) => {
-              const isEditing = editingId === evac.id;
-              const row = isEditing ? draft : evac;
-              const MethodIcon = METHOD_ICONS[row.method] || IconHelicopter;
-              const statusColor = EVAC_TEAM_STATUS_COLOR_VARS[row.status] || "var(--app-color-text-muted)";
+              const MethodIcon = METHOD_ICONS[evac.method] || IconHelicopter;
+              const statusColor = EVAC_TEAM_STATUS_COLOR_VARS[evac.status] || "var(--app-color-text-muted)";
               const incomplete = isIncomplete(evac);
               const mission = aerialMissions.find((m) => m.id === evac.aerialMissionId);
 
@@ -436,239 +399,148 @@ const EvacuationsTable = ({
                   </Table.Td>
 
                   <Table.Td>
-                    {isEditing ? (
-                      <TextInput
-                        type="datetime-local"
-                        size="xs"
-                        styles={inputStyles}
-                        value={toLocalInputValue(draft.startTime)}
-                        onChange={(e) => updateDraft("startTime", fromLocalInputValue(e.currentTarget.value))}
-                      />
-                    ) : row.startTime ? (
-                      <Text ff='ui-monospace, "SF Mono", "Consolas", monospace'>
-                        {timeFormatter.format(new Date(row.startTime))}
+                    {/* Concluded: ETA is no longer relevant, only the actual
+                        start->end times matter. Started but not concluded:
+                        ETA is the best "end time" estimate there is, so it
+                        gets the same visual weight as the start time, not a
+                        muted afterthought — labeled so it's unambiguous
+                        which value is which. */}
+                    {evac.concludedAt ? (
+                      <Text ff={MONO_FONT}>
+                        {timeFormatter.format(new Date(evac.startTime))} ← {timeFormatter.format(new Date(evac.concludedAt))}
                       </Text>
+                    ) : evac.startTime ? (
+                      <Group gap={4} wrap="nowrap">
+                        <Stack gap={0}>
+                          <Group gap={4} wrap="nowrap">
+                            <Text fz="0.62rem" c="var(--app-color-text-muted)">
+                              יצא
+                            </Text>
+                            <Text ff={MONO_FONT}>{timeFormatter.format(new Date(evac.startTime))}</Text>
+                          </Group>
+                          <Group gap={4} wrap="nowrap">
+                            <Text fz="0.62rem" c="var(--app-color-text-muted)">
+                              צפי
+                            </Text>
+                            <Text ff={MONO_FONT}>{evac.eta ? timeFormatter.format(new Date(evac.eta)) : "—"}</Text>
+                          </Group>
+                        </Stack>
+                        <Tooltip label="סיים פינוי">
+                          <ActionIcon
+                            size="sm"
+                            variant="light"
+                            color="green"
+                            aria-label="סיים פינוי"
+                            onClick={() => finishEvacuation(evac.id)}
+                          >
+                            <IconFlagCheck size={14} stroke={1.8} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
                     ) : (
-                      <Button
-                        size="xs"
-                        mih="1.75rem"
-                        leftSection={<IconPlayerPlay size={14} stroke={1.8} />}
-                        onClick={() => startNow(evac.id)}
-                        styles={{
-                          root: {
-                            backgroundColor: "var(--app-color-primary)",
-                            color: "var(--app-color-primary-text)",
-                            "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
-                            ...interactiveScaleStyles,
-                          },
-                        }}
-                      >
-                        התחל עכשיו
-                      </Button>
-                    )}
-                  </Table.Td>
-
-                  <Table.Td>
-                    {isEditing ? (
-                      <Select
-                        size="xs"
-                        styles={inputStyles}
-                        data={METHOD_OPTIONS}
-                        value={draft.method}
-                        onChange={(value) => updateDraft("method", value)}
-                        allowDeselect={false}
-                      />
-                    ) : (
-                      <Group gap={6} wrap="nowrap">
-                        <MethodIcon size={16} stroke={1.8} />
-                        <Text fz="sm">{EVAC_METHOD_LABELS[row.method] || row.method}</Text>
+                      <Group gap={4} wrap="nowrap">
+                        <Tooltip label="התחל עכשיו">
+                          <ActionIcon
+                            size="sm"
+                            aria-label="התחל עכשיו"
+                            onClick={() => startNow(evac.id)}
+                            styles={{
+                              root: {
+                                backgroundColor: "var(--app-color-primary)",
+                                color: "var(--app-color-primary-text)",
+                                "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
+                              },
+                            }}
+                          >
+                            <IconPlayerPlay size={14} stroke={1.8} />
+                          </ActionIcon>
+                        </Tooltip>
+                        <Stack gap={0}>
+                          <Text fz="0.62rem" c="var(--app-color-text-muted)">
+                            צפי
+                          </Text>
+                          <Text ff={MONO_FONT}>{evac.eta ? timeFormatter.format(new Date(evac.eta)) : "—"}</Text>
+                        </Stack>
                       </Group>
                     )}
                   </Table.Td>
 
                   <Table.Td>
-                    {isEditing ? (
-                      <Select
-                        size="xs"
-                        styles={inputStyles}
-                        placeholder="בחר מיקום"
-                        data={locationOptions}
-                        value={draft.departurePoint}
-                        onChange={(value) => updateDraft("departurePoint", value)}
-                        searchable
-                      />
-                    ) : (
-                      <Text c={row.departurePoint ? undefined : "var(--app-color-text-muted)"}>
-                        {describeLocationPoint(row.departurePoint, locations)}
+                    <Group gap={6} wrap="nowrap">
+                      <MethodIcon size={16} stroke={1.8} />
+                      <Text truncate>{EVAC_METHOD_LABELS[evac.method] || evac.method}</Text>
+                    </Group>
+                  </Table.Td>
+
+                  <Table.Td>
+                    <Stack gap={0}>
+                      <Text truncate title={describeLocationPoint(evac.departurePoint, locations)}>
+                        מ: {describeLocationPoint(evac.departurePoint, locations)}
                       </Text>
-                    )}
-                  </Table.Td>
-
-                  <Table.Td>
-                    {isEditing ? (
-                      <Select
-                        size="xs"
-                        styles={inputStyles}
-                        placeholder="בחר מיקום"
-                        data={locationOptions}
-                        value={draft.destinationPoint}
-                        onChange={(value) => updateDraft("destinationPoint", value)}
-                        searchable
-                      />
-                    ) : (
-                      <Text c={row.destinationPoint ? undefined : "var(--app-color-text-muted)"}>
-                        {describeLocationPoint(row.destinationPoint, locations)}
-                      </Text>
-                    )}
-                  </Table.Td>
-
-                  <Table.Td>
-                    {isEditing ? (
-                      <TextInput
-                        size="xs"
-                        styles={inputStyles}
-                        value={draft.forceRadioSign || ""}
-                        onChange={(e) => updateDraft("forceRadioSign", e.currentTarget.value)}
-                      />
-                    ) : (
-                      row.forceRadioSign || "—"
-                    )}
-                  </Table.Td>
-
-                  <Table.Td>
-                    {isEditing ? (
-                      <TextInput
-                        type="datetime-local"
-                        size="xs"
-                        styles={inputStyles}
-                        value={toLocalInputValue(draft.eta)}
-                        onChange={(e) => updateDraft("eta", fromLocalInputValue(e.currentTarget.value))}
-                      />
-                    ) : (
                       <Text
                         c="var(--app-color-text-muted)"
-                        ff='ui-monospace, "SF Mono", "Consolas", monospace'
+                        truncate
+                        title={describeLocationPoint(evac.destinationPoint, locations)}
                       >
-                        {row.eta ? timeFormatter.format(new Date(row.eta)) : "טרם הוזן"}
+                        אל: {describeLocationPoint(evac.destinationPoint, locations)}
                       </Text>
-                    )}
+                    </Stack>
                   </Table.Td>
 
                   <Table.Td>
-                    {isEditing ? (
-                      <TextInput
-                        type="datetime-local"
-                        size="xs"
-                        styles={inputStyles}
-                        value={toLocalInputValue(draft.concludedAt)}
-                        onChange={(e) => updateDraft("concludedAt", fromLocalInputValue(e.currentTarget.value))}
-                      />
-                    ) : row.concludedAt ? (
-                      <Text c="var(--app-color-text-muted)" ff='ui-monospace, "SF Mono", "Consolas", monospace'>
-                        {timeFormatter.format(new Date(row.concludedAt))}
-                      </Text>
-                    ) : (
-                      <Button
-                        size="xs"
-                        variant="light"
-                        color="green"
-                        leftSection={<IconFlagCheck size={14} stroke={1.8} />}
-                        onClick={() => finishEvacuation(evac.id)}
-                      >
-                        סיים פינוי
-                      </Button>
-                    )}
+                    <Text truncate>{evac.forceRadioSign || "—"}</Text>
                   </Table.Td>
 
                   <Table.Td>
-                    {isEditing ? (
-                      <Select
-                        size="xs"
-                        styles={inputStyles}
-                        placeholder="בחר משימה"
-                        data={missionOptions}
-                        value={draft.aerialMissionId}
-                        onChange={(value) => updateDraft("aerialMissionId", value)}
-                        searchable
-                        clearable
-                      />
-                    ) : (
-                      <Text c="var(--app-color-text-muted)">{mission?.radio_sign || "—"}</Text>
-                    )}
+                    <Text c="var(--app-color-text-muted)" truncate>
+                      {mission?.radio_sign || "—"}
+                    </Text>
                   </Table.Td>
 
                   <Table.Td>
-                    {isEditing ? (
-                      <Select
-                        size="xs"
-                        styles={inputStyles}
-                        data={STATUS_OPTIONS}
-                        value={draft.status}
-                        onChange={(value) => updateDraft("status", value)}
-                        allowDeselect={false}
-                      />
-                    ) : (
-                      <Badge
-                        leftSection={<MethodIcon size={12} stroke={1.8} />}
-                        styles={{
-                          root: {
-                            backgroundColor: `color-mix(in srgb, ${statusColor} 16%, transparent)`,
-                            color: statusColor,
-                          },
+                    <Badge
+                      size="sm"
+                      leftSection={<MethodIcon size={12} stroke={1.8} />}
+                      styles={{
+                        root: {
+                          backgroundColor: `color-mix(in srgb, ${statusColor} 16%, transparent)`,
+                          color: statusColor,
+                        },
+                      }}
+                    >
+                      {EVAC_TEAM_STATUS_LABELS[evac.status] || evac.status}
+                    </Badge>
+                  </Table.Td>
+
+                  <Table.Td>
+                    <Group gap={4} wrap="nowrap">
+                      <ActionIcon
+                        variant="subtle"
+                        aria-label="ערוך שורה"
+                        onClick={() => {
+                          setEditingEvacuation(evac);
+                          setEditOpenId((id) => id + 1);
                         }}
+                        styles={{ root: { color: "var(--app-color-primary)" } }}
                       >
-                        {EVAC_TEAM_STATUS_LABELS[row.status] || row.status}
-                      </Badge>
-                    )}
-                  </Table.Td>
-
-                  <Table.Td>
-                    {isEditing ? (
-                      <Group gap={4} wrap="nowrap">
-                        <ActionIcon
-                          variant="subtle"
-                          aria-label="שמור"
-                          onClick={saveEdit}
-                          styles={{ root: { color: "var(--app-color-success)" } }}
-                        >
-                          <IconCheck size={18} stroke={1.8} />
-                        </ActionIcon>
-                        <ActionIcon
-                          variant="subtle"
-                          aria-label="בטל"
-                          onClick={cancelEdit}
-                          styles={{ root: { color: "var(--app-color-text-muted)" } }}
-                        >
-                          <IconX size={18} stroke={1.8} />
-                        </ActionIcon>
-                      </Group>
-                    ) : (
-                      <Group gap={4} wrap="nowrap">
-                        <ActionIcon
-                          variant="subtle"
-                          aria-label="ערוך שורה"
-                          onClick={() => startEdit(evac)}
-                          styles={{ root: { color: "var(--app-color-primary)" } }}
-                        >
-                          <IconPencil size={18} stroke={1.8} />
-                        </ActionIcon>
-                        <ActionIcon
-                          variant="subtle"
-                          aria-label="מחק שורה"
-                          onClick={() => setDeleteTargetId(evac.id)}
-                          styles={{ root: { color: "var(--app-color-error)" } }}
-                        >
-                          <IconTrash size={18} stroke={1.8} />
-                        </ActionIcon>
-                      </Group>
-                    )}
+                        <IconPencil size={18} stroke={1.8} />
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="subtle"
+                        aria-label="מחק שורה"
+                        onClick={() => setDeleteTargetId(evac.id)}
+                        styles={{ root: { color: "var(--app-color-error)" } }}
+                      >
+                        <IconTrash size={18} stroke={1.8} />
+                      </ActionIcon>
+                    </Group>
                   </Table.Td>
                 </Table.Tr>
               );
             })}
             {visibleEvacuations.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={11} c="var(--app-color-text-muted)" ta="center">
+                <Table.Td colSpan={8} c="var(--app-color-text-muted)" ta="center">
                   {normalizedEvacuations.length === 0 ? "אין פינויים לאירוע זה" : "אין פינויים התואמים לסינון"}
                 </Table.Td>
               </Table.Tr>
@@ -697,6 +569,14 @@ const EvacuationsTable = ({
           </Button>
         </Group>
       </Modal>
+
+      <EditEvacuationModal
+        key={editOpenId}
+        evacuation={editingEvacuation}
+        opened={Boolean(editingEvacuation)}
+        onClose={() => setEditingEvacuation(null)}
+        onSave={onUpdateEvacuation}
+      />
     </DashboardCard>
   );
 };
