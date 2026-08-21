@@ -21,6 +21,7 @@ import {
 import DashboardCard from "../dashboard/DashboardCard";
 import ColumnHeader from "../dashboard/ColumnHeader";
 import EditEvacuationModal from "./EditEvacuationModal";
+import RequestRideEvacuationModal from "./RequestRideEvacuationModal";
 import { EVAC_TEAM_STATUS_COLOR_VARS, EVAC_TEAM_STATUS_LABELS } from "../../constants/aerialEvacStatus";
 import { EVAC_METHOD_LABELS } from "../../constants/evacuationMethod";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
@@ -36,6 +37,14 @@ const METHOD_ICONS = {
   ride: IconCar,
   aerial: IconHelicopter,
 };
+
+// Once a mission exists, aerialEvacStatus becomes its request-status
+// ("needed" | "in_progress" | "approved" | "denied") rather than just the
+// event's own request flag — the button must stay in the "already
+// requested" state through all of those, not just "needed", or it
+// re-enables and relabels itself as soon as the airforce starts working the
+// mission. "denied" is deliberately excluded so a denial can be re-requested.
+const AERIAL_EVAC_REQUESTED_STATUSES = ["needed", "in_progress", "approved"];
 
 const METHOD_OPTIONS = Object.entries(EVAC_METHOD_LABELS).map(([value, label]) => ({ value, label }));
 const STATUS_OPTIONS = Object.entries(EVAC_TEAM_STATUS_LABELS).map(([value, label]) => ({ value, label }));
@@ -121,7 +130,8 @@ function describeLocationPoint(point, locations) {
  *   aerialEvacStatus: string | null | undefined,
  *   onUpdateEvacuation: (evacId: string, changes: object) => Promise<unknown>,
  *   onDeleteEvacuation: (evacId: string) => void,
- *   onRequestAerialEvac: () => void,
+ *   onRequestAerialEvac: () => Promise<unknown>,
+ *   onCreateRideEvacuation: (fields: { destinationPoint: object, forceRadioSign: string }) => Promise<unknown>,
  * }} props
  * @returns {JSX.Element} The evacuations table.
  */
@@ -134,6 +144,7 @@ const EvacuationsTable = ({
   onUpdateEvacuation,
   onDeleteEvacuation,
   onRequestAerialEvac,
+  onCreateRideEvacuation,
 }) => {
   const [editingEvacuation, setEditingEvacuation] = useState(null);
   // Bumped on every open (not just when the row differs) so EditEvacuationModal
@@ -152,6 +163,7 @@ const EvacuationsTable = ({
   // settles either way, not tied to aerialEvacStatus itself (which handles
   // the persistent already-requested disable on its own).
   const [isRequestingAerialEvac, setIsRequestingAerialEvac] = useState(false);
+  const [isCreateRideOpen, setIsCreateRideOpen] = useState(false);
 
   // The server returns scalar fields under their real DB column names
   // (snake_case) — matching the app's convention elsewhere (e.g. events'
@@ -210,7 +222,7 @@ const EvacuationsTable = ({
   };
 
   const handleRequestRideEvac = () => {
-    // TODO: wire up ride evacuation request once there's a backend flow for it (mirrors onRequestAerialEvac).
+    setIsCreateRideOpen(true);
   };
 
   const handleRequestAerialEvacClick = async () => {
@@ -307,7 +319,7 @@ const EvacuationsTable = ({
 
           <Button
             leftSection={
-              aerialEvacStatus === "needed" ? (
+              AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) ? (
                 <IconCheck size={16} stroke={1.8} />
               ) : (
                 <IconSend size={16} stroke={1.8} />
@@ -316,7 +328,9 @@ const EvacuationsTable = ({
             size="xs"
             mih="2rem"
             loading={isRequestingAerialEvac}
-            disabled={isCompleted || aerialEvacStatus === "needed" || isRequestingAerialEvac}
+            disabled={
+              isCompleted || AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) || isRequestingAerialEvac
+            }
             onClick={handleRequestAerialEvacClick}
             styles={{
               root: {
@@ -327,7 +341,7 @@ const EvacuationsTable = ({
               },
             }}
           >
-            {aerialEvacStatus === "needed" ? "פינוי אווירי התבקש" : "בקש פינוי אווירי"}
+            {AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) ? "פינוי אווירי התבקש" : "בקש פינוי אווירי"}
           </Button>
 
           <Button
@@ -600,6 +614,13 @@ const EvacuationsTable = ({
         opened={Boolean(editingEvacuation)}
         onClose={() => setEditingEvacuation(null)}
         onSave={onUpdateEvacuation}
+      />
+
+      <RequestRideEvacuationModal
+        locations={locations}
+        opened={isCreateRideOpen}
+        onClose={() => setIsCreateRideOpen(false)}
+        onCreate={onCreateRideEvacuation}
       />
     </DashboardCard>
   );

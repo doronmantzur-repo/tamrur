@@ -37,6 +37,7 @@ import { fetchEventById, updateEvent, closeEvent } from "../../features/events/e
 import { fetchAerialMissionsByEvent } from "../../features/aerialMission/aerialMissionSlice";
 import {
   fetchEvacuationsByEvent,
+  createEvacuation,
   updateEvacuation,
   deleteEvacuation,
 } from "../../features/evacuations/evacuationsSlice";
@@ -194,6 +195,14 @@ const EventDashboardPage = () => {
   const handleDeleteEvacuation = (evacId) => {
     dispatch(deleteEvacuation({ id: evacId, eventId }));
   };
+
+  // Departure defaults to the event's own location — a ride pickup is
+  // presumably always from the event scene, mirroring how aerial
+  // evacuations default departure to the responding force's location.
+  // Unlike aerial requests, there's no separate approval step: this
+  // directly creates the evacuations row.
+  const handleCreateRideEvacuation = (fields) =>
+    dispatch(createEvacuation({ eventId, method: "ride", departurePoint: event?.location, ...fields })).unwrap();
 
   const isEventClosed = event?.status === CLOSED_STATUS;
   const isEventFullEvacuation = event?.status === FULL_EVACUATION_STATUS;
@@ -421,6 +430,7 @@ const EventDashboardPage = () => {
                         onUpdateEvacuation={handleUpdateEvacuation}
                         onDeleteEvacuation={handleDeleteEvacuation}
                         onRequestAerialEvac={handleRequestAerialEvac}
+                        onCreateRideEvacuation={handleCreateRideEvacuation}
                       />
                     </Box>
                     <Box style={{ flex: 2, minHeight: 0 }}>
