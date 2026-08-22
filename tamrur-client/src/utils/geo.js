@@ -47,3 +47,20 @@ export function findLocationByPoint(point, locations) {
     }) || null
   );
 }
+
+/**
+ * Splits a `locations` list into its three marker groups, dropping any
+ * location with no coordinates yet. Shared so every map that renders
+ * locations groups them the same way instead of re-implementing the filter.
+ *
+ * @param {Array<object>} locations
+ * @returns {{ landingPads: Array<object>, hospitals: Array<object>, otherLocations: Array<object> }}
+ */
+export function splitLocationsByType(locations) {
+  const withCoords = locations.filter((location) => location.location);
+  return {
+    landingPads: withCoords.filter((location) => location.type === "landing_pad"),
+    hospitals: withCoords.filter((location) => location.type === "hospital"),
+    otherLocations: withCoords.filter((location) => location.type === "exchange_point"),
+  };
+}

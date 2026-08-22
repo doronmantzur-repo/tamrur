@@ -15,6 +15,7 @@ import EventQueueBoard from "../../components/brigade/EventQueueBoard";
 import ThemeToggle from "../../components/common/ThemeToggle";
 import { fetchEvents, closeEvent } from "../../features/events/eventsSlice";
 import { fetchForces } from "../../features/forces/forcesSlice";
+import { fetchLocations } from "../../features/locations/locationsSlice";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
 import { isEventActiveOnDate, isSameDay, startOfDay } from "../../utils/eventQueueDate";
@@ -54,6 +55,7 @@ const EventQueueBoardPage = () => {
   const apiStatus = useSelector((state) => state.events.status);
   const apiError = useSelector((state) => state.events.error);
   const forces = useSelector((state) => state.forces.forces);
+  const locations = useSelector((state) => state.locations.locations);
   const casualtiesByEventId = useSelector((state) => state.casualties.byEventId);
 
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
@@ -65,11 +67,12 @@ const EventQueueBoardPage = () => {
   useEffect(() => {
     dispatch(fetchEvents());
     dispatch(fetchForces());
+    dispatch(fetchLocations());
 
     // Other brigade members can open/close events at any time, so keep
     // polling instead of fetching once — same pattern every other brigade
-    // page already uses. Forces are static reference data, so they're
-    // fetched once here, not polled.
+    // page already uses. Forces/locations are static reference data, so
+    // they're fetched once here, not polled.
     const intervalId = setInterval(() => {
       dispatch(fetchEvents());
     }, POLL_INTERVAL_MS);
@@ -245,7 +248,12 @@ const EventQueueBoardPage = () => {
         {!isInitialLoad && viewMode === "table" && <EventQueueTable events={visibleEvents} />}
 
         {!isInitialLoad && viewMode === "map" && (
-          <EventQueueMap events={visibleEvents} forces={forces} casualtiesByEventId={casualtiesByEventId} />
+          <EventQueueMap
+            events={visibleEvents}
+            forces={forces}
+            locations={locations}
+            casualtiesByEventId={casualtiesByEventId}
+          />
         )}
 
         {!isInitialLoad && viewMode === "board" && (

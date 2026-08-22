@@ -3,6 +3,7 @@ import { useState } from "react";
 
 // External libraries
 import {
+  ActionIcon,
   Box,
   Chip,
   Group,
@@ -12,11 +13,7 @@ import {
   Tooltip,
   useMantineColorScheme,
 } from "@mantine/core";
-import {
-  IconAmbulance,
-  IconBuildingHospital,
-  IconUsers,
-} from "@tabler/icons-react";
+import { IconAmbulance, IconListDetails, IconUsers, IconX } from "@tabler/icons-react";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 
 // Internal application modules
@@ -25,9 +22,10 @@ import {
   LANDING_PAD_STATUS_LABELS,
 } from "../../constants/evacuationMethod";
 import { FORCE_ICON_COLOR, FORCE_TYPE_META, FORCE_TYPE_ICONS, forceLabel } from "../../constants/forces";
-import { buildDivIcon, tablerSvg } from "../../utils/leafletIcons";
-import { toLatLng } from "../../utils/geo";
-import { LegendEntry, LegendBadge } from "./MapLegendPrimitives";
+import { HOSPITAL_ICON, OTHER_LOCATION_ICON, buildLandingPadIcon, hospitalLabel } from "../../constants/locationMarkers";
+import { buildDivIcon } from "../../utils/leafletIcons";
+import { splitLocationsByType, toLatLng } from "../../utils/geo";
+import { LegendEntry, LegendBadge, StarOfDavidIcon } from "./MapLegendPrimitives";
 
 // Styles
 import "leaflet/dist/leaflet.css";
@@ -42,37 +40,10 @@ const TILE_URLS = {
 const ISRAEL_LEBANON_BORDER = { lat: 33.0868, lng: 35.4053 };
 const DEFAULT_ZOOM = 12;
 
-const HOSPITAL_ICON_PATHS = [
-  "M3 21l18 0",
-  "M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16",
-  "M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4",
-  "M10 9l4 0",
-  "M12 7l0 4",
-];
-
-const AMBULANCE_ICON_PATHS = [
-  "M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
-  "M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
-  "M5 17h-2v-11a1 1 0 0 1 1 -1h9v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5",
-  "M6 10h4m-2 -2v4",
-];
-
 const EVENT_ICON = buildDivIcon({
   label: "!",
   background: "var(--app-color-error)",
   size: 28,
-  glow: true,
-});
-const HOSPITAL_ICON = buildDivIcon({
-  label: tablerSvg(HOSPITAL_ICON_PATHS),
-  background: "var(--app-color-success)",
-  size: 26,
-  glow: true,
-});
-const OTHER_LOCATION_ICON = buildDivIcon({
-  label: tablerSvg(AMBULANCE_ICON_PATHS),
-  background: "var(--app-color-text-muted)",
-  size: 26,
   glow: true,
 });
 
@@ -126,11 +97,7 @@ function MapLegend({ isLayerOn }) {
 
             {isLayerOn("hospitals") && (
               <LegendEntry label="בית חולים">
-                <IconBuildingHospital
-                  size={16}
-                  stroke={1.8}
-                  color="var(--app-color-success)"
-                />
+                <StarOfDavidIcon size={16} stroke={1.8} color="var(--app-color-info)" />
               </LegendEntry>
             )}
 
@@ -212,19 +179,11 @@ const EvacuationMap = ({ event, locations, forces }) => {
     "other",
     "forces",
   ]);
+  const [legendOpen, setLegendOpen] = useState(true);
 
   const isLayerOn = (key) => visibleLayers.includes(key);
 
-  const withCoords = locations.filter((location) => location.location);
-  const landingPads = withCoords.filter(
-    (location) => location.type === "landing_pad",
-  );
-  const hospitals = withCoords.filter(
-    (location) => location.type === "hospital",
-  );
-  const otherLocations = withCoords.filter(
-    (location) => location.type === "exchange_point",
-  );
+  const { landingPads, hospitals, otherLocations } = splitLocationsByType(locations);
   const forcesWithCoords = forces.filter((force) => force.location);
   const eventLatLng = toLatLng(event.location);
 
@@ -262,6 +221,7 @@ const EvacuationMap = ({ event, locations, forces }) => {
           borderRadius: "var(--mantine-radius-sm)",
           overflow: "hidden",
           border: "1px solid var(--app-color-border)",
+          position: "relative",
         }}
       >
         <MapContainer
@@ -300,11 +260,7 @@ const EvacuationMap = ({ event, locations, forces }) => {
                 <Marker
                   key={pad.id}
                   position={toLatLng(pad.location)}
-                  icon={buildDivIcon({
-                    label: "H",
-                    background: LANDING_PAD_STATUS_COLOR_VARS[padStatus],
-                    glow: true,
-                  })}
+                  icon={buildLandingPadIcon(padStatus)}
                   eventHandlers={OPEN_POPUP_ON_HOVER}
                 >
                   <Popup>
@@ -322,7 +278,7 @@ const EvacuationMap = ({ event, locations, forces }) => {
                 icon={HOSPITAL_ICON}
                 eventHandlers={OPEN_POPUP_ON_HOVER}
               >
-                <Popup>{hospital.name}</Popup>
+                <Popup>{hospitalLabel(hospital.name)}</Popup>
               </Marker>
             ))}
 
@@ -350,10 +306,45 @@ const EvacuationMap = ({ event, locations, forces }) => {
               </Marker>
             ))}
         </MapContainer>
-      </Box>
 
-      <Box style={{ flexShrink: 0, height: "12rem", overflow: "hidden" }}>
-        <MapLegend isLayerOn={isLayerOn} />
+        <ActionIcon
+          variant="filled"
+          size="lg"
+          onClick={() => setLegendOpen((open) => !open)}
+          aria-label={legendOpen ? "הסתר מקרא" : "הצג מקרא"}
+          style={{
+            position: "absolute",
+            left: 12,
+            bottom: 12,
+            zIndex: 1000,
+            backgroundColor: "var(--app-color-surface)",
+            color: "var(--app-color-text)",
+            border: "1px solid var(--app-color-border)",
+          }}
+        >
+          {legendOpen ? <IconX size={16} /> : <IconListDetails size={16} />}
+        </ActionIcon>
+
+        {legendOpen && (
+          <Box
+            style={{
+              position: "absolute",
+              left: 12,
+              bottom: 56,
+              zIndex: 1000,
+              maxHeight: "70%",
+              maxWidth: "min(20rem, 80%)",
+              overflowY: "auto",
+              backgroundColor: "var(--app-color-surface)",
+              border: "1px solid var(--app-color-border)",
+              borderRadius: "var(--mantine-radius-sm)",
+              boxShadow: "var(--mantine-shadow-md)",
+              padding: "0.5rem 0.75rem",
+            }}
+          >
+            <MapLegend isLayerOn={isLayerOn} />
+          </Box>
+        )}
       </Box>
     </Stack>
   );
