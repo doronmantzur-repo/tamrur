@@ -179,7 +179,10 @@ const EvacuationMap = ({ event, locations, forces }) => {
     "other",
     "forces",
   ]);
-  const [legendOpen, setLegendOpen] = useState(true);
+  // Starts collapsed here (unlike EventQueueMap's legend) — this map is
+  // rendered much smaller (a column in the event dashboard's layout), so an
+  // open-by-default legend panel covers the event marker itself.
+  const [legendOpen, setLegendOpen] = useState(false);
 
   const isLayerOn = (key) => visibleLayers.includes(key);
 
