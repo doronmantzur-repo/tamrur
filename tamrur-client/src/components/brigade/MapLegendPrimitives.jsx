@@ -4,6 +4,7 @@
 import { Box, Group, Text } from "@mantine/core";
 
 // Internal application modules
+import { STAR_OF_DAVID_PATHS } from "../../constants/locationMarkers";
 
 // Styles
 
@@ -39,5 +40,35 @@ export function LegendBadge({ background, children }) {
     >
       {children}
     </Box>
+  );
+}
+
+/**
+ * React version of the hospital marker's Star of David glyph, for use in a
+ * map legend (a real DOM icon, not a Leaflet div-icon string) -- draws from
+ * the same STAR_OF_DAVID_PATHS as HOSPITAL_ICON (constants/locationMarkers)
+ * so the marker and its legend swatch can't drift out of sync. Same call
+ * shape as the Tabler icon components it stands in for (`size`, `stroke`,
+ * `color`), since no stock "star of david" icon exists to import instead.
+ *
+ * @param {{ size?: number, stroke?: number, color?: string }} props
+ */
+export function StarOfDavidIcon({ size = 16, stroke = 1.8, color }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={stroke}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {STAR_OF_DAVID_PATHS.map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
   );
 }

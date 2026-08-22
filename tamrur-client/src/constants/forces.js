@@ -175,7 +175,7 @@ const BATTALION_LABELS_HE = {
 };
 
 /** Looks up a Hebrew label, falling back to the original English string if it's not in the dictionary (e.g. future data added outside this seed). */
-function toHebrew(dictionary, value) {
+export function toHebrew(dictionary, value) {
   return dictionary[value] ?? value;
 }
 

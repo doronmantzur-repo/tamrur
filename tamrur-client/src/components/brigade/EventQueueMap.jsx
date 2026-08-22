@@ -1,21 +1,26 @@
 // React
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // External libraries
-import { Box, Chip, Group, SimpleGrid, Stack, Text, useMantineColorScheme } from "@mantine/core";
-import { IconAlertTriangle, IconUsers } from "@tabler/icons-react";
+import { ActionIcon, Box, Chip, Group, SimpleGrid, Stack, Text, useMantineColorScheme } from "@mantine/core";
+import { IconAlertTriangle, IconAmbulance, IconListDetails, IconUsers, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
 // Internal application modules
 import { CLOSED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS } from "../../constants/eventStatus";
+import {
+  LANDING_PAD_STATUS_COLOR_VARS,
+  LANDING_PAD_STATUS_LABELS,
+} from "../../constants/evacuationMethod";
 import { FORCE_ICON_COLOR, FORCE_TYPE_META, FORCE_TYPE_ICONS, forceLabel } from "../../constants/forces";
+import { HOSPITAL_ICON, OTHER_LOCATION_ICON, buildLandingPadIcon, hospitalLabel } from "../../constants/locationMarkers";
 import { buildDivIcon, tablerSvg } from "../../utils/leafletIcons";
-import { toLatLng } from "../../utils/geo";
+import { splitLocationsByType, toLatLng } from "../../utils/geo";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
 import { formatDuration } from "../../utils/duration";
-import { LegendEntry, LegendBadge } from "./MapLegendPrimitives";
+import { LegendEntry, LegendBadge, StarOfDavidIcon } from "./MapLegendPrimitives";
 
 // Styles
 import "leaflet/dist/leaflet.css";
@@ -75,13 +80,28 @@ const OPEN_POPUP_ON_HOVER = {
  * far out if included, defeating the point of fitting to "what's relevant
  * right now" (the events).
  *
+ * `positions` is a new array reference every time the page's 5s event poll
+ * resolves, even when the actual event data hasn't changed at all (Redux
+ * replaces the array wholesale, and the `.filter()`/`.map()` chain feeding
+ * this component always allocates fresh arrays) — so a plain reference-keyed
+ * effect would reset the view out from under the user every few seconds,
+ * regardless of whether they'd zoomed in. A content signature (rounded
+ * lat/lng pairs, joined) lets the effect tell "actually different marker
+ * set" apart from "same positions, new array," and only refits on the
+ * former.
+ *
  * @param {{ positions: Array<{ lat: number, lng: number }> }} props
  * @returns {null}
  */
 function FitToMarkers({ positions }) {
   const map = useMap();
+  const prevSignatureRef = useRef(null);
 
   useEffect(() => {
+    const signature = positions.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join(";");
+    if (signature === prevSignatureRef.current) return;
+    prevSignatureRef.current = signature;
+
     if (positions.length === 0) {
       map.setView(FALLBACK_CENTER, FALLBACK_ZOOM);
     } else if (positions.length === 1) {
@@ -96,17 +116,20 @@ function FitToMarkers({ positions }) {
 
 /**
  * Legend explaining the map's symbols, grouped into an "אירועים" section
- * (one entry per event status) and a "כוחות" section (forces), each shown
- * only while its layer is actually toggled on — same convention as
- * EvacuationMap's own legend, so both maps read the same way.
+ * (one entry per event status), a "מיקומים" section (landing pads/
+ * hospitals/other locations — same structure as EvacuationMap's own
+ * legend, so a pad/hospital marker reads identically on both maps), and a
+ * "כוחות" section (forces), each shown only while its layer is actually
+ * toggled on.
  *
  * @param {{ isLayerOn: (key: string) => boolean }} props
  */
 function MapLegend({ isLayerOn }) {
   const showEvents = isLayerOn("events");
+  const showLocations = isLayerOn("pads") || isLayerOn("hospitals") || isLayerOn("other");
   const showForces = isLayerOn("forces");
 
-  if (!showEvents && !showForces) return null;
+  if (!showEvents && !showLocations && !showForces) return null;
 
   return (
     <Stack gap="xs" mt="xs">
@@ -123,6 +146,34 @@ function MapLegend({ isLayerOn }) {
                 </LegendBadge>
               </LegendEntry>
             ))}
+          </SimpleGrid>
+        </Stack>
+      )}
+
+      {showLocations && (
+        <Stack gap={6}>
+          <Text fz="xs" fw={700} c="var(--app-color-text-muted)">
+            מיקומים
+          </Text>
+          <SimpleGrid cols={3} spacing="sm" verticalSpacing={6}>
+            {isLayerOn("pads") &&
+              Object.entries(LANDING_PAD_STATUS_LABELS).map(([key, label]) => (
+                <LegendEntry key={key} label={`משטח נחיתה ${label}`}>
+                  <LegendBadge background={LANDING_PAD_STATUS_COLOR_VARS[key]}>H</LegendBadge>
+                </LegendEntry>
+              ))}
+
+            {isLayerOn("hospitals") && (
+              <LegendEntry label="בית חולים">
+                <StarOfDavidIcon size={16} stroke={1.8} color="var(--app-color-info)" />
+              </LegendEntry>
+            )}
+
+            {isLayerOn("other") && (
+              <LegendEntry label="נקודת חילוף / מיקום אחר">
+                <IconAmbulance size={16} stroke={1.8} color="var(--app-color-text-muted)" />
+              </LegendEntry>
+            )}
           </SimpleGrid>
         </Stack>
       )}
@@ -204,13 +255,14 @@ function EventPopupContent({ event, casualties }) {
  * name, evacuated/total casualties, and an elapsed-time timer -- forces'
  * popups are unchanged, still just their Hebrew label.
  *
- * @param {{ events: Array<object>, forces: Array<object>, casualtiesByEventId: Object<string, Array<object>> }} props
+ * @param {{ events: Array<object>, forces: Array<object>, locations: Array<object>, casualtiesByEventId: Object<string, Array<object>> }} props
  * @returns {JSX.Element} The event queue map.
  */
-const EventQueueMap = ({ events, forces, casualtiesByEventId = {} }) => {
+const EventQueueMap = ({ events, forces, locations, casualtiesByEventId = {} }) => {
   const navigate = useNavigate();
   const { colorScheme } = useMantineColorScheme();
-  const [visibleLayers, setVisibleLayers] = useState(["events", "forces"]);
+  const [visibleLayers, setVisibleLayers] = useState(["events", "forces", "pads", "hospitals", "other"]);
+  const [legendOpen, setLegendOpen] = useState(true);
 
   const isLayerOn = (key) => visibleLayers.includes(key);
 
@@ -220,6 +272,7 @@ const EventQueueMap = ({ events, forces, casualtiesByEventId = {} }) => {
   );
   const positions = useMemo(() => positioned.map((e) => e.latLng), [positioned]);
   const forcesWithCoords = useMemo(() => forces.filter((force) => force.location), [forces]);
+  const { landingPads, hospitals, otherLocations } = useMemo(() => splitLocationsByType(locations), [locations]);
 
   return (
     <Stack gap="xs" style={{ flex: 1, minHeight: 0 }}>
@@ -227,6 +280,15 @@ const EventQueueMap = ({ events, forces, casualtiesByEventId = {} }) => {
         <Chip.Group multiple value={visibleLayers} onChange={setVisibleLayers}>
           <Chip value="events" size="xs">
             אירועים
+          </Chip>
+          <Chip value="pads" size="xs">
+            משטחי נחיתה
+          </Chip>
+          <Chip value="hospitals" size="xs">
+            בתי חולים
+          </Chip>
+          <Chip value="other" size="xs">
+            מיקומים נוספים
           </Chip>
           <Chip value="forces" size="xs">
             כוחות
@@ -241,6 +303,7 @@ const EventQueueMap = ({ events, forces, casualtiesByEventId = {} }) => {
           borderRadius: "var(--mantine-radius-sm)",
           border: "1px solid var(--app-color-border)",
           overflow: "hidden",
+          position: "relative",
         }}
       >
         <MapContainer center={FALLBACK_CENTER} zoom={FALLBACK_ZOOM} style={{ height: "100%", width: "100%" }}>
@@ -274,6 +337,47 @@ const EventQueueMap = ({ events, forces, casualtiesByEventId = {} }) => {
               );
             })}
 
+          {isLayerOn("pads") &&
+            landingPads.map((pad) => {
+              const padStatus = pad.is_ok ? "available" : "occupied";
+              return (
+                <Marker
+                  key={pad.id}
+                  position={toLatLng(pad.location)}
+                  icon={buildLandingPadIcon(padStatus)}
+                  eventHandlers={OPEN_POPUP_ON_HOVER}
+                >
+                  <Popup>
+                    {pad.name}, {LANDING_PAD_STATUS_LABELS[padStatus]}
+                  </Popup>
+                </Marker>
+              );
+            })}
+
+          {isLayerOn("hospitals") &&
+            hospitals.map((hospital) => (
+              <Marker
+                key={hospital.id}
+                position={toLatLng(hospital.location)}
+                icon={HOSPITAL_ICON}
+                eventHandlers={OPEN_POPUP_ON_HOVER}
+              >
+                <Popup>{hospitalLabel(hospital.name)}</Popup>
+              </Marker>
+            ))}
+
+          {isLayerOn("other") &&
+            otherLocations.map((location) => (
+              <Marker
+                key={location.id}
+                position={toLatLng(location.location)}
+                icon={OTHER_LOCATION_ICON}
+                eventHandlers={OPEN_POPUP_ON_HOVER}
+              >
+                <Popup>{location.name}</Popup>
+              </Marker>
+            ))}
+
           {isLayerOn("forces") &&
             forcesWithCoords.map((force) => (
               <Marker
@@ -286,10 +390,45 @@ const EventQueueMap = ({ events, forces, casualtiesByEventId = {} }) => {
               </Marker>
             ))}
         </MapContainer>
-      </Box>
 
-      <Box style={{ flexShrink: 0, height: "12rem", overflow: "hidden" }}>
-        <MapLegend isLayerOn={isLayerOn} />
+        <ActionIcon
+          variant="filled"
+          size="lg"
+          onClick={() => setLegendOpen((open) => !open)}
+          aria-label={legendOpen ? "הסתר מקרא" : "הצג מקרא"}
+          style={{
+            position: "absolute",
+            left: 12,
+            bottom: 12,
+            zIndex: 1000,
+            backgroundColor: "var(--app-color-surface)",
+            color: "var(--app-color-text)",
+            border: "1px solid var(--app-color-border)",
+          }}
+        >
+          {legendOpen ? <IconX size={16} /> : <IconListDetails size={16} />}
+        </ActionIcon>
+
+        {legendOpen && (
+          <Box
+            style={{
+              position: "absolute",
+              left: 12,
+              bottom: 56,
+              zIndex: 1000,
+              maxHeight: "70%",
+              maxWidth: "min(20rem, 80%)",
+              overflowY: "auto",
+              backgroundColor: "var(--app-color-surface)",
+              border: "1px solid var(--app-color-border)",
+              borderRadius: "var(--mantine-radius-sm)",
+              boxShadow: "var(--mantine-shadow-md)",
+              padding: "0.5rem 0.75rem",
+            }}
+          >
+            <MapLegend isLayerOn={isLayerOn} />
+          </Box>
+        )}
       </Box>
     </Stack>
   );
