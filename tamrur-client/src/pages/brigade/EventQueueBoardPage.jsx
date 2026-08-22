@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 // External libraries
-import { ActionIcon, Alert, Box, Group, Loader, Stack, Text, Title, useMantineColorScheme } from "@mantine/core";
-import { IconAlertTriangle, IconLayoutKanban, IconMap2, IconMoon, IconSearch, IconSun, IconTable } from "@tabler/icons-react";
+import { Alert, Box, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { IconAlertTriangle, IconLayoutKanban, IconMap2, IconSearch, IconTable } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
@@ -12,6 +12,7 @@ import DateNavBar from "../../components/brigade/DateNavBar";
 import EventQueueTable from "../../components/brigade/EventQueueTable";
 import EventQueueMap from "../../components/brigade/EventQueueMap";
 import EventQueueBoard from "../../components/brigade/EventQueueBoard";
+import ThemeToggle from "../../components/common/ThemeToggle";
 import { fetchEvents, closeEvent } from "../../features/events/eventsSlice";
 import { fetchForces } from "../../features/forces/forcesSlice";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
@@ -48,7 +49,6 @@ const VIEW_OPTIONS = [
  */
 const EventQueueBoardPage = () => {
   const dispatch = useDispatch();
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
 
   const events = useSelector((state) => state.events.events);
   const apiStatus = useSelector((state) => state.events.status);
@@ -102,8 +102,6 @@ const EventQueueBoardPage = () => {
   // to revert its own optimistic move if the close fails.
   const handleCloseEvent = (eventId) => dispatch(closeEvent(eventId)).unwrap();
 
-  const isDark = colorScheme === "dark";
-
   return (
     <Layout>
       <Box
@@ -144,27 +142,7 @@ const EventQueueBoardPage = () => {
             לוח מעקב אירועים
           </Title>
 
-          <ActionIcon
-            aria-label="החלף מצב תצוגה"
-            title="החלף מצב תצוגה"
-            variant="default"
-            size={40}
-            radius="sm"
-            onClick={() => toggleColorScheme()}
-            styles={{
-              root: {
-                backgroundColor: "var(--app-color-surface)",
-                borderColor: "var(--app-color-border)",
-                color: "var(--app-color-text)",
-              },
-            }}
-          >
-            {isDark ? (
-              <IconSun aria-hidden="true" size={20} stroke={1.8} />
-            ) : (
-              <IconMoon aria-hidden="true" size={20} stroke={1.8} />
-            )}
-          </ActionIcon>
+          <ThemeToggle />
         </Group>
 
         <Group justify="space-between" gap="sm" wrap="wrap">

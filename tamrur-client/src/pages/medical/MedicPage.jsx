@@ -10,14 +10,8 @@ import {
   Loader,
   Stack,
   Text,
-  useMantineColorScheme,
 } from "@mantine/core";
-import {
-  IconAlertTriangle,
-  IconMessageQuestion,
-  IconMoon,
-  IconSun,
-} from "@tabler/icons-react";
+import { IconAlertTriangle, IconMessageQuestion } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -26,6 +20,7 @@ import Layout from "../../components/layout/Layout";
 import MedicEventBar from "../../components/medical/MedicEventBar";
 import MedicCasualtiesCard from "../../components/medical/MedicCasualtiesCard";
 import CasualtyFormModal from "../../components/medical/CasualtyFormModal";
+import ThemeToggle from "../../components/common/ThemeToggle";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { fetchEvents } from "../../features/events/eventsSlice";
 import { fetchTreatmentsByEvent } from "../../features/treatments/treatmentsSlice";
@@ -42,7 +37,6 @@ import { POLL_INTERVAL_MS } from "../../constants/polling";
  * @returns {JSX.Element} The medic page.
  */
 const MedicPage = () => {
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const navigate = useNavigate();
   const [selectedEventId, setSelectedEventId] = useState(null);
   // The last event whose records have finished loading. Comparing it against
@@ -112,8 +106,6 @@ const MedicPage = () => {
     return () => clearInterval(intervalId);
   }, [selectedEventId, isEditorOpen, loadEventRecords]);
 
-  const isDark = colorScheme === "dark";
-
   return (
     <Layout>
       <Group pos="absolute" top="md" left="md" gap="sm" style={{ zIndex: 20 }}>
@@ -130,29 +122,11 @@ const MedicPage = () => {
             color: "var(--app-color-text)",
           }}
         >
-          
+
           <IconMessageQuestion aria-hidden="true" size={20} stroke={1.8} />
         </ActionIcon>
 
-        <ActionIcon
-          aria-label="החלף מצב תצוגה"
-          title="החלף מצב תצוגה"
-          variant="default"
-          size={40}
-          radius="xl"
-          onClick={() => toggleColorScheme()}
-          style={{
-            backgroundColor: "var(--app-color-surface)",
-            borderColor: "var(--app-color-border)",
-            color: "var(--app-color-text)",
-          }}
-        >
-          {isDark ? (
-            <IconSun aria-hidden="true" size={20} stroke={1.8} />
-          ) : (
-            <IconMoon aria-hidden="true" size={20} stroke={1.8} />
-          )}
-        </ActionIcon>
+        <ThemeToggle />
       </Group>
 
       <Box

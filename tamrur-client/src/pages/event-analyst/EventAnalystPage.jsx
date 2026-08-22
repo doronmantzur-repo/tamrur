@@ -2,14 +2,14 @@
 import { useState } from "react";
 
 // External libraries
-import { ActionIcon, Box, Stack, Title, useMantineColorScheme } from "@mantine/core";
-import { IconMoon, IconSun } from "@tabler/icons-react";
+import { Box, Stack, Title } from "@mantine/core";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
 import EventSelector from "../../components/dashboard/EventSelector";
 import EventReportCard from "../../components/analyst/EventReportCard";
 import ReportsFolderCard from "../../components/analyst/ReportsFolderCard";
+import ThemeToggle from "../../components/common/ThemeToggle";
 import { CLOSED_STATUS } from "../../constants/eventStatus";
 
 // Styles
@@ -23,38 +23,15 @@ const REPORTABLE_STATUSES = [CLOSED_STATUS];
  * @returns {JSX.Element} The event-analyst page.
  */
 const EventAnalystPage = () => {
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [folderHandle, setFolderHandle] = useState(null);
   const [reportsRefreshSignal, setReportsRefreshSignal] = useState(0);
 
-  const isDark = colorScheme === "dark";
-
   return (
     <Layout>
-      <ActionIcon
-        aria-label="החלף מצב תצוגה"
-        title="החלף מצב תצוגה"
-        variant="default"
-        size={40}
-        radius="xl"
-        onClick={() => toggleColorScheme()}
-        pos="absolute"
-        top="md"
-        right="md"
-        style={{
-          zIndex: 20,
-          backgroundColor: "var(--app-color-surface)",
-          borderColor: "var(--app-color-border)",
-          color: "var(--app-color-text)",
-        }}
-      >
-        {isDark ? (
-          <IconSun aria-hidden="true" size={20} stroke={1.8} />
-        ) : (
-          <IconMoon aria-hidden="true" size={20} stroke={1.8} />
-        )}
-      </ActionIcon>
+      <Box pos="absolute" top="md" right="md" style={{ zIndex: 20 }}>
+        <ThemeToggle />
+      </Box>
 
       <Box
         aria-hidden="true"
