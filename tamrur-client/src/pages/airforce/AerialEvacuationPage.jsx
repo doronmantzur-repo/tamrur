@@ -2,8 +2,7 @@
 import { useEffect } from "react";
 
 // External libraries
-import { ActionIcon, Box, SimpleGrid, Stack, useMantineColorScheme } from "@mantine/core";
-import { IconMoon, IconSun } from "@tabler/icons-react";
+import { Box, SimpleGrid, Stack } from "@mantine/core";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
@@ -12,6 +11,7 @@ import AuthHeader from "../../components/auth/AuthHeader";
 import AuthFooter from "../../components/auth/AuthFooter";
 import AerialEvacCard from "../../components/airforce/AerialEvacCard";
 import CasualtiesCard from "../../components/dashboard/CasualtiesCard";
+import ThemeToggle from "../../components/common/ThemeToggle";
 import { fetchEvents } from "../../features/events/eventsSlice";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { fetchAerialMissionsByEvent } from "../../features/aerialMission/aerialMissionSlice";
@@ -25,7 +25,6 @@ import { POLL_INTERVAL_MS } from "../../constants/polling";
  * @returns {JSX.Element} The aerial evacuation request page.
  */
 const AerialEvacuationPage = () => {
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const dispatch = useDispatch();
   const events = useSelector((state) => state.events.events);
   const casualtiesByEventId = useSelector((state) => state.casualties.byEventId);
@@ -62,33 +61,11 @@ const AerialEvacuationPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, aerialEvacEvents.map((event) => event.id).join(",")]);
 
-  const isDark = colorScheme === "dark";
-
   return (
     <Layout>
-      <ActionIcon
-        aria-label="החלף מצב תצוגה"
-        title="החלף מצב תצוגה"
-        variant="default"
-        size={40}
-        radius="xl"
-        onClick={() => toggleColorScheme()}
-        pos="absolute"
-        top="md"
-        right="md"
-        style={{
-          zIndex: 20,
-          backgroundColor: "var(--app-color-surface)",
-          borderColor: "var(--app-color-border)",
-          color: "var(--app-color-text)",
-        }}
-      >
-        {isDark ? (
-          <IconSun aria-hidden="true" size={20} stroke={1.8} />
-        ) : (
-          <IconMoon aria-hidden="true" size={20} stroke={1.8} />
-        )}
-      </ActionIcon>
+      <Box pos="absolute" top="md" right="md" style={{ zIndex: 20 }}>
+        <ThemeToggle />
+      </Box>
 
       <Box
         aria-hidden="true"

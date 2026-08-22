@@ -1,13 +1,14 @@
 // React
 
 // External libraries
-import { ActionIcon, Box, Group, Stack, Title, useMantineColorScheme } from "@mantine/core";
-import { IconMoon, IconStethoscope, IconSun } from "@tabler/icons-react";
+import { ActionIcon, Box, Group, Stack, Title } from "@mantine/core";
+import { IconStethoscope } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
 import PdfQaCard from "../../components/analyst/PdfQaCard";
+import ThemeToggle from "../../components/common/ThemeToggle";
 
 // Styles
 
@@ -17,10 +18,7 @@ import PdfQaCard from "../../components/analyst/PdfQaCard";
  * @returns {JSX.Element} The medic-query page.
  */
 const MedicQueryPage = () => {
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const navigate = useNavigate();
-
-  const isDark = colorScheme === "dark";
 
   return (
     <Layout>
@@ -41,25 +39,7 @@ const MedicQueryPage = () => {
           <IconStethoscope aria-hidden="true" size={20} stroke={1.8} />
         </ActionIcon>
 
-        <ActionIcon
-          aria-label="החלף מצב תצוגה"
-          title="החלף מצב תצוגה"
-          variant="default"
-          size={40}
-          radius="xl"
-          onClick={() => toggleColorScheme()}
-          style={{
-            backgroundColor: "var(--app-color-surface)",
-            borderColor: "var(--app-color-border)",
-            color: "var(--app-color-text)",
-          }}
-        >
-          {isDark ? (
-            <IconSun aria-hidden="true" size={20} stroke={1.8} />
-          ) : (
-            <IconMoon aria-hidden="true" size={20} stroke={1.8} />
-          )}
-        </ActionIcon>
+        <ThemeToggle />
       </Group>
 
       <Box

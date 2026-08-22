@@ -1,14 +1,14 @@
 // React
 
 // External libraries
-import { ActionIcon, Box, Stack, useMantineColorScheme } from "@mantine/core";
-import { IconMoon, IconSun } from "@tabler/icons-react";
+import { Box, Stack } from "@mantine/core";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
 import AuthHeader from "../../components/auth/AuthHeader";
 import LoginForm from "../../components/auth/login/LoginForm";
 import AuthFooter from "../../components/auth/AuthFooter";
+import ThemeToggle from "../../components/common/ThemeToggle";
 // Styles
 
 /**
@@ -17,35 +17,11 @@ import AuthFooter from "../../components/auth/AuthFooter";
  * @returns {JSX.Element} The Tamrur login page.
  */
 const LoginPage = () => {
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-
-  const isDark = colorScheme === "dark";
-
   return (
     <Layout>
-      <ActionIcon
-        aria-label="החלף מצב תצוגה"
-        title="החלף מצב תצוגה"
-        variant="default"
-        size={40}
-        radius="xl"
-        onClick={() => toggleColorScheme()}
-        pos="absolute"
-        top="md"
-        right="md"
-        style={{
-          zIndex: 20,
-          backgroundColor: "var(--app-color-surface)",
-          borderColor: "var(--app-color-border)",
-          color: "var(--app-color-text)",
-        }}
-      >
-        {isDark ? (
-          <IconSun aria-hidden="true" size={20} stroke={1.8} />
-        ) : (
-          <IconMoon aria-hidden="true" size={20} stroke={1.8} />
-        )}
-      </ActionIcon>
+      <Box pos="absolute" top="md" right="md" style={{ zIndex: 20 }}>
+        <ThemeToggle />
+      </Box>
 
       <Box
         aria-hidden="true"

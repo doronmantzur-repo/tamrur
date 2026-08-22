@@ -2,8 +2,7 @@
 import { useEffect, useState } from "react";
 
 // External libraries
-import { ActionIcon, Box, Loader, Stack, Text, Title, useMantineColorScheme } from "@mantine/core";
-import { IconMoon, IconSun } from "@tabler/icons-react";
+import { Box, Loader, Stack, Text, Title } from "@mantine/core";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
@@ -11,6 +10,7 @@ import Layout from "../../components/layout/Layout";
 import EventSelector from "../../components/dashboard/EventSelector";
 import EventDetailsCard from "../../components/dashboard/EventDetailsCard";
 import CasualtiesCard from "../../components/dashboard/CasualtiesCard";
+import ThemeToggle from "../../components/common/ThemeToggle";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
 
@@ -22,7 +22,6 @@ import { POLL_INTERVAL_MS } from "../../constants/polling";
  * @returns {JSX.Element} The Tamrur dashboard page.
  */
 const DashboardPage = () => {
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [isLoadingEvent, setIsLoadingEvent] = useState(false);
   const dispatch = useDispatch();
@@ -48,33 +47,11 @@ const DashboardPage = () => {
     return () => clearInterval(intervalId);
   }, [selectedEventId, dispatch]);
 
-  const isDark = colorScheme === "dark";
-
   return (
     <Layout>
-      <ActionIcon
-        aria-label="החלף מצב תצוגה"
-        title="החלף מצב תצוגה"
-        variant="default"
-        size={40}
-        radius="xl"
-        onClick={() => toggleColorScheme()}
-        pos="absolute"
-        top="md"
-        right="md"
-        style={{
-          zIndex: 20,
-          backgroundColor: "var(--app-color-surface)",
-          borderColor: "var(--app-color-border)",
-          color: "var(--app-color-text)",
-        }}
-      >
-        {isDark ? (
-          <IconSun aria-hidden="true" size={20} stroke={1.8} />
-        ) : (
-          <IconMoon aria-hidden="true" size={20} stroke={1.8} />
-        )}
-      </ActionIcon>
+      <Box pos="absolute" top="md" right="md" style={{ zIndex: 20 }}>
+        <ThemeToggle />
+      </Box>
 
       <Box
         aria-hidden="true"

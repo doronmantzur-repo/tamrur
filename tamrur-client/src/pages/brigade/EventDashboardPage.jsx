@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 
 // External libraries
 import {
-  ActionIcon,
   Box,
   Button,
   Grid,
@@ -13,14 +12,14 @@ import {
   Stack,
   Text,
   Title,
-  useMantineColorScheme,
 } from "@mantine/core";
-import { IconAlertTriangle, IconMoon, IconPlus, IconShieldHalfFilled, IconSun } from "@tabler/icons-react";
+import { IconAlertTriangle, IconPlus, IconShieldHalfFilled } from "@tabler/icons-react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
+import ThemeToggle from "../../components/common/ThemeToggle";
 import EventDescriptionBlock from "../../components/brigade/EventDescriptionBlock";
 import EventBadgesRow from "../../components/brigade/EventBadgesRow";
 import EventTimerChip from "../../components/brigade/EventTimerChip";
@@ -72,7 +71,6 @@ const EMPTY_ARRAY = [];
  * @returns {JSX.Element} The brigade event dashboard page.
  */
 const EventDashboardPage = () => {
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const dispatch = useDispatch();
   const { eventId } = useParams();
 
@@ -170,7 +168,6 @@ const EventDashboardPage = () => {
   // tabs/sessions watching the same event, so a check-then-create done here
   // was a race: two tabs could each see "no row yet" and both create one.
 
-  const isDark = colorScheme === "dark";
 
   // The actual close dispatch, only ever called once the confirmation modal is
   // accepted. closure_at is stamped server-side now (see POST /events/:id/close),
@@ -311,27 +308,7 @@ const EventDashboardPage = () => {
             </Stack>
 
             <Group gap="xs" wrap="nowrap" style={{ justifySelf: "end" }}>
-              <ActionIcon
-                aria-label="החלף מצב תצוגה"
-                title="החלף מצב תצוגה"
-                variant="default"
-                size={40}
-                radius="sm"
-                onClick={() => toggleColorScheme()}
-                styles={{
-                  root: {
-                    backgroundColor: "var(--app-color-surface)",
-                    borderColor: "var(--app-color-border)",
-                    color: "var(--app-color-text)",
-                  },
-                }}
-              >
-                {isDark ? (
-                  <IconSun aria-hidden="true" size={20} stroke={1.8} />
-                ) : (
-                  <IconMoon aria-hidden="true" size={20} stroke={1.8} />
-                )}
-              </ActionIcon>
+              <ThemeToggle />
 
               <Button
                 leftSection={<IconPlus size={18} stroke={1.8} />}
