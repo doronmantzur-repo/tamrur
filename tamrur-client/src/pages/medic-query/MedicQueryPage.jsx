@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 // Internal application modules
 import Layout from "../../components/layout/Layout";
 import PdfQaCard from "../../components/analyst/PdfQaCard";
-import ThemeToggle from "../../components/common/ThemeToggle";
+import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 
 // Styles
 
@@ -39,7 +39,7 @@ const MedicQueryPage = () => {
           <IconStethoscope aria-hidden="true" size={20} stroke={1.8} />
         </ActionIcon>
 
-        <ThemeToggle />
+        <ThemeToggleButton />
       </Group>
 
       <Box

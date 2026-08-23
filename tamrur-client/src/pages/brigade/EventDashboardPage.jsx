@@ -19,7 +19,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
-import ThemeToggle from "../../components/common/ThemeToggle";
+import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import EventDescriptionBlock from "../../components/brigade/EventDescriptionBlock";
 import EventBadgesRow from "../../components/brigade/EventBadgesRow";
 import EventTimerChip from "../../components/brigade/EventTimerChip";
@@ -308,7 +308,7 @@ const EventDashboardPage = () => {
             </Stack>
 
             <Group gap="xs" wrap="nowrap" style={{ justifySelf: "end" }}>
-              <ThemeToggle />
+              <ThemeToggleButton />
 
               <Button
                 leftSection={<IconPlus size={18} stroke={1.8} />}

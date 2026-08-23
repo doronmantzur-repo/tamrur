@@ -20,7 +20,7 @@ import Layout from "../../components/layout/Layout";
 import MedicEventBar from "../../components/medical/MedicEventBar";
 import MedicCasualtiesCard from "../../components/medical/MedicCasualtiesCard";
 import CasualtyFormModal from "../../components/medical/CasualtyFormModal";
-import ThemeToggle from "../../components/common/ThemeToggle";
+import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { fetchEvents } from "../../features/events/eventsSlice";
 import { fetchTreatmentsByEvent } from "../../features/treatments/treatmentsSlice";
@@ -126,7 +126,7 @@ const MedicPage = () => {
           <IconMessageQuestion aria-hidden="true" size={20} stroke={1.8} />
         </ActionIcon>
 
-        <ThemeToggle />
+        <ThemeToggleButton />
       </Group>
 
       <Box
