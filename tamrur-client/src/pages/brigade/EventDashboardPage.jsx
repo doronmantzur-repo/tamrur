@@ -401,6 +401,7 @@ const EventDashboardPage = () => {
                       <EvacuationsTable
                         evacuations={evacuations}
                         locations={locations}
+                        eventLocation={event?.location}
                         aerialMissions={aerialMissions}
                         isCompleted={isEventClosed}
                         aerialEvacStatus={aerialEvacStatus}

@@ -2,8 +2,11 @@
 import { useState } from "react";
 
 // External libraries
-import { Alert, Button, Group, Modal, Select, Stack, TextInput } from "@mantine/core";
+import { Alert, Button, Group, Modal, Stack, TextInput } from "@mantine/core";
 import { IconAlertTriangle, IconCheck } from "@tabler/icons-react";
+
+// Internal application modules
+import LocationPicker from "./LocationPicker";
 
 // Styles
 
@@ -49,8 +52,6 @@ const RequestRideEvacuationModal = ({ locations, opened, onClose, onCreate }) =>
   const [forceRadioSign, setForceRadioSign] = useState("");
   const [status, setStatus] = useState("idle"); // 'idle' | 'saving' | 'success' | 'error'
   const [errorMessage, setErrorMessage] = useState(null);
-
-  const locationOptions = locations.map((location) => ({ value: location.id, label: location.name }));
 
   const resetForm = () => {
     setDestinationId(null);
@@ -141,18 +142,9 @@ const RequestRideEvacuationModal = ({ locations, opened, onClose, onCreate }) =>
           )}
 
           <Stack gap="md">
-            <Select
-              label="יעד"
-              styles={inputStyles}
-              placeholder="בחר מיקום"
-              data={locationOptions}
-              value={destinationId}
-              onChange={setDestinationId}
-              searchable
-              required
-            />
+            <LocationPicker locations={locations} value={destinationId} onChange={setDestinationId} label="יעד" />
             <TextInput
-              label="קריאת קשר"
+              label='או"ק'
               styles={inputStyles}
               value={forceRadioSign}
               onChange={(e) => setForceRadioSign(e.currentTarget.value)}

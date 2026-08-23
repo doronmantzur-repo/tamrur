@@ -26,11 +26,24 @@ import { EVAC_TEAM_STATUS_COLOR_VARS, EVAC_TEAM_STATUS_LABELS } from "../../cons
 import { EVAC_METHOD_LABELS } from "../../constants/evacuationMethod";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
 import { findLocationByPoint } from "../../utils/geo";
+import { hospitalLabel } from "../../constants/locationMarkers";
 
 // Styles
 
 const MONO_FONT = 'ui-monospace, "SF Mono", "Consolas", monospace';
 const timeFormatter = new Intl.DateTimeFormat("he-IL", { timeStyle: "short" });
+// Day+month only (no year) — the timeline column shows this above the time
+// so two rows with the same time of day on different days aren't
+// indistinguishable at a glance.
+const dateFormatter = new Intl.DateTimeFormat("he-IL", { day: "2-digit", month: "2-digit" });
+
+/** Date label for a timeline cell spanning two timestamps — a single date if both fall on the same day, or "start → end" if they don't. */
+function formatDateRange(startIso, endIso) {
+  const startDate = dateFormatter.format(new Date(startIso));
+  if (!endIso) return startDate;
+  const endDate = dateFormatter.format(new Date(endIso));
+  return startDate === endDate ? startDate : `${startDate} ← ${endDate}`;
+}
 
 const METHOD_ICONS = {
   walk: IconWalk,
@@ -52,9 +65,10 @@ const STATUS_FILTER_OPTIONS = STATUS_OPTIONS;
 const METHOD_FILTER_OPTIONS = METHOD_OPTIONS;
 
 /**
- * The three timing fields EditEvacuationModal edits — the only fields left
- * for the brigade to fill in by hand (method/departure/destination/radio
- * sign/aerial mission/status are all set through other flows now). A row
+ * The three timing fields required for a row to count as complete — not
+ * destination (also editable in EditEvacuationModal for ride evacuations,
+ * but not required for completeness) or the remaining fields set through
+ * other flows (method/departure/radio sign/aerial mission/status). A row
  * stays flagged incomplete for its whole lifecycle until all three are set,
  * i.e. until it's actually concluded.
  */
@@ -76,16 +90,38 @@ function isIncomplete(evac) {
  * Labels a departure/destination point for display. The server stores a bare
  * point with no reference back to the locations table, so this reverse-
  * matches it against the fetched locations list — "טרם הוזן" if the field is
- * empty, the matched location's name if found, or a fallback for a point
- * that doesn't correspond to any known location (e.g. set outside this UI).
+ * empty, the matched location's name if found (translated to Hebrew for
+ * hospitals via `hospitalLabel`, matching the maps and the destination
+ * picker), or `fallback` for a point that doesn't correspond to any known
+ * location (e.g. set outside this UI).
  *
  * @param {object | null | undefined} point
  * @param {Array<object>} locations
+ * @param {string} [fallback]
  * @returns {string}
  */
-function describeLocationPoint(point, locations) {
+function describeLocationPoint(point, locations, fallback = "מיקום מותאם אישית") {
   if (!point) return "טרם הוזן";
-  return findLocationByPoint(point, locations)?.name || "מיקום מותאם אישית";
+  const location = findLocationByPoint(point, locations);
+  if (!location) return fallback;
+  return location.type === "hospital" ? hospitalLabel(location.name) : location.name;
+}
+
+/**
+ * Describes an evacuation's departure point specifically. A ride
+ * evacuation's departure always defaults to the event's own location (see
+ * RequestRideEvacuationModal) rather than a hospital/pad/exchange point, so
+ * it never matches `locations` — describe that case as "מיקום האירוע"
+ * instead of the generic "unrecognized point" fallback. Aerial evacuations
+ * default departure to the *responding force's* location instead (not the
+ * event's), so they keep the generic fallback.
+ *
+ * @param {object} evac
+ * @param {Array<object>} locations
+ * @returns {string}
+ */
+function describeDeparturePoint(evac, locations) {
+  return describeLocationPoint(evac.departurePoint, locations, evac.method === "ride" ? "מיקום האירוע" : undefined);
 }
 
 /**
@@ -95,12 +131,12 @@ function describeLocationPoint(point, locations) {
  * the real `evacuations` schema — no casualty linkage, since the DB doesn't
  * support that relationship.
  *
- * The pencil opens `EditEvacuationModal`, which only edits the exact
- * start/ETA/concluded timestamps — method, departure/destination, radio
- * sign, aerial mission, and status are all set through other flows (aerial
- * mission approval, the start-now/finish-evacuation quick actions) and
- * aren't meant to be hand-edited, per team decision. Those quick actions
- * stay as direct one-tap controls in the table itself rather than living
+ * The pencil opens `EditEvacuationModal`, which edits the start/ETA/
+ * concluded timestamps plus departure and destination for ride evacuations —
+ * method, radio sign, aerial mission, and status are all set through
+ * other flows (aerial mission approval, the start-now/finish-evacuation
+ * quick actions) and aren't meant to be hand-edited, per team decision.
+ * Those quick actions stay as direct one-tap controls in the table itself rather than living
  * only in the modal, since they're time-critical enough that burying them
  * behind "open the edit modal" would cost real seconds in an actual
  * evacuation. Merging what used to be 3 separate time columns and 2
@@ -125,6 +161,7 @@ function describeLocationPoint(point, locations) {
  * @param {{
  *   evacuations: Array<object>,
  *   locations: Array<object>,
+ *   eventLocation: object | null | undefined,
  *   aerialMissions: Array<object>,
  *   isCompleted: boolean,
  *   aerialEvacStatus: string | null | undefined,
@@ -138,6 +175,7 @@ function describeLocationPoint(point, locations) {
 const EvacuationsTable = ({
   evacuations,
   locations,
+  eventLocation,
   aerialMissions = [],
   isCompleted,
   aerialEvacStatus,
@@ -187,7 +225,7 @@ const EvacuationsTable = ({
   const columnAccessors = useMemo(
     () => ({
       method: (evac) => evac.method,
-      departurePoint: (evac) => describeLocationPoint(evac.departurePoint, locations),
+      departurePoint: (evac) => describeDeparturePoint(evac, locations),
       forceRadioSign: (evac) => evac.forceRadioSign || "—",
       aerialMissionId: (evac) => evac.aerialMissionId || "—",
       status: (evac) => evac.status,
@@ -198,7 +236,7 @@ const EvacuationsTable = ({
 
   const departureOptions = useMemo(() => {
     const values = [
-      ...new Set(normalizedEvacuations.map((evac) => describeLocationPoint(evac.departurePoint, locations))),
+      ...new Set(normalizedEvacuations.map((evac) => describeDeparturePoint(evac, locations))),
     ];
     return values.map((value) => ({ value, label: value }));
   }, [normalizedEvacuations, locations]);
@@ -375,7 +413,7 @@ const EvacuationsTable = ({
           <Table.Thead>
             <Table.Tr>
               <Table.Th w="2.25rem"></Table.Th>
-              <ColumnHeader label="ציר זמן" w="6.5rem" {...sortProps("startTime")} />
+              <ColumnHeader label="ציר זמן" w="7.5rem" {...sortProps("startTime")} />
               <ColumnHeader
                 label="סוג"
                 w="5.5rem"
@@ -389,7 +427,7 @@ const EvacuationsTable = ({
                 {...filterProps("departurePoint", departureOptions)}
               />
               <ColumnHeader
-                label="קריאת קשר"
+                label='או"ק'
                 w="5rem"
                 {...sortProps("forceRadioSign")}
                 {...filterProps("forceRadioSign", radioSignOptions)}
@@ -444,12 +482,20 @@ const EvacuationsTable = ({
                         muted afterthought — labeled so it's unambiguous
                         which value is which. */}
                     {evac.concludedAt ? (
-                      <Text ff={MONO_FONT}>
-                        {timeFormatter.format(new Date(evac.startTime))} ← {timeFormatter.format(new Date(evac.concludedAt))}
-                      </Text>
+                      <Stack gap={0}>
+                        <Text fz="0.62rem" c="var(--app-color-text-muted)" ff={MONO_FONT}>
+                          {formatDateRange(evac.startTime, evac.concludedAt)}
+                        </Text>
+                        <Text ff={MONO_FONT}>
+                          {timeFormatter.format(new Date(evac.startTime))} ← {timeFormatter.format(new Date(evac.concludedAt))}
+                        </Text>
+                      </Stack>
                     ) : evac.startTime ? (
                       <Group gap={4} wrap="nowrap">
                         <Stack gap={0}>
+                          <Text fz="0.62rem" c="var(--app-color-text-muted)" ff={MONO_FONT}>
+                            {formatDateRange(evac.startTime, evac.eta)}
+                          </Text>
                           <Group gap={4} wrap="nowrap">
                             <Text fz="0.62rem" c="var(--app-color-text-muted)">
                               יצא
@@ -494,6 +540,11 @@ const EvacuationsTable = ({
                           </ActionIcon>
                         </Tooltip>
                         <Stack gap={0}>
+                          {evac.eta && (
+                            <Text fz="0.62rem" c="var(--app-color-text-muted)" ff={MONO_FONT}>
+                              {dateFormatter.format(new Date(evac.eta))}
+                            </Text>
+                          )}
                           <Text fz="0.62rem" c="var(--app-color-text-muted)">
                             צפי
                           </Text>
@@ -512,8 +563,8 @@ const EvacuationsTable = ({
 
                   <Table.Td>
                     <Stack gap={0}>
-                      <Text truncate title={describeLocationPoint(evac.departurePoint, locations)}>
-                        מ: {describeLocationPoint(evac.departurePoint, locations)}
+                      <Text truncate title={describeDeparturePoint(evac, locations)}>
+                        מ: {describeDeparturePoint(evac, locations)}
                       </Text>
                       <Text
                         c="var(--app-color-text-muted)"
@@ -611,6 +662,8 @@ const EvacuationsTable = ({
       <EditEvacuationModal
         key={editOpenId}
         evacuation={editingEvacuation}
+        locations={locations}
+        eventLocation={eventLocation}
         opened={Boolean(editingEvacuation)}
         onClose={() => setEditingEvacuation(null)}
         onSave={onUpdateEvacuation}
