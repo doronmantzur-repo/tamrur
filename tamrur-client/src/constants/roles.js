@@ -12,3 +12,10 @@ export const ROLE_HOME_ROUTES = {
   airforce: "/airforce",
   supervisor: "/dashboard",
 };
+
+export const ROLE_LABELS = {
+  brigade: "חטיבה",
+  medic: "צוות רפואי",
+  airforce: "חיל האוויר",
+  supervisor: "רמה ממונה",
+};

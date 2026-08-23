@@ -24,9 +24,11 @@ import { useNavigate } from "react-router-dom";
 // Internal application modules
 import AuthFormCard from "../AuthFormCard";
 import { registerUser } from "../../../features/auth/authSlice";
-import { ROLE_HOME_ROUTES } from "../../../constants/roles";
+import { ROLE_HOME_ROUTES, ROLE_LABELS } from "../../../constants/roles";
 
 // Styles
+
+const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }));
 
 const PASSWORD_REQUIREMENTS = [
   { re: /^.{7,}$/, label: "לפחות 7 תווים" },
@@ -97,13 +99,6 @@ const SignUpForm = () => {
     }
   };
 
-  const rolesOptions = [
-    { value: "brigade", label: "חטיבה" },
-    { value: "medic", label: "צוות רפואי" },
-    { value: "airforce", label: "חיל האוויר" },
-    { value: "supervisor", label: "רמה ממונה" },
-  ];
-
   return (
     <AuthFormCard handleSubmit={handleSubmit}>
       <div
@@ -149,7 +144,7 @@ const SignUpForm = () => {
       <Select
         label="תפקיד"
         placeholder="בחר תפקיד"
-        data={rolesOptions}
+        data={ROLE_OPTIONS}
         value={role}
         onChange={(value) => setRole(value)}
         defaultValue="React"

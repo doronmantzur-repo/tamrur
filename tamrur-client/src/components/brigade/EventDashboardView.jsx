@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import ThemeToggleButton from "../common/ThemeToggleButton";
+import AccountBar from "./AccountBar";
 import EventDescriptionBlock from "./EventDescriptionBlock";
 import EventBadgesRow from "./EventBadgesRow";
 import EventTimerChip from "./EventTimerChip";
@@ -31,6 +32,7 @@ import {
 } from "../../features/evacuations/evacuationsSlice";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -84,6 +86,7 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [isMapCollapsed, setIsMapCollapsed] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreateEventHovered, createEventHoverHandlers] = useHoverState();
 
   // Recorded locally at the moment the brigade actually closes the event,
   // rather than trusting event.closure_at to round-trip back from the API —
@@ -295,7 +298,7 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
         </Stack>
 
         <Group gap="xs" wrap="nowrap" style={{ justifySelf: "end" }}>
-          <ThemeToggleButton />
+          <ThemeToggleButton variant="glass" />
 
           {readOnly ? (
             // States the mode plainly, so an operator who cannot find the action
@@ -323,11 +326,19 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
                 size="sm"
                 mih="2.5rem"
                 onClick={() => setIsCreateOpen(true)}
+                {...createEventHoverHandlers}
                 styles={{
                   root: {
-                    backgroundColor: "var(--app-color-primary)",
+                    background: "linear-gradient(135deg, var(--app-color-primary), var(--app-color-primary-hover))",
                     color: "var(--app-color-primary-text)",
-                    "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
+                    boxShadow:
+                      "0 8px 22px -6px color-mix(in srgb, var(--app-color-primary) 55%, transparent), inset 0 1px 0 rgba(255,255,255,.4)",
+                    transition: "transform 0.18s ease, box-shadow 0.18s ease",
+                    // Mantine's `styles` prop merges straight into an inline
+                    // `style` attribute, so a nested "&:hover" key here is
+                    // never compiled into real CSS — this is driven by
+                    // useHoverState instead.
+                    transform: isCreateEventHovered ? "translateY(-1px)" : undefined,
                   },
                 }}
               >
@@ -343,6 +354,8 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
               )}
             </>
           )}
+
+          <AccountBar />
         </Group>
       </Box>
 
