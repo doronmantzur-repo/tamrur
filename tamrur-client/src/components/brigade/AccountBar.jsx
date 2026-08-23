@@ -40,7 +40,12 @@ const LOGOUT_HOVER_STYLE = {
  * dashboard's theme toggle and event-action buttons (see ThemeToggleButton's
  * `variant="glass"`).
  *
- * @returns {JSX.Element} The role chip + divider + logout control.
+ * Left to right this reads: logout button, role chip, divider, then
+ * whatever sits to AccountBar's right in the header (the theme toggle) — so
+ * in DOM order (this app is RTL, where the first child renders rightmost)
+ * that's divider, role chip, logout.
+ *
+ * @returns {JSX.Element} The divider + role chip + logout control.
  */
 const AccountBar = () => {
   const dispatch = useDispatch();
@@ -55,6 +60,16 @@ const AccountBar = () => {
 
   return (
     <Group gap="sm" wrap="nowrap" align="center">
+      {/* Mantine's vertical-Divider CSS hardcodes align-self: stretch, which
+          (per spec) behaves like flex-start once a definite height is set —
+          not the parent Group's align="center" — so it's overridden here. */}
+      <Divider
+        orientation="vertical"
+        color="color-mix(in srgb, var(--app-color-border) 40%, transparent)"
+        h="2rem"
+        style={{ alignSelf: "center" }}
+      />
+
       <Group
         gap={0}
         wrap="nowrap"
@@ -69,8 +84,6 @@ const AccountBar = () => {
           {ROLE_LABELS[user?.role] || user?.role}
         </Text>
       </Group>
-
-      <Divider orientation="vertical" color="color-mix(in srgb, var(--app-color-border) 40%, transparent)" h="1.5rem" />
 
       <ActionIcon
         aria-label="התנתק"
