@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import { fetchEvents } from "../../features/events/eventsSlice";
-import { CLOSED_STATUS, EVENT_STATUS_LABELS } from "../../constants/eventStatus";
+import { EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS } from "../../constants/eventStatus";
 
 // Styles
 
@@ -105,7 +105,12 @@ const EventSwitcher = ({ value, onChange, label = "החלף אירוע" }) => {
           <ScrollArea.Autosize mah={320} type="auto">
             {events.map((event) => {
               const isActive = event.id === value;
-              const isClosed = event.status === CLOSED_STATUS;
+              // Per-status pastel, not open-vs-closed green/grey: event status is
+              // a sequential workflow stage, not a severity — see the note on
+              // EVENT_STATUS_COLOR_VARS. Same lookup and 16% tint the queue
+              // board and EventBadgesRow use, so the badges match across pages.
+              const statusColor =
+                EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)";
 
               return (
                 <Menu.Item
@@ -144,12 +149,8 @@ const EventSwitcher = ({ value, onChange, label = "החלף אירוע" }) => {
                       styles={{
                         root: {
                           flexShrink: 0,
-                          backgroundColor: isClosed
-                            ? "color-mix(in srgb, var(--app-color-text-muted) 16%, transparent)"
-                            : "color-mix(in srgb, var(--app-color-success) 16%, transparent)",
-                          color: isClosed
-                            ? "var(--app-color-text-muted)"
-                            : "var(--app-color-success)",
+                          backgroundColor: `color-mix(in srgb, ${statusColor} 16%, transparent)`,
+                          color: statusColor,
                         },
                       }}
                     >
