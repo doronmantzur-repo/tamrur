@@ -709,27 +709,44 @@ const EvacuationsTable = ({
             title="מחיקת פינוי"
             size="sm"
           >
-            מחק
-          </Button>
-        </Group>
-      </Modal>
+            <Text fz="sm" mb="md">
+              למחוק את הפינוי {deleteTarget?.forceRadioSign ? `(${deleteTarget.forceRadioSign})` : ""}? פעולה זו אינה
+              הפיכה.
+            </Text>
+            <Group justify="flex-end" gap="sm">
+              <Button variant="default" onClick={() => setDeleteTargetId(null)}>
+                ביטול
+              </Button>
+              <Button
+                styles={{ root: { backgroundColor: "var(--app-color-error)", color: "#FFFFFF" } }}
+                onClick={() => {
+                  onDeleteEvacuation?.(deleteTargetId);
+                  setDeleteTargetId(null);
+                }}
+              >
+                מחק
+              </Button>
+            </Group>
+          </Modal>
 
-      <EditEvacuationModal
-        key={editOpenId}
-        evacuation={editingEvacuation}
-        locations={locations}
-        eventLocation={eventLocation}
-        opened={Boolean(editingEvacuation)}
-        onClose={() => setEditingEvacuation(null)}
-        onSave={onUpdateEvacuation}
-      />
+          <EditEvacuationModal
+            key={editOpenId}
+            evacuation={editingEvacuation}
+            locations={locations}
+            eventLocation={eventLocation}
+            opened={Boolean(editingEvacuation)}
+            onClose={() => setEditingEvacuation(null)}
+            onSave={onUpdateEvacuation}
+          />
 
-      <RequestRideEvacuationModal
-        locations={locations}
-        opened={isCreateRideOpen}
-        onClose={() => setIsCreateRideOpen(false)}
-        onCreate={onCreateRideEvacuation}
-      />
+          <RequestRideEvacuationModal
+            locations={locations}
+            opened={isCreateRideOpen}
+            onClose={() => setIsCreateRideOpen(false)}
+            onCreate={onCreateRideEvacuation}
+          />
+        </>
+      )}
     </DashboardCard>
   );
 };
