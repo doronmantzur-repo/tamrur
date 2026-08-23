@@ -24,7 +24,7 @@ import { useNavigate } from "react-router-dom";
 // Internal application modules
 import AuthFormCard from "../AuthFormCard";
 import { registerUser } from "../../../features/auth/authSlice";
-import { ROLE_HOME_ROUTES } from "../../../constants/roles";
+import { ROLE_HOME_ROUTES, ROLE_LABELS } from "../../../constants/roles";
 
 // Styles
 
@@ -97,12 +97,7 @@ const SignUpForm = () => {
     }
   };
 
-  const rolesOptions = [
-    { value: "brigade", label: "חטיבה" },
-    { value: "medic", label: "צוות רפואי" },
-    { value: "airforce", label: "חיל האוויר" },
-    { value: "supervisor", label: "רמה ממונה" },
-  ];
+  const rolesOptions = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }));
 
   return (
     <AuthFormCard handleSubmit={handleSubmit}>
