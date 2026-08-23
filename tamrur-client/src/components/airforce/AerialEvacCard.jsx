@@ -135,7 +135,7 @@ const AerialEvacCard = ({ event, mission }) => {
       {isActionable && isApproving && (
         <Group gap="sm" align="flex-end" wrap="wrap">
           <TextInput
-            label="כינוי קריאה למסוק"
+            label='או"ק מסוק'
             placeholder="לדוגמה: דרדר 2"
             value={radioSign}
             onChange={(evt) => setRadioSign(evt.currentTarget.value)}
