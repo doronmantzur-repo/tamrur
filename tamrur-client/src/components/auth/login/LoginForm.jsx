@@ -3,13 +3,14 @@ import { useState } from "react";
 
 // External libraries
 import {
+  Alert,
   Button,
   Checkbox,
   PasswordInput,
   Text,
   TextInput,
 } from "@mantine/core";
-import { IconMail, IconLock, IconLogin } from "@tabler/icons-react";
+import { IconAlertCircle, IconMail, IconLock, IconLogin } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
@@ -19,6 +20,21 @@ import { ROLE_HOME_ROUTES } from "../../../constants/roles";
 import AuthFormCard from "../AuthFormCard";
 
 // Styles
+
+// The server keeps its own error messages generic on purpose (never says
+// which of email/password was wrong, to avoid confirming an email is
+// registered) — translated here rather than trusting the raw string for
+// display, and falling back to a generic Hebrew message for anything else
+// (a network error, the server being unreachable, ...).
+const LOGIN_ERROR_MESSAGES = {
+  "Invalid email or password": "אימייל או סיסמה שגויים",
+  "email or password missing": "יש למלא אימייל וסיסמה",
+};
+
+function loginErrorMessage(error) {
+  if (!error) return null;
+  return LOGIN_ERROR_MESSAGES[error] ?? "ההתחברות נכשלה, נסה שוב";
+}
 
 /**
  * Renders the Tamrur login form.
@@ -33,7 +49,9 @@ const LoginForm = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const status = useSelector((state) => state.auth.status);
+  const error = useSelector((state) => state.auth.error);
   const isSubmitting = status === "loading";
+  const errorMessage = status === "failed" ? loginErrorMessage(error) : null;
   /**
    * Handles login form submission. Redirects to the logged-in user's home
    * route on success; failures stay on the page (error is in redux state).
@@ -150,6 +168,20 @@ const LoginForm = () => {
           }}
         />
       </div>
+
+      {errorMessage && (
+        <Alert
+          icon={<IconAlertCircle size={18} />}
+          color="red"
+          styles={{
+            root: {
+              backgroundColor: "color-mix(in srgb, var(--app-color-error) 12%, transparent)",
+            },
+          }}
+        >
+          {errorMessage}
+        </Alert>
+      )}
 
       <Button
         type="submit"
