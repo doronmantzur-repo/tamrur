@@ -17,6 +17,7 @@ import CasualtiesTableCard from "./CasualtiesTableCard";
 import EvacuatedCasualtiesCard from "./EvacuatedCasualtiesCard";
 import EvacuationsTable from "./EvacuationsTable";
 import CreateEventModal from "../events/CreateEventModal";
+import EventSwitcher from "../dashboard/EventSwitcher";
 import { CLOSED_STATUS, FULL_EVACUATION_STATUS } from "../../constants/eventStatus";
 import { fetchLocations } from "../../features/locations/locationsSlice";
 import { fetchForces } from "../../features/forces/forcesSlice";
@@ -64,10 +65,20 @@ const EMPTY_ARRAY = [];
  * Reads and polling are unaffected, and purely local view state (collapsing the
  * map, sorting a table) still works, because neither touches the server.
  *
- * @param {{ eventId: string, readOnly?: boolean }} props
+ * `onSelectEvent` adds the compact event switcher beside the event name. Both
+ * pages pass one — the brigade navigates to the other event's route, the
+ * command view swaps its local selection — so the control looks and behaves the
+ * same on both without either page rebuilding it. Omitting it simply leaves the
+ * switcher out.
+ *
+ * @param {{
+ *   eventId: string,
+ *   readOnly?: boolean,
+ *   onSelectEvent?: (eventId: string) => void,
+ * }} props
  * @returns {JSX.Element} The event dashboard.
  */
-const EventDashboardView = ({ eventId, readOnly = false }) => {
+const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
   const dispatch = useDispatch();
 
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
@@ -248,6 +259,9 @@ const EventDashboardView = ({ eventId, readOnly = false }) => {
                 <Title order={1} c="var(--app-color-text)" fz="1.5rem" fw={700}>
                   {event.name || "אירוע ללא שם"}
                 </Title>
+                {/* Directly beside the name it switches, so the current event
+                    is stated once and the way to change it is right there. */}
+                {onSelectEvent && <EventSwitcher value={eventId} onChange={onSelectEvent} />}
               </Group>
 
               <EventDescriptionBlock />

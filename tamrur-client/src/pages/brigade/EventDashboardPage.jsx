@@ -2,7 +2,7 @@
 
 // External libraries
 import { Box, Stack } from "@mantine/core";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
@@ -21,6 +21,7 @@ import EventDashboardView from "../../components/brigade/EventDashboardView";
  */
 const EventDashboardPage = () => {
   const { eventId } = useParams();
+  const navigate = useNavigate();
 
   return (
     <Layout>
@@ -60,7 +61,13 @@ const EventDashboardPage = () => {
           overflow: "hidden",
         }}
       >
-        <EventDashboardView eventId={eventId} />
+        {/* The event lives in the route here, so switching is a navigation.
+            `replace` keeps Back pointing at wherever the operator came from
+            rather than accumulating one history entry per switch. */}
+        <EventDashboardView
+          eventId={eventId}
+          onSelectEvent={(nextId) => navigate(`/brigade/${nextId}`, { replace: true })}
+        />
       </Stack>
     </Layout>
   );

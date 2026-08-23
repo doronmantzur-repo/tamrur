@@ -1,13 +1,14 @@
 // React
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // External libraries
-import { Box, Group, Stack, Text } from "@mantine/core";
+import { Box, Stack, Text } from "@mantine/core";
+import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
-import EventSelector from "../../components/dashboard/EventSelector";
 import EventDashboardView from "../../components/brigade/EventDashboardView";
+import { fetchEvents } from "../../features/events/eventsSlice";
 
 // Styles
 
@@ -16,21 +17,42 @@ import EventDashboardView from "../../components/brigade/EventDashboardView";
  * view, read-only.
  *
  * The layout, metrics and live feeds are not reimplemented here — this page
- * renders the same EventDashboardView the brigade page does, with
- * `readOnly`, so the two cannot drift apart. That flag is enforced inside the
- * view and inside EvacuationsTable by not building the mutation handlers and
- * not rendering the controls that would call them, rather than by disabling
- * them in the UI.
+ * renders the same EventDashboardView the brigade page does, with `readOnly`,
+ * so the two cannot drift apart. That flag is enforced inside the view and
+ * inside EvacuationsTable by not building the mutation handlers and not
+ * rendering the controls that would call them, rather than by disabling them in
+ * the UI.
  *
- * The one structural difference is deliberate: the brigade reaches a single
- * event through the route (/brigade/:eventId), whereas command watches the
- * whole picture, so this page picks the event from a selector and holds the
- * choice in local state.
+ * The brigade reaches a single event through the route (/brigade/:eventId),
+ * whereas command watches the whole picture and has no event in its URL. So the
+ * first event is selected on arrival and changed from the switcher beside the
+ * event name — the page adds no chrome of its own for that.
  *
  * @returns {JSX.Element} The read-only command dashboard page.
  */
 const DashboardPage = () => {
+  const dispatch = useDispatch();
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const events = useSelector((state) => state.events.events);
+  const eventsStatus = useSelector((state) => state.events.status);
+
+  // EventSwitcher fetches this list too, but it only mounts once an event is
+  // showing — which cannot happen until something picks the first one.
+  useEffect(() => {
+    dispatch(fetchEvents());
+  }, [dispatch]);
+
+  // Land on an event rather than an empty page: with the selector gone there is
+  // nothing else to choose one, and a command view opening on "pick something"
+  // shows less than it could.
+  //
+  // Derived rather than pushed into state by an effect — an effect would set
+  // state during render-commit and cascade an extra render, and it would also
+  // have to guard against overwriting a choice already made. Falling back only
+  // while the selection is empty does both for free.
+  const activeEventId = selectedEventId ?? events[0]?.id ?? null;
+
+  const hasNoEvents = eventsStatus === "succeeded" && events.length === 0;
 
   return (
     <Layout>
@@ -70,29 +92,12 @@ const DashboardPage = () => {
           overflow: "hidden",
         }}
       >
-        {/* The selector is the only chrome this page adds. Kept compact and on
-            one row so the dashboard below still gets nearly the whole viewport,
-            matching the brigade page's height budget. */}
-        <Group gap="sm" align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
-          <Text
-            fz="0.875rem"
-            fw={500}
-            c="var(--app-color-text-muted)"
-            style={{ whiteSpace: "nowrap" }}
-          >
-            אירוע
-          </Text>
-          <Box w={320} style={{ flexShrink: 0 }}>
-            <EventSelector value={selectedEventId} onChange={setSelectedEventId} compact />
-          </Box>
-        </Group>
-
-        {selectedEventId ? (
-          <EventDashboardView eventId={selectedEventId} readOnly />
+        {activeEventId ? (
+          <EventDashboardView eventId={activeEventId} readOnly onSelectEvent={setSelectedEventId} />
         ) : (
           <Stack align="center" justify="center" gap="xs" style={{ flex: 1, minHeight: 0 }}>
             <Text fz="sm" c="var(--app-color-text-muted)">
-              בחר אירוע כדי להציג את תמונת המצב
+              {hasNoEvents ? "לא נמצאו אירועים" : "טוען אירועים..."}
             </Text>
           </Stack>
         )}
