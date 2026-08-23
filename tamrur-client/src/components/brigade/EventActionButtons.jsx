@@ -1,18 +1,30 @@
 // React
+import { useState } from "react";
 
 // External libraries
 import { Button, Group } from "@mantine/core";
 import { IconCheck } from "@tabler/icons-react";
 
 // Internal application modules
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
-/** Subtle hover/tap feedback for the button. */
-const interactiveScaleStyles = {
-  transition: "transform 0.15s ease",
-  "&:hover:not(:disabled)": { transform: "scale(1.03)" },
-  "&:active:not(:disabled)": { transform: "scale(0.97)" },
+const REST_STYLE = {
+  backgroundColor: "color-mix(in srgb, var(--app-color-surface) 32%, transparent)",
+  borderColor: "color-mix(in srgb, var(--app-color-border) 22%, transparent)",
+  color: "var(--app-color-text)",
+  backdropFilter: "blur(20px) saturate(180%)",
+  WebkitBackdropFilter: "blur(20px) saturate(180%)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,.15)",
+  transition: "transform 0.15s ease, background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease",
+};
+
+const HOVER_STYLE = {
+  backgroundColor: "color-mix(in srgb, var(--app-color-error) 14%, transparent)",
+  borderColor: "color-mix(in srgb, var(--app-color-error) 40%, transparent)",
+  color: "var(--app-color-error)",
+  transform: "scale(1.03)",
 };
 
 /**
@@ -25,6 +37,11 @@ const interactiveScaleStyles = {
  * then too. The aerial-evac request lives in the evacuations table, since
  * requesting one results in a row there.
  *
+ * Hover/press feedback is driven by local state (useHoverState +
+ * onMouseDown/Up) rather than a `styles` "&:hover"/"&:active" key — Mantine's
+ * `styles` prop merges straight into an inline `style` attribute, so nested
+ * pseudo-selectors there are never compiled into real CSS.
+ *
  * @param {{
  *   isCompleted: boolean,
  *   canClose: boolean,
@@ -33,25 +50,30 @@ const interactiveScaleStyles = {
  * @returns {JSX.Element} The action button group.
  */
 const EventActionButtons = ({ isCompleted, canClose, onCloseEvent }) => {
+  const disabled = isCompleted || !canClose;
+  const [isHovered, hoverHandlers] = useHoverState();
+  const [isPressed, setIsPressed] = useState(false);
+
+  const style = { ...REST_STYLE };
+  if (!disabled && isHovered) Object.assign(style, HOVER_STYLE);
+  if (!disabled && isPressed) style.transform = "scale(0.97)";
+
   return (
     <Group gap="sm" wrap="wrap">
       <Button
         leftSection={<IconCheck size={18} stroke={1.8} />}
         size="sm"
         mih="2.5rem"
-        disabled={isCompleted || !canClose}
+        disabled={disabled}
         onClick={onCloseEvent}
-        styles={{
-          root: {
-            backgroundColor: "var(--app-color-success)",
-            color: "#FFFFFF",
-            "&:hover": {
-              backgroundColor: "var(--app-color-success)",
-              opacity: 0.9,
-            },
-            ...interactiveScaleStyles,
-          },
+        {...hoverHandlers}
+        onMouseLeave={() => {
+          hoverHandlers.onMouseLeave();
+          setIsPressed(false);
         }}
+        onMouseDown={() => setIsPressed(true)}
+        onMouseUp={() => setIsPressed(false)}
+        styles={{ root: style }}
       >
         {isCompleted ? "האירוע נסגר" : "סגור אירוע"}
       </Button>

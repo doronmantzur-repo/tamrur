@@ -13,7 +13,6 @@ export const ROLE_HOME_ROUTES = {
   supervisor: "/dashboard",
 };
 
-/** Hebrew display label for each role, e.g. the signup role picker and the browser tab title. */
 export const ROLE_LABELS = {
   brigade: "חטיבה",
   medic: "צוות רפואי",

@@ -28,6 +28,8 @@ import { ROLE_HOME_ROUTES, ROLE_LABELS } from "../../../constants/roles";
 
 // Styles
 
+const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }));
+
 const PASSWORD_REQUIREMENTS = [
   { re: /^.{7,}$/, label: "לפחות 7 תווים" },
   { re: /[a-z]/, label: "אות קטנה (a-z)" },
@@ -97,8 +99,6 @@ const SignUpForm = () => {
     }
   };
 
-  const rolesOptions = Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }));
-
   return (
     <AuthFormCard handleSubmit={handleSubmit}>
       <div
@@ -144,7 +144,7 @@ const SignUpForm = () => {
       <Select
         label="תפקיד"
         placeholder="בחר תפקיד"
-        data={rolesOptions}
+        data={ROLE_OPTIONS}
         value={role}
         onChange={(value) => setRole(value)}
         defaultValue="React"
