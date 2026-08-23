@@ -11,7 +11,7 @@ import AuthHeader from "../../components/auth/AuthHeader";
 import AuthFooter from "../../components/auth/AuthFooter";
 import AerialEvacCard from "../../components/airforce/AerialEvacCard";
 import CasualtiesCard from "../../components/dashboard/CasualtiesCard";
-import ThemeToggle from "../../components/common/ThemeToggle";
+import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import { fetchEvents } from "../../features/events/eventsSlice";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { fetchAerialMissionsByEvent } from "../../features/aerialMission/aerialMissionSlice";
@@ -64,7 +64,7 @@ const AerialEvacuationPage = () => {
   return (
     <Layout>
       <Box pos="absolute" top="md" right="md" style={{ zIndex: 20 }}>
-        <ThemeToggle />
+        <ThemeToggleButton />
       </Box>
 
       <Box

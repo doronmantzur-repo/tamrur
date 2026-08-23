@@ -12,7 +12,7 @@ import DateNavBar from "../../components/brigade/DateNavBar";
 import EventQueueTable from "../../components/brigade/EventQueueTable";
 import EventQueueMap from "../../components/brigade/EventQueueMap";
 import EventQueueBoard from "../../components/brigade/EventQueueBoard";
-import ThemeToggle from "../../components/common/ThemeToggle";
+import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import { fetchEvents, closeEvent } from "../../features/events/eventsSlice";
 import { fetchForces } from "../../features/forces/forcesSlice";
 import { fetchLocations } from "../../features/locations/locationsSlice";
@@ -145,7 +145,7 @@ const EventQueueBoardPage = () => {
             לוח מעקב אירועים
           </Title>
 
-          <ThemeToggle />
+          <ThemeToggleButton />
         </Group>
 
         <Group justify="space-between" gap="sm" wrap="wrap">

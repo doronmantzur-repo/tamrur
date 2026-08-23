@@ -10,7 +10,7 @@ import Layout from "../../components/layout/Layout";
 import EventSelector from "../../components/dashboard/EventSelector";
 import EventDetailsCard from "../../components/dashboard/EventDetailsCard";
 import CasualtiesCard from "../../components/dashboard/CasualtiesCard";
-import ThemeToggle from "../../components/common/ThemeToggle";
+import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
 
@@ -50,7 +50,7 @@ const DashboardPage = () => {
   return (
     <Layout>
       <Box pos="absolute" top="md" right="md" style={{ zIndex: 20 }}>
-        <ThemeToggle />
+        <ThemeToggleButton />
       </Box>
 
       <Box

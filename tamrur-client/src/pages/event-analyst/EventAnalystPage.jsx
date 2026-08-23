@@ -9,7 +9,7 @@ import Layout from "../../components/layout/Layout";
 import EventSelector from "../../components/dashboard/EventSelector";
 import EventReportCard from "../../components/analyst/EventReportCard";
 import ReportsFolderCard from "../../components/analyst/ReportsFolderCard";
-import ThemeToggle from "../../components/common/ThemeToggle";
+import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import { CLOSED_STATUS } from "../../constants/eventStatus";
 
 // Styles
@@ -30,7 +30,7 @@ const EventAnalystPage = () => {
   return (
     <Layout>
       <Box pos="absolute" top="md" right="md" style={{ zIndex: 20 }}>
-        <ThemeToggle />
+        <ThemeToggleButton />
       </Box>
 
       <Box

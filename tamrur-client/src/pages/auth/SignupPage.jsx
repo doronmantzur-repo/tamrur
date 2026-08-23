@@ -8,7 +8,7 @@ import Layout from "../../components/layout/Layout";
 import AuthHeader from "../../components/auth/AuthHeader";
 import AuthFooter from "../../components/auth/AuthFooter";
 import SignUpForm from "../../components/auth/signup/SignUpForm";
-import ThemeToggle from "../../components/common/ThemeToggle";
+import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 // Styles
 
 /**
@@ -20,7 +20,7 @@ const SignUpPage = () => {
   return (
     <Layout>
       <Box pos="absolute" top="md" right="md" style={{ zIndex: 20 }}>
-        <ThemeToggle />
+        <ThemeToggleButton />
       </Box>
 
       <Box
