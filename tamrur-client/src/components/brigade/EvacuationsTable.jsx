@@ -2,7 +2,18 @@
 import { useMemo, useState } from "react";
 
 // External libraries
-import { ActionIcon, Badge, Box, Button, Group, Modal, Stack, Table, Text, Tooltip } from "@mantine/core";
+import {
+  ActionIcon,
+  Badge,
+  Box,
+  Button,
+  Group,
+  Modal,
+  Stack,
+  Table,
+  Text,
+  Tooltip,
+} from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCar,
@@ -22,7 +33,10 @@ import DashboardCard from "../dashboard/DashboardCard";
 import ColumnHeader from "../dashboard/ColumnHeader";
 import EditEvacuationModal from "./EditEvacuationModal";
 import RequestRideEvacuationModal from "./RequestRideEvacuationModal";
-import { EVAC_TEAM_STATUS_COLOR_VARS, EVAC_TEAM_STATUS_LABELS } from "../../constants/aerialEvacStatus";
+import {
+  EVAC_TEAM_STATUS_COLOR_VARS,
+  EVAC_TEAM_STATUS_LABELS,
+} from "../../constants/aerialEvacStatus";
 import { EVAC_METHOD_LABELS } from "../../constants/evacuationMethod";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
 import { findLocationByPoint } from "../../utils/geo";
@@ -59,8 +73,14 @@ const METHOD_ICONS = {
 // mission. "denied" is deliberately excluded so a denial can be re-requested.
 const AERIAL_EVAC_REQUESTED_STATUSES = ["needed", "in_progress", "approved"];
 
-const METHOD_OPTIONS = Object.entries(EVAC_METHOD_LABELS).map(([value, label]) => ({ value, label }));
-const STATUS_OPTIONS = Object.entries(EVAC_TEAM_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+const METHOD_OPTIONS = Object.entries(EVAC_METHOD_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+const STATUS_OPTIONS = Object.entries(EVAC_TEAM_STATUS_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 const STATUS_FILTER_OPTIONS = STATUS_OPTIONS;
 const METHOD_FILTER_OPTIONS = METHOD_OPTIONS;
 
@@ -179,6 +199,7 @@ const EvacuationsTable = ({
   aerialMissions = [],
   isCompleted,
   aerialEvacStatus,
+  readOnly = false,
   onUpdateEvacuation,
   onDeleteEvacuation,
   onRequestAerialEvac,
@@ -247,7 +268,11 @@ const EvacuationsTable = ({
   }, [normalizedEvacuations]);
 
   const missionOptions = useMemo(
-    () => aerialMissions.map((mission) => ({ value: mission.id, label: mission.radio_sign || "מסוק ללא כינוי קריאה" })),
+    () =>
+      aerialMissions.map((mission) => ({
+        value: mission.id,
+        label: mission.radio_sign || "מסוק ללא כינוי קריאה",
+      })),
     [aerialMissions],
   );
 
@@ -273,7 +298,10 @@ const EvacuationsTable = ({
   };
 
   const handleSortClick = (key) => {
-    setSort((prev) => ({ key, direction: prev.key === key ? nextSortDirection(prev.direction) : "asc" }));
+    setSort((prev) => ({
+      key,
+      direction: prev.key === key ? nextSortDirection(prev.direction) : "asc",
+    }));
   };
 
   const handleToggleFilter = (key, value) => {
@@ -355,49 +383,60 @@ const EvacuationsTable = ({
             {activeCount} מתוך {normalizedEvacuations.length} צוותים פעילים
           </Badge>
 
-          <Button
-            leftSection={
-              AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) ? (
-                <IconCheck size={16} stroke={1.8} />
-              ) : (
-                <IconSend size={16} stroke={1.8} />
-              )
-            }
-            size="xs"
-            mih="2rem"
-            loading={isRequestingAerialEvac}
-            disabled={
-              isCompleted || AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) || isRequestingAerialEvac
-            }
-            onClick={handleRequestAerialEvacClick}
-            styles={{
-              root: {
-                backgroundColor: "var(--app-color-primary)",
-                color: "var(--app-color-primary-text)",
-                "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
-                ...interactiveScaleStyles,
-              },
-            }}
-          >
-            {AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) ? "פינוי אווירי התבקש" : "בקש פינוי אווירי"}
-          </Button>
+          {/* Both dispatch triggers — aerial request and ride creation — are
+              withheld in read-only mode. Command watches the picture; it does
+              not task forces. */}
+          {!readOnly && (
+            <Button
+              leftSection={
+                AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) ? (
+                  <IconCheck size={16} stroke={1.8} />
+                ) : (
+                  <IconSend size={16} stroke={1.8} />
+                )
+              }
+              size="xs"
+              mih="2rem"
+              loading={isRequestingAerialEvac}
+              disabled={
+                isCompleted ||
+                AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) ||
+                isRequestingAerialEvac
+              }
+              onClick={handleRequestAerialEvacClick}
+              styles={{
+                root: {
+                  backgroundColor: "var(--app-color-primary)",
+                  color: "var(--app-color-primary-text)",
+                  "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
+                  ...interactiveScaleStyles,
+                },
+              }}
+            >
+              {AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus)
+                ? "פינוי אווירי התבקש"
+                : "בקש פינוי אווירי"}
+            </Button>
+          )}
 
-          <Button
-            leftSection={<IconCar size={16} stroke={1.8} />}
-            variant="outline"
-            size="xs"
-            mih="2rem"
-            onClick={handleRequestRideEvac}
-            styles={{
-              root: {
-                borderColor: "var(--app-color-border)",
-                color: "var(--app-color-text)",
-                ...interactiveScaleStyles,
-              },
-            }}
-          >
-            בקש פינוי רכב
-          </Button>
+          {!readOnly && (
+            <Button
+              leftSection={<IconCar size={16} stroke={1.8} />}
+              variant="outline"
+              size="xs"
+              mih="2rem"
+              onClick={handleRequestRideEvac}
+              styles={{
+                root: {
+                  borderColor: "var(--app-color-border)",
+                  color: "var(--app-color-text)",
+                  ...interactiveScaleStyles,
+                },
+              }}
+            >
+              בקש פינוי רכב
+            </Button>
+          )}
         </Group>
       }
     >
@@ -444,18 +483,26 @@ const EvacuationsTable = ({
                 {...sortProps("status")}
                 {...filterProps("status", STATUS_FILTER_OPTIONS)}
               />
-              <Table.Th w="3.5rem"></Table.Th>
+              {/* The row-actions column is dropped entirely in read-only mode
+                  rather than left empty, so the remaining columns take the
+                  width back. */}
+              {!readOnly && <Table.Th w="3.5rem"></Table.Th>}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {visibleEvacuations.map((evac, index) => {
               const MethodIcon = METHOD_ICONS[evac.method] || IconHelicopter;
-              const statusColor = EVAC_TEAM_STATUS_COLOR_VARS[evac.status] || "var(--app-color-text-muted)";
+              const statusColor =
+                EVAC_TEAM_STATUS_COLOR_VARS[evac.status] || "var(--app-color-text-muted)";
               const incomplete = isIncomplete(evac);
               const mission = aerialMissions.find((m) => m.id === evac.aerialMissionId);
 
               return (
-                <Table.Tr key={evac.id} className="app-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
+                <Table.Tr
+                  key={evac.id}
+                  className="app-fade-in"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
                   <Table.Td w="2.25rem" style={{ textAlign: "center" }}>
                     {incomplete && (
                       <Tooltip label="חסרים נתונים בשורה זו">
@@ -500,45 +547,53 @@ const EvacuationsTable = ({
                             <Text fz="0.62rem" c="var(--app-color-text-muted)">
                               יצא
                             </Text>
-                            <Text ff={MONO_FONT}>{timeFormatter.format(new Date(evac.startTime))}</Text>
+                            <Text ff={MONO_FONT}>
+                              {timeFormatter.format(new Date(evac.startTime))}
+                            </Text>
                           </Group>
                           <Group gap={4} wrap="nowrap">
                             <Text fz="0.62rem" c="var(--app-color-text-muted)">
                               צפי
                             </Text>
-                            <Text ff={MONO_FONT}>{evac.eta ? timeFormatter.format(new Date(evac.eta)) : "—"}</Text>
+                            <Text ff={MONO_FONT}>
+                              {evac.eta ? timeFormatter.format(new Date(evac.eta)) : "—"}
+                            </Text>
                           </Group>
                         </Stack>
-                        <Tooltip label="סיים פינוי">
-                          <ActionIcon
-                            size="sm"
-                            variant="light"
-                            color="green"
-                            aria-label="סיים פינוי"
-                            onClick={() => finishEvacuation(evac.id)}
-                          >
-                            <IconFlagCheck size={14} stroke={1.8} />
-                          </ActionIcon>
-                        </Tooltip>
+                        {!readOnly && (
+                          <Tooltip label="סיים פינוי">
+                            <ActionIcon
+                              size="sm"
+                              variant="light"
+                              color="green"
+                              aria-label="סיים פינוי"
+                              onClick={() => finishEvacuation(evac.id)}
+                            >
+                              <IconFlagCheck size={14} stroke={1.8} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
                       </Group>
                     ) : (
                       <Group gap={4} wrap="nowrap">
-                        <Tooltip label="התחל עכשיו">
-                          <ActionIcon
-                            size="sm"
-                            aria-label="התחל עכשיו"
-                            onClick={() => startNow(evac.id)}
-                            styles={{
-                              root: {
-                                backgroundColor: "var(--app-color-primary)",
-                                color: "var(--app-color-primary-text)",
-                                "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
-                              },
-                            }}
-                          >
-                            <IconPlayerPlay size={14} stroke={1.8} />
-                          </ActionIcon>
-                        </Tooltip>
+                        {!readOnly && (
+                          <Tooltip label="התחל עכשיו">
+                            <ActionIcon
+                              size="sm"
+                              aria-label="התחל עכשיו"
+                              onClick={() => startNow(evac.id)}
+                              styles={{
+                                root: {
+                                  backgroundColor: "var(--app-color-primary)",
+                                  color: "var(--app-color-primary-text)",
+                                  "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
+                                },
+                              }}
+                            >
+                              <IconPlayerPlay size={14} stroke={1.8} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
                         <Stack gap={0}>
                           {evac.eta && (
                             <Text fz="0.62rem" c="var(--app-color-text-muted)" ff={MONO_FONT}>
@@ -548,7 +603,9 @@ const EvacuationsTable = ({
                           <Text fz="0.62rem" c="var(--app-color-text-muted)">
                             צפי
                           </Text>
-                          <Text ff={MONO_FONT}>{evac.eta ? timeFormatter.format(new Date(evac.eta)) : "—"}</Text>
+                          <Text ff={MONO_FONT}>
+                            {evac.eta ? timeFormatter.format(new Date(evac.eta)) : "—"}
+                          </Text>
                         </Stack>
                       </Group>
                     )}
@@ -601,36 +658,40 @@ const EvacuationsTable = ({
                     </Badge>
                   </Table.Td>
 
-                  <Table.Td>
-                    <Group gap={4} wrap="nowrap">
-                      <ActionIcon
-                        variant="subtle"
-                        aria-label="ערוך שורה"
-                        onClick={() => {
-                          setEditingEvacuation(evac);
-                          setEditOpenId((id) => id + 1);
-                        }}
-                        styles={{ root: { color: "var(--app-color-primary)" } }}
-                      >
-                        <IconPencil size={18} stroke={1.8} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant="subtle"
-                        aria-label="מחק שורה"
-                        onClick={() => setDeleteTargetId(evac.id)}
-                        styles={{ root: { color: "var(--app-color-error)" } }}
-                      >
-                        <IconTrash size={18} stroke={1.8} />
-                      </ActionIcon>
-                    </Group>
-                  </Table.Td>
+                  {!readOnly && (
+                    <Table.Td>
+                      <Group gap={4} wrap="nowrap">
+                        <ActionIcon
+                          variant="subtle"
+                          aria-label="ערוך שורה"
+                          onClick={() => {
+                            setEditingEvacuation(evac);
+                            setEditOpenId((id) => id + 1);
+                          }}
+                          styles={{ root: { color: "var(--app-color-primary)" } }}
+                        >
+                          <IconPencil size={18} stroke={1.8} />
+                        </ActionIcon>
+                        <ActionIcon
+                          variant="subtle"
+                          aria-label="מחק שורה"
+                          onClick={() => setDeleteTargetId(evac.id)}
+                          styles={{ root: { color: "var(--app-color-error)" } }}
+                        >
+                          <IconTrash size={18} stroke={1.8} />
+                        </ActionIcon>
+                      </Group>
+                    </Table.Td>
+                  )}
                 </Table.Tr>
               );
             })}
             {visibleEvacuations.length === 0 && (
               <Table.Tr>
-                <Table.Td colSpan={8} c="var(--app-color-text-muted)" ta="center">
-                  {normalizedEvacuations.length === 0 ? "אין פינויים לאירוע זה" : "אין פינויים התואמים לסינון"}
+                <Table.Td colSpan={readOnly ? 7 : 8} c="var(--app-color-text-muted)" ta="center">
+                  {normalizedEvacuations.length === 0
+                    ? "אין פינויים לאירוע זה"
+                    : "אין פינויים התואמים לסינון"}
                 </Table.Td>
               </Table.Tr>
             )}
@@ -638,21 +699,15 @@ const EvacuationsTable = ({
         </Table>
       </Box>
 
-      <Modal opened={Boolean(deleteTarget)} onClose={() => setDeleteTargetId(null)} title="מחיקת פינוי" size="sm">
-        <Text fz="sm" mb="md">
-          למחוק את הפינוי {deleteTarget?.forceRadioSign ? `(${deleteTarget.forceRadioSign})` : ""}? פעולה זו אינה
-          הפיכה.
-        </Text>
-        <Group justify="flex-end" gap="sm">
-          <Button variant="default" onClick={() => setDeleteTargetId(null)}>
-            ביטול
-          </Button>
-          <Button
-            styles={{ root: { backgroundColor: "var(--app-color-error)", color: "#FFFFFF" } }}
-            onClick={() => {
-              onDeleteEvacuation?.(deleteTargetId);
-              setDeleteTargetId(null);
-            }}
+      {/* The delete confirmation and both editor modals are not mounted at all
+          in read-only mode, so no code path can open one. */}
+      {!readOnly && (
+        <>
+          <Modal
+            opened={Boolean(deleteTarget)}
+            onClose={() => setDeleteTargetId(null)}
+            title="מחיקת פינוי"
+            size="sm"
           >
             מחק
           </Button>
