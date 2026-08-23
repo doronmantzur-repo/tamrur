@@ -10,6 +10,7 @@ import EventSelector from "../../components/dashboard/EventSelector";
 import EventReportCard from "../../components/analyst/EventReportCard";
 import ReportsFolderCard from "../../components/analyst/ReportsFolderCard";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
+import AccountBar from "../../components/brigade/AccountBar";
 import { CLOSED_STATUS } from "../../constants/eventStatus";
 
 // Styles
@@ -29,9 +30,21 @@ const EventAnalystPage = () => {
 
   return (
     <Layout>
-      <Box pos="absolute" top="md" right="md" style={{ zIndex: 20 }}>
-        <ThemeToggleButton />
-      </Box>
+      <div
+        style={{
+          position: "absolute",
+          top: "var(--mantine-spacing-md)",
+          left: "var(--mantine-spacing-md)",
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--mantine-spacing-sm)",
+          zIndex: 20,
+        }}
+      >
+        <ThemeToggleButton variant="glass" />
+
+        <AccountBar />
+      </div>
 
       <Box
         aria-hidden="true"
