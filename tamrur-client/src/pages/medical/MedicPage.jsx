@@ -6,7 +6,6 @@ import {
   ActionIcon,
   Alert,
   Box,
-  Group,
   Loader,
   Stack,
   Text,
@@ -21,6 +20,8 @@ import MedicEventBar from "../../components/medical/MedicEventBar";
 import MedicCasualtiesCard from "../../components/medical/MedicCasualtiesCard";
 import CasualtyFormModal from "../../components/medical/CasualtyFormModal";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
+import AccountBar from "../../components/brigade/AccountBar";
+import { useHoverState } from "../../hooks/useHoverState";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { fetchEvents } from "../../features/events/eventsSlice";
 import { fetchTreatmentsByEvent } from "../../features/treatments/treatmentsSlice";
@@ -38,6 +39,7 @@ import { POLL_INTERVAL_MS } from "../../constants/polling";
  */
 const MedicPage = () => {
   const navigate = useNavigate();
+  const [isQueryButtonHovered, queryButtonHoverHandlers] = useHoverState();
   const [selectedEventId, setSelectedEventId] = useState(null);
   // The last event whose records have finished loading. Comparing it against
   // the selection derives the loading flag, so a background poll — which
@@ -108,7 +110,17 @@ const MedicPage = () => {
 
   return (
     <Layout>
-      <Group pos="absolute" top="md" left="md" gap="sm" style={{ zIndex: 20 }}>
+      <div
+        style={{
+          position: "absolute",
+          top: "var(--mantine-spacing-md)",
+          left: "var(--mantine-spacing-md)",
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--mantine-spacing-sm)",
+          zIndex: 20,
+        }}
+      >
         <ActionIcon
           aria-label="שאילתת ספר הטראומה"
           title="שאילתת ספר הטראומה"
@@ -116,18 +128,22 @@ const MedicPage = () => {
           size={40}
           radius="xl"
           onClick={() => navigate("/query")}
+          {...queryButtonHoverHandlers}
           style={{
-            backgroundColor: "var(--app-color-surface)",
-            borderColor: "var(--app-color-border)",
-            color: "var(--app-color-text)",
+            backgroundColor: isQueryButtonHovered ? "var(--app-color-primary)" : "var(--app-color-surface)",
+            borderColor: isQueryButtonHovered ? "var(--app-color-primary)" : "var(--app-color-border)",
+            color: isQueryButtonHovered ? "var(--app-color-primary-text)" : "var(--app-color-text)",
+            transform: isQueryButtonHovered ? "translateY(-1px)" : undefined,
+            transition: "background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
           }}
         >
-
           <IconMessageQuestion aria-hidden="true" size={20} stroke={1.8} />
         </ActionIcon>
 
-        <ThemeToggleButton />
-      </Group>
+        <ThemeToggleButton variant="glass" />
+
+        <AccountBar />
+      </div>
 
       <Box
         aria-hidden="true"

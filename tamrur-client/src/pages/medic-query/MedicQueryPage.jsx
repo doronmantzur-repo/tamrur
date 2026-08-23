@@ -1,7 +1,7 @@
 // React
 
 // External libraries
-import { ActionIcon, Box, Group, Stack, Title } from "@mantine/core";
+import { ActionIcon, Box, Stack, Title } from "@mantine/core";
 import { IconStethoscope } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
@@ -9,6 +9,8 @@ import { useNavigate } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import PdfQaCard from "../../components/analyst/PdfQaCard";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
+import AccountBar from "../../components/brigade/AccountBar";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -19,10 +21,21 @@ import ThemeToggleButton from "../../components/common/ThemeToggleButton";
  */
 const MedicQueryPage = () => {
   const navigate = useNavigate();
+  const [isBackButtonHovered, backButtonHoverHandlers] = useHoverState();
 
   return (
     <Layout>
-      <Group pos="absolute" top="md" left="md" gap="sm" style={{ zIndex: 20 }}>
+      <div
+        style={{
+          position: "absolute",
+          top: "var(--mantine-spacing-md)",
+          left: "var(--mantine-spacing-md)",
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--mantine-spacing-sm)",
+          zIndex: 20,
+        }}
+      >
         <ActionIcon
           aria-label="חזרה לממשק הרפואי"
           title="חזרה לממשק הרפואי"
@@ -30,17 +43,22 @@ const MedicQueryPage = () => {
           size={40}
           radius="xl"
           onClick={() => navigate("/medic")}
+          {...backButtonHoverHandlers}
           style={{
-            backgroundColor: "var(--app-color-surface)",
-            borderColor: "var(--app-color-border)",
-            color: "var(--app-color-text)",
+            backgroundColor: isBackButtonHovered ? "var(--app-color-primary)" : "var(--app-color-surface)",
+            borderColor: isBackButtonHovered ? "var(--app-color-primary)" : "var(--app-color-border)",
+            color: isBackButtonHovered ? "var(--app-color-primary-text)" : "var(--app-color-text)",
+            transform: isBackButtonHovered ? "translateY(-1px)" : undefined,
+            transition: "background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
           }}
         >
           <IconStethoscope aria-hidden="true" size={20} stroke={1.8} />
         </ActionIcon>
 
-        <ThemeToggleButton />
-      </Group>
+        <ThemeToggleButton variant="glass" />
+
+        <AccountBar />
+      </div>
 
       <Box
         aria-hidden="true"
