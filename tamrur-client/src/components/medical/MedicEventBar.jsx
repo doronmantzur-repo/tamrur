@@ -5,13 +5,9 @@ import { Badge, Group, Text, Title } from "@mantine/core";
 import { IconClock, IconTarget } from "@tabler/icons-react";
 
 // Internal application modules
-import EventSelector from "../dashboard/EventSelector";
+import EventSwitcher from "../dashboard/EventSwitcher";
 import { MONO_FONT } from "./formStyles";
-import {
-  CLOSED_STATUS,
-  EVENT_STATUS_LABELS,
-  EVENT_TYPE_LABELS,
-} from "../../constants/eventStatus";
+import { CLOSED_STATUS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
 import { formatDuration } from "../../utils/duration";
 
@@ -32,6 +28,13 @@ const dateTimeFormatter = new Intl.DateTimeFormat("he-IL", {
  * the chrome, so the same information is folded into one row that wraps only
  * when it has to.
  *
+ * The picker is the compact EventSwitcher the dashboards use, sitting beside
+ * the event name rather than repeating that name inside a 260px combobox.
+ * Unlike those dashboards it does NOT fall back to the first event when nothing
+ * is chosen: this page writes casualties against the selection, and quietly
+ * defaulting it would let a medic file into the wrong incident. Until they pick
+ * one the bar says so, and the switcher is the only control offered.
+ *
  * @param {{
  *   selectedEventId: string | null,
  *   onSelectEvent: (eventId: string | null) => void,
@@ -48,72 +51,95 @@ const MedicEventBar = ({ selectedEventId, onSelectEvent, event }) => {
   return (
     <Group justify="space-between" align="center" wrap="wrap" gap="sm">
       <Group align="center" wrap="nowrap" gap="sm">
-        <Title order={1} c="var(--app-color-primary)" fz="1.15rem" fw={700} style={{ whiteSpace: "nowrap" }}>
+        <Title
+          order={1}
+          c="var(--app-color-primary)"
+          fz="1.15rem"
+          fw={700}
+          style={{ whiteSpace: "nowrap" }}
+        >
           ממשק רפואי
         </Title>
-        <EventSelector value={selectedEventId} onChange={onSelectEvent} compact />
+
+        {/* Sits with the page title on the right rather than out by the event
+            name, so the only picker on the page is where the eye starts in RTL.
+            It is still the only picker, so it has to read as "choose one"
+            before anything is selected. */}
+        <EventSwitcher
+          value={selectedEventId}
+          onChange={onSelectEvent}
+          label={event ? "החלף אירוע" : "בחר אירוע"}
+        />
       </Group>
 
-      {event && (
-        <Group align="center" wrap="wrap" gap="xs">
-          <Text fz="sm" fw={700} c="var(--app-color-text)" truncate maw={240}>
-            {event.name || "אירוע ללא שם"}
-          </Text>
+      <Group align="center" wrap="wrap" gap="xs">
+        <Text
+          fz="sm"
+          fw={700}
+          c={event ? "var(--app-color-text)" : "var(--app-color-text-muted)"}
+          truncate
+          maw={240}
+        >
+          {event ? event.name || "אירוע ללא שם" : "לא נבחר אירוע"}
+        </Text>
 
-          <Badge
-            size="sm"
-            styles={{
-              root: {
-                backgroundColor: "color-mix(in srgb, var(--app-color-warning) 16%, transparent)",
-                color: "var(--app-color-warning)",
-              },
-            }}
-          >
-            {EVENT_STATUS_LABELS[event.status] || event.status}
-          </Badge>
-
-          <Badge
-            size="sm"
-            leftSection={<IconTarget size={12} />}
-            variant="outline"
-            styles={{
-              root: {
-                backgroundColor: "var(--app-color-surface-high)",
-                borderColor: "var(--app-color-border)",
-                color: "var(--app-color-text-muted)",
-              },
-            }}
-          >
-            {EVENT_TYPE_LABELS[event.type] || event.type}
-          </Badge>
-
-          <Group
-            gap={4}
-            wrap="nowrap"
-            align="center"
-            px="xs"
-            py={2}
-            style={{
-              backgroundColor: "var(--app-color-surface-high)",
-              border: "1px solid var(--app-color-border)",
-              borderRadius: "var(--mantine-radius-sm)",
-            }}
-          >
-            <IconClock size={14} color="var(--app-color-text-muted)" />
-            <Text
-              fz="sm"
-              fw={700}
-              ff={MONO_FONT}
-              c={isClosed ? "var(--app-color-text-muted)" : "var(--app-color-primary)"}
-              title={isClosed ? "מועד סיום האירוע" : "זמן שחלף מאז פתיחת האירוע"}
+        {event && (
+          <>
+            <Badge
+              size="sm"
+              styles={{
+                root: {
+                  backgroundColor: "color-mix(in srgb, var(--app-color-warning) 16%, transparent)",
+                  color: "var(--app-color-warning)",
+                },
+              }}
             >
-              {isClosed
-                ? dateTimeFormatter.format(new Date(event.closure_at ?? event.created_at))
-                : formatDuration(elapsedSeconds)}
-            </Text>
-          </Group>
-        </Group>
-      )}
+              {EVENT_STATUS_LABELS[event.status] || event.status}
+            </Badge>
+
+            <Badge
+              size="sm"
+              leftSection={<IconTarget size={12} />}
+              variant="outline"
+              styles={{
+                root: {
+                  backgroundColor: "var(--app-color-surface-high)",
+                  borderColor: "var(--app-color-border)",
+                  color: "var(--app-color-text-muted)",
+                },
+              }}
+            >
+              {EVENT_TYPE_LABELS[event.type] || event.type}
+            </Badge>
+
+            <Group
+              gap={4}
+              wrap="nowrap"
+              align="center"
+              px="xs"
+              py={2}
+              style={{
+                backgroundColor: "var(--app-color-surface-high)",
+                border: "1px solid var(--app-color-border)",
+                borderRadius: "var(--mantine-radius-sm)",
+              }}
+            >
+              <IconClock size={14} color="var(--app-color-text-muted)" />
+              <Text
+                fz="sm"
+                fw={700}
+                ff={MONO_FONT}
+                c={isClosed ? "var(--app-color-text-muted)" : "var(--app-color-primary)"}
+                title={isClosed ? "מועד סיום האירוע" : "זמן שחלף מאז פתיחת האירוע"}
+              >
+                {isClosed
+                  ? dateTimeFormatter.format(new Date(event.closure_at ?? event.created_at))
+                  : formatDuration(elapsedSeconds)}
+              </Text>
+            </Group>
+          </>
+        )}
+      </Group>
     </Group>
   );
 };
