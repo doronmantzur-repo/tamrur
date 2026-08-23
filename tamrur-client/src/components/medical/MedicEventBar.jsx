@@ -60,6 +60,16 @@ const MedicEventBar = ({ selectedEventId, onSelectEvent, event }) => {
         >
           ממשק רפואי
         </Title>
+
+        {/* Sits with the page title on the right rather than out by the event
+            name, so the only picker on the page is where the eye starts in RTL.
+            It is still the only picker, so it has to read as "choose one"
+            before anything is selected. */}
+        <EventSwitcher
+          value={selectedEventId}
+          onChange={onSelectEvent}
+          label={event ? "החלף אירוע" : "בחר אירוע"}
+        />
       </Group>
 
       <Group align="center" wrap="wrap" gap="xs">
@@ -72,14 +82,6 @@ const MedicEventBar = ({ selectedEventId, onSelectEvent, event }) => {
         >
           {event ? event.name || "אירוע ללא שם" : "לא נבחר אירוע"}
         </Text>
-
-        {/* Beside the name it switches, and the only picker on the page — so it
-            has to read as "choose one" before anything is selected. */}
-        <EventSwitcher
-          value={selectedEventId}
-          onChange={onSelectEvent}
-          label={event ? "החלף אירוע" : "בחר אירוע"}
-        />
 
         {event && (
           <>
