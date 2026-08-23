@@ -410,6 +410,7 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
                   <EvacuationsTable
                     evacuations={evacuations}
                     locations={locations}
+                    eventLocation={event?.location}
                     aerialMissions={aerialMissions}
                     isCompleted={isEventClosed}
                     aerialEvacStatus={aerialEvacStatus}
