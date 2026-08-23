@@ -2,9 +2,17 @@
 import { useEffect, useMemo, useState } from "react";
 
 // External libraries
-import { Alert, Box, Group, Loader, Stack, Text, Title } from "@mantine/core";
-import { IconAlertTriangle, IconLayoutKanban, IconMap2, IconSearch, IconTable } from "@tabler/icons-react";
+import { ActionIcon, Alert, Box, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import {
+  IconAlertTriangle,
+  IconLayoutKanban,
+  IconMap2,
+  IconReportAnalytics,
+  IconSearch,
+  IconTable,
+} from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
@@ -20,6 +28,7 @@ import { fetchLocations } from "../../features/locations/locationsSlice";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
 import { isEventActiveOnDate, isSameDay, startOfDay } from "../../utils/eventQueueDate";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -51,6 +60,8 @@ const VIEW_OPTIONS = [
  */
 const EventQueueBoardPage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [isAnalystButtonHovered, analystButtonHoverHandlers] = useHoverState();
 
   const events = useSelector((state) => state.events.events);
   const apiStatus = useSelector((state) => state.events.status);
@@ -147,6 +158,26 @@ const EventQueueBoardPage = () => {
           </Title>
 
           <Group gap="sm" wrap="nowrap">
+            <ActionIcon
+              aria-label="מעבר לניתוח אירוע"
+              title="מעבר לניתוח אירוע"
+              variant="default"
+              size={40}
+              radius="xl"
+              onClick={() => navigate("/analyst")}
+              {...analystButtonHoverHandlers}
+              style={{
+                backgroundColor: isAnalystButtonHovered ? "var(--app-color-primary)" : "var(--app-color-surface)",
+                borderColor: isAnalystButtonHovered ? "var(--app-color-primary)" : "var(--app-color-border)",
+                color: isAnalystButtonHovered ? "var(--app-color-primary-text)" : "var(--app-color-text)",
+                transform: isAnalystButtonHovered ? "translateY(-1px)" : undefined,
+                transition:
+                  "background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
+              }}
+            >
+              <IconReportAnalytics aria-hidden="true" size={20} stroke={1.8} />
+            </ActionIcon>
+
             <ThemeToggleButton variant="glass" />
             <AccountBar />
           </Group>

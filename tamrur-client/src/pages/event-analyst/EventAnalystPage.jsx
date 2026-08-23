@@ -2,7 +2,9 @@
 import { useState } from "react";
 
 // External libraries
-import { Box, Stack, Title } from "@mantine/core";
+import { ActionIcon, Box, Stack, Title } from "@mantine/core";
+import { IconLayoutKanban } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
@@ -12,6 +14,7 @@ import ReportsFolderCard from "../../components/analyst/ReportsFolderCard";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import AccountBar from "../../components/brigade/AccountBar";
 import { CLOSED_STATUS } from "../../constants/eventStatus";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -24,6 +27,8 @@ const REPORTABLE_STATUSES = [CLOSED_STATUS];
  * @returns {JSX.Element} The event-analyst page.
  */
 const EventAnalystPage = () => {
+  const navigate = useNavigate();
+  const [isBoardButtonHovered, boardButtonHoverHandlers] = useHoverState();
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [folderHandle, setFolderHandle] = useState(null);
   const [reportsRefreshSignal, setReportsRefreshSignal] = useState(0);
@@ -41,6 +46,25 @@ const EventAnalystPage = () => {
           zIndex: 20,
         }}
       >
+        <ActionIcon
+          aria-label="חזרה ללוח מעקב אירועים"
+          title="חזרה ללוח מעקב אירועים"
+          variant="default"
+          size={40}
+          radius="xl"
+          onClick={() => navigate("/brigade")}
+          {...boardButtonHoverHandlers}
+          style={{
+            backgroundColor: isBoardButtonHovered ? "var(--app-color-primary)" : "var(--app-color-surface)",
+            borderColor: isBoardButtonHovered ? "var(--app-color-primary)" : "var(--app-color-border)",
+            color: isBoardButtonHovered ? "var(--app-color-primary-text)" : "var(--app-color-text)",
+            transform: isBoardButtonHovered ? "translateY(-1px)" : undefined,
+            transition: "background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
+          }}
+        >
+          <IconLayoutKanban aria-hidden="true" size={20} stroke={1.8} />
+        </ActionIcon>
+
         <ThemeToggleButton variant="glass" />
 
         <AccountBar />
