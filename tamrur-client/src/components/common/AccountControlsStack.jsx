@@ -22,11 +22,15 @@ import AccountBar from "../brigade/AccountBar";
  * itself already flush against that edge (e.g. an absolutely-positioned
  * corner cluster written with physical, not logical, CSS).
  *
+ * Convention: pass the theme toggle as the *last* child. In a `dir="rtl"`
+ * flex row the last JSX child renders visually leftmost, and every page
+ * keeps the toggle there — so order other controls before it, not after.
+ *
  * @param {{ children?: React.ReactNode, align?: "flex-start" | "flex-end", style?: React.CSSProperties }} props
  * @returns {JSX.Element} The two-row account/controls stack.
  */
 const AccountControlsStack = ({ children, align = "flex-end", style }) => (
-  <Stack gap="xs" align={align} style={style}>
+  <Stack gap="md" align={align} style={style}>
     <AccountBar />
     {children && (
       <Group gap="sm" wrap="wrap" justify={align}>
