@@ -294,8 +294,6 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
         </Stack>
 
         <AccountControlsStack style={{ justifySelf: "end" }}>
-          <ThemeToggleButton variant="glass" />
-
           {readOnly ? (
             // States the mode plainly, so an operator who cannot find the action
             // buttons knows they were withheld rather than failing to render.
@@ -326,6 +324,10 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
               />
             )
           )}
+
+          {/* Last child, so it renders visually leftmost in this RTL row —
+              every page's controls row keeps the theme toggle there. */}
+          <ThemeToggleButton variant="glass" />
         </AccountControlsStack>
       </Box>
 

@@ -184,8 +184,6 @@ const EventQueueBoardPage = () => {
               <IconReportAnalytics aria-hidden="true" size={20} stroke={1.8} />
             </ActionIcon>
 
-            <ThemeToggleButton variant="glass" />
-
             <Button
               leftSection={<IconPlus size={18} stroke={1.8} />}
               size="sm"
@@ -209,6 +207,10 @@ const EventQueueBoardPage = () => {
             >
               פתח אירוע
             </Button>
+
+            {/* Last child, so it renders visually leftmost in this RTL row —
+                every page's controls row keeps the theme toggle there. */}
+            <ThemeToggleButton variant="glass" />
           </AccountControlsStack>
         </Group>
 
