@@ -30,6 +30,8 @@ import { Box, Group, Paper, Stack, Title } from "@mantine/core";
  *   gap?: string,
  *   fullHeight?: boolean,
  *   h?: string,
+ *   accentColor?: string,
+ *   bare?: boolean,
  * }} props
  * @returns {JSX.Element} The dashboard card.
  */
@@ -44,6 +46,8 @@ const DashboardCard = ({
   gap = "md",
   fullHeight = false,
   h,
+  accentColor = "var(--app-color-primary)",
+  bare = false,
 }) => {
   const stretchContent = fullHeight || h !== undefined;
 
@@ -61,6 +65,27 @@ const DashboardCard = ({
       {children}
     </Stack>
   );
+
+  // `bare` is for nesting this card's title row + content inside another
+  // card (e.g. the triage queue's unified event card) without stacking a
+  // second Paper/accent-bar shell inside the first.
+  if (bare) {
+    return aside ? (
+      <Box
+        pt="xs"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr auto",
+          gap: "var(--mantine-spacing-sm)",
+        }}
+      >
+        {content}
+        {aside}
+      </Box>
+    ) : (
+      content
+    );
+  }
 
   return (
     <Paper
@@ -84,7 +109,7 @@ const DashboardCard = ({
           insetInline: 0,
           top: 0,
           height: "4px",
-          backgroundColor: "var(--app-color-primary)",
+          backgroundColor: accentColor,
         }}
       />
 

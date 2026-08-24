@@ -37,10 +37,14 @@ function YesNo({ value }) {
  * the airforce page, which cares about physical evacuation posture more
  * than triage urgency).
  *
- * @param {{ casualties: Array<object>, statBreakdown?: "urgency" | "ability" }} props
+ * `bare` skips this card's own Paper/accent-bar shell (but keeps the "נפגעים"
+ * title row), for nesting inside another card that already provides one —
+ * see the triage queue's unified event card.
+ *
+ * @param {{ casualties: Array<object>, statBreakdown?: "urgency" | "ability", bare?: boolean }} props
  * @returns {JSX.Element} The casualties card.
  */
-const CasualtiesCard = ({ casualties, statBreakdown = "urgency" }) => {
+const CasualtiesCard = ({ casualties, statBreakdown = "urgency", bare = false }) => {
   const isAbilityBreakdown = statBreakdown === "ability";
   const statKeys = isAbilityBreakdown ? EVAC_ABILITY_ORDER : URGENCY_ORDER;
   const statLabels = isAbilityBreakdown ? EVAC_ABILITY_LABELS : URGENCY_LABELS;
@@ -57,6 +61,7 @@ const CasualtiesCard = ({ casualties, statBreakdown = "urgency" }) => {
   return (
     <DashboardCard
       title="נפגעים"
+      bare={bare}
       headerExtra={
         <Badge
           leftSection={<IconBandage size={12} />}
@@ -108,7 +113,7 @@ const CasualtiesCard = ({ casualties, statBreakdown = "urgency" }) => {
               <Table.Th>ליווי</Table.Th>
               <Table.Th>יעד מומלץ</Table.Th>
               <Table.Th>מוכן לפינוי</Table.Th>
-              <Table.Th>נפתח</Table.Th>
+              <Table.Th>קליטה</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

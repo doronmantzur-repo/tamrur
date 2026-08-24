@@ -4,12 +4,11 @@ import { useState } from "react";
 // External libraries
 import { Badge, Button, Group, Text, TextInput } from "@mantine/core";
 import { IconCheck, IconHelicopter, IconRadio, IconX } from "@tabler/icons-react";
-import { useDispatch } from "react-redux";
 
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
 import { AERIAL_EVAC_COLOR_VARS, AERIAL_EVAC_LABELS } from "../../constants/aerialEvacStatus";
-import { createAerialMission, updateAerialMission } from "../../features/aerialMission/aerialMissionSlice";
+import { useAerialEvacDecision } from "../../hooks/useAerialEvacDecision";
 
 // Styles
 
@@ -54,43 +53,22 @@ const denyButtonStyles = {
  * @returns {JSX.Element} The aerial evacuation status card.
  */
 const AerialEvacCard = ({ event, mission }) => {
-  const dispatch = useDispatch();
-  const [radioSign, setRadioSign] = useState(mission?.radio_sign || "");
   const [isApproving, setIsApproving] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [decidedAt, setDecidedAt] = useState(null);
+  const { status, isActionable, radioSign, setRadioSign, isSubmitting, decidedAt, handleDecision } =
+    useAerialEvacDecision(event, mission);
 
-  const status = mission?.["request-status"] || "needed";
   const color = AERIAL_EVAC_COLOR_VARS[status] || "var(--app-color-text-muted)";
-  const isActionable = status === "needed";
 
-  function handleDecision(requestStatus) {
-    setIsSubmitting(true);
-    const missionAction = mission
-      ? updateAerialMission({
-          id: mission.id,
-          requestStatus,
-          radioSign: requestStatus === "approved" ? radioSign : undefined,
-        })
-      : createAerialMission({
-          eventId: event.id,
-          requestStatus,
-          radioSign: requestStatus === "approved" ? radioSign : undefined,
-        });
-
-    dispatch(missionAction)
-      .unwrap()
-      .then(() => setDecidedAt(new Date()))
-      .catch(() => {})
-      .finally(() => {
-        setIsSubmitting(false);
-        setIsApproving(false);
-      });
+  function decide(requestStatus) {
+    handleDecision(requestStatus).finally(() => setIsApproving(false));
   }
 
   return (
     <DashboardCard
       title={event.name || "אירוע ללא שם"}
+      // The top accent bar flags the decision at a glance — green once
+      // approved, red once denied — and stays the default gold otherwise.
+      accentColor={status === "approved" || status === "denied" ? color : undefined}
       headerExtra={
         <Badge
           leftSection={<IconHelicopter size={12} />}
@@ -116,7 +94,7 @@ const AerialEvacCard = ({ event, mission }) => {
           <Button
             leftSection={<IconX size={18} stroke={1.8} />}
             loading={isSubmitting}
-            onClick={() => handleDecision("denied")}
+            onClick={() => decide("denied")}
             styles={denyButtonStyles}
           >
             דחה
@@ -168,7 +146,7 @@ const AerialEvacCard = ({ event, mission }) => {
             leftSection={<IconCheck size={18} stroke={1.8} />}
             disabled={!radioSign.trim()}
             loading={isSubmitting}
-            onClick={() => handleDecision("approved")}
+            onClick={() => decide("approved")}
             styles={approveButtonStyles}
           >
             אשר פינוי

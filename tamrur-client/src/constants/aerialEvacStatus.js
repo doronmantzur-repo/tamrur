@@ -26,6 +26,18 @@ export const AERIAL_EVAC_COLOR_VARS = {
 /** Statuses that pulse to catch the brigade's attention — the airforce's response to a request. */
 export const PULSING_AERIAL_EVAC_STATUSES = ["approved", "denied"];
 
+/**
+ * An event's effective aerial-evac request status: the mission's own status
+ * if a mission row exists yet, otherwise "needed" — there usually isn't a
+ * mission row until someone acts on the request.
+ *
+ * @param {object | undefined} mission
+ * @returns {string} The effective status.
+ */
+export function getAerialMissionStatus(mission) {
+  return mission?.["request-status"] || "needed";
+}
+
 /** The evacuation *team's* own status, distinct from the event-level aerial-evac request status above. */
 export const EVAC_TEAM_STATUS_LABELS = {
   not_started: "טרם יצא",
