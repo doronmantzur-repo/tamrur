@@ -2,11 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 
 // External libraries
-import { ActionIcon, Alert, Box, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import { ActionIcon, Alert, Box, Button, Group, Loader, Stack, Text, Title } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconLayoutKanban,
   IconMap2,
+  IconPlus,
   IconReportAnalytics,
   IconSearch,
   IconTable,
@@ -22,6 +23,7 @@ import EventQueueMap from "../../components/brigade/EventQueueMap";
 import EventQueueBoard from "../../components/brigade/EventQueueBoard";
 import AccountBar from "../../components/brigade/AccountBar";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
+import CreateEventModal from "../../components/events/CreateEventModal";
 import { fetchEvents, closeEvent } from "../../features/events/eventsSlice";
 import { fetchForces } from "../../features/forces/forcesSlice";
 import { fetchLocations } from "../../features/locations/locationsSlice";
@@ -48,11 +50,13 @@ const VIEW_OPTIONS = [
  * `closeEvent` (via `handleCloseEvent` below, returning the dispatch's
  * promise) — the optimistic move and the revert-on-failure both live in
  * EventQueueBoard itself, since it's the one that needs to react to
- * success/failure, not this page. Kanban's "+" opens the existing
- * `CreateEventForm` in a modal (`CreateEventModal`, rendered inside
- * `EventQueueBoard` itself) rather than a lightweight inline form of its
- * own, since that form already handles the one thing a lighter one
- * couldn't (a required location pin) and already guarantees new events
+ * success/failure, not this page. The header's own "פתח אירוע" button opens
+ * the existing `CreateEventForm` in a modal (`CreateEventModal`) — available
+ * regardless of which of the three views is active, rather than only from
+ * inside the kanban board (which also keeps its own separate "+" for
+ * creating directly into that view). Uses the existing form rather than a
+ * lightweight inline one, since it already handles the one thing a lighter
+ * form couldn't (a required location pin) and already guarantees new events
  * start as "gathering_casualties" (status is never sent from that form —
  * the server always decides it).
  *
@@ -62,6 +66,8 @@ const EventQueueBoardPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isAnalystButtonHovered, analystButtonHoverHandlers] = useHoverState();
+  const [isCreateEventHovered, createEventHoverHandlers] = useHoverState();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const events = useSelector((state) => state.events.events);
   const apiStatus = useSelector((state) => state.events.status);
@@ -179,6 +185,31 @@ const EventQueueBoardPage = () => {
             </ActionIcon>
 
             <ThemeToggleButton variant="glass" />
+
+            <Button
+              leftSection={<IconPlus size={18} stroke={1.8} />}
+              size="sm"
+              mih="2.5rem"
+              onClick={() => setIsCreateOpen(true)}
+              {...createEventHoverHandlers}
+              styles={{
+                root: {
+                  background: "linear-gradient(135deg, var(--app-color-primary), var(--app-color-primary-hover))",
+                  color: "var(--app-color-primary-text)",
+                  boxShadow:
+                    "0 8px 22px -6px color-mix(in srgb, var(--app-color-primary) 55%, transparent), inset 0 1px 0 rgba(255,255,255,.4)",
+                  transition: "transform 0.18s ease, box-shadow 0.18s ease",
+                  // Mantine's `styles` prop merges straight into an inline
+                  // `style` attribute, so a nested "&:hover" key here is
+                  // never compiled into real CSS — this is driven by
+                  // useHoverState instead.
+                  transform: isCreateEventHovered ? "translateY(-1px)" : undefined,
+                },
+              }}
+            >
+              פתח אירוע
+            </Button>
+
             <AccountBar />
           </Group>
         </Group>
@@ -295,6 +326,12 @@ const EventQueueBoardPage = () => {
           <EventQueueBoard events={visibleEvents} isToday={isToday} onCloseEvent={handleCloseEvent} />
         )}
       </Stack>
+
+      <CreateEventModal
+        opened={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onCreated={() => setIsCreateOpen(false)}
+      />
     </Layout>
   );
 };
