@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 // External libraries
 import { Badge, Box, Button, Grid, Group, Loader, Modal, Stack, Text, Title } from "@mantine/core";
-import { IconAlertTriangle, IconEye, IconPlus, IconShieldHalfFilled } from "@tabler/icons-react";
+import { IconAlertTriangle, IconEye, IconShieldHalfFilled } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
@@ -17,7 +17,6 @@ import EventMapCard from "./EventMapCard";
 import CasualtiesTableCard from "./CasualtiesTableCard";
 import EvacuatedCasualtiesCard from "./EvacuatedCasualtiesCard";
 import EvacuationsTable from "./EvacuationsTable";
-import CreateEventModal from "../events/CreateEventModal";
 import EventSwitcher from "../dashboard/EventSwitcher";
 import { CLOSED_STATUS, FULL_EVACUATION_STATUS } from "../../constants/eventStatus";
 import { fetchLocations } from "../../features/locations/locationsSlice";
@@ -32,7 +31,6 @@ import {
 } from "../../features/evacuations/evacuationsSlice";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
-import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -85,8 +83,6 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
 
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [isMapCollapsed, setIsMapCollapsed] = useState(false);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isCreateEventHovered, createEventHoverHandlers] = useHoverState();
 
   // Recorded locally at the moment the brigade actually closes the event,
   // rather than trusting event.closure_at to round-trip back from the API —
@@ -320,39 +316,15 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
               צפייה בלבד
             </Badge>
           ) : (
-            <>
-              <Button
-                leftSection={<IconPlus size={18} stroke={1.8} />}
-                size="sm"
-                mih="2.5rem"
-                onClick={() => setIsCreateOpen(true)}
-                {...createEventHoverHandlers}
-                styles={{
-                  root: {
-                    background: "linear-gradient(135deg, var(--app-color-primary), var(--app-color-primary-hover))",
-                    color: "var(--app-color-primary-text)",
-                    boxShadow:
-                      "0 8px 22px -6px color-mix(in srgb, var(--app-color-primary) 55%, transparent), inset 0 1px 0 rgba(255,255,255,.4)",
-                    transition: "transform 0.18s ease, box-shadow 0.18s ease",
-                    // Mantine's `styles` prop merges straight into an inline
-                    // `style` attribute, so a nested "&:hover" key here is
-                    // never compiled into real CSS — this is driven by
-                    // useHoverState instead.
-                    transform: isCreateEventHovered ? "translateY(-1px)" : undefined,
-                  },
-                }}
-              >
-                פתח אירוע
-              </Button>
-
-              {!isInitialLoad && isShowingCurrentEvent && event && (
-                <EventActionButtons
-                  isCompleted={isEventClosed}
-                  canClose={isEventFullEvacuation}
-                  onCloseEvent={() => setCloseConfirmOpen(true)}
-                />
-              )}
-            </>
+            !isInitialLoad &&
+            isShowingCurrentEvent &&
+            event && (
+              <EventActionButtons
+                isCompleted={isEventClosed}
+                canClose={isEventFullEvacuation}
+                onCloseEvent={() => setCloseConfirmOpen(true)}
+              />
+            )
           )}
 
           <AccountBar />
@@ -443,53 +415,45 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
         </Box>
       )}
 
-      {/* Neither modal is mounted in read-only mode — not merely hidden, so
-          there is nothing for any code path to open. */}
+      {/* Not mounted in read-only mode — not merely hidden, so there is
+          nothing for any code path to open. */}
       {!readOnly && (
-        <>
-          <Modal
-            opened={closeConfirmOpen}
-            onClose={() => setCloseConfirmOpen(false)}
-            centered
-            radius="sm"
-            title={
-              <Group gap="xs" wrap="nowrap">
-                <IconAlertTriangle size={22} stroke={1.8} color="var(--app-color-warning)" />
-                <Text fw={700} fz="lg" c="var(--app-color-text)">
-                  סגירת אירוע
-                </Text>
-              </Group>
-            }
-            styles={{
-              content: {
-                border: "1px solid color-mix(in srgb, var(--app-color-warning) 40%, transparent)",
-                backgroundColor: "var(--app-color-surface)",
-              },
-              header: { backgroundColor: "var(--app-color-surface)" },
-            }}
-          >
-            <Text fz="sm" c="var(--app-color-text-muted)" mb="lg">
-              האם אתה בטוח שברצונך לסגור את האירוע? הפעולה סופית ולא ניתנת לביטול.
-            </Text>
-            <Group justify="flex-end" gap="sm">
-              <Button variant="default" onClick={() => setCloseConfirmOpen(false)}>
-                ביטול
-              </Button>
-              <Button
-                styles={{ root: { backgroundColor: "var(--app-color-warning)", color: "#FFFFFF" } }}
-                onClick={confirmCloseEvent}
-              >
-                סגור אירוע
-              </Button>
+        <Modal
+          opened={closeConfirmOpen}
+          onClose={() => setCloseConfirmOpen(false)}
+          centered
+          radius="sm"
+          title={
+            <Group gap="xs" wrap="nowrap">
+              <IconAlertTriangle size={22} stroke={1.8} color="var(--app-color-warning)" />
+              <Text fw={700} fz="lg" c="var(--app-color-text)">
+                סגירת אירוע
+              </Text>
             </Group>
-          </Modal>
-
-          <CreateEventModal
-            opened={isCreateOpen}
-            onClose={() => setIsCreateOpen(false)}
-            onCreated={() => setIsCreateOpen(false)}
-          />
-        </>
+          }
+          styles={{
+            content: {
+              border: "1px solid color-mix(in srgb, var(--app-color-warning) 40%, transparent)",
+              backgroundColor: "var(--app-color-surface)",
+            },
+            header: { backgroundColor: "var(--app-color-surface)" },
+          }}
+        >
+          <Text fz="sm" c="var(--app-color-text-muted)" mb="lg">
+            האם אתה בטוח שברצונך לסגור את האירוע? הפעולה סופית ולא ניתנת לביטול.
+          </Text>
+          <Group justify="flex-end" gap="sm">
+            <Button variant="default" onClick={() => setCloseConfirmOpen(false)}>
+              ביטול
+            </Button>
+            <Button
+              styles={{ root: { backgroundColor: "var(--app-color-warning)", color: "#FFFFFF" } }}
+              onClick={confirmCloseEvent}
+            >
+              סגור אירוע
+            </Button>
+          </Group>
+        </Modal>
       )}
     </Stack>
   );
