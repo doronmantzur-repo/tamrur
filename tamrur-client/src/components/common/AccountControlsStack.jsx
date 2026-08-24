@@ -16,24 +16,26 @@ import AccountBar from "../brigade/AccountBar";
  * wraps (via Mantine's own `wrap="wrap"`) if there isn't room for all of
  * them on one row either.
  *
- * `align` controls which edge both rows line up against — "flex-end" (the
- * default) is the visual left in this app's RTL layout, matching where
- * AccountBar has always sat; pass "flex-start" for a container that isn't
- * itself already flush against that edge (e.g. an absolutely-positioned
- * corner cluster written with physical, not logical, CSS).
+ * Both rows are cross-axis aligned to "flex-end", the visual left in this
+ * app's `dir="rtl"` layout, matching where AccountBar has always sat.
+ * That's true regardless of whether the parent element is in normal flow or
+ * absolutely positioned with a physical `left` — flex/grid alignment values
+ * like "flex-end" follow the document's `direction`, not the positioning
+ * scheme of whatever box they're inside, so there's no "physical" variant to
+ * opt into here.
  *
  * Convention: pass the theme toggle as the *last* child. In a `dir="rtl"`
  * flex row the last JSX child renders visually leftmost, and every page
  * keeps the toggle there — so order other controls before it, not after.
  *
- * @param {{ children?: React.ReactNode, align?: "flex-start" | "flex-end", style?: React.CSSProperties }} props
+ * @param {{ children?: React.ReactNode, style?: React.CSSProperties }} props
  * @returns {JSX.Element} The two-row account/controls stack.
  */
-const AccountControlsStack = ({ children, align = "flex-end", style }) => (
-  <Stack gap="md" align={align} style={style}>
+const AccountControlsStack = ({ children, style }) => (
+  <Stack gap="md" align="flex-end" style={style}>
     <AccountBar />
     {children && (
-      <Group gap="sm" wrap="wrap" justify={align}>
+      <Group gap="sm" wrap="wrap" justify="flex-end">
         {children}
       </Group>
     )}

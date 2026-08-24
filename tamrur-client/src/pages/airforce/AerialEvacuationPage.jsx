@@ -68,11 +68,11 @@ const AerialEvacuationPage = () => {
         style={{
           position: "absolute",
           top: "var(--mantine-spacing-md)",
-          left: "var(--mantine-spacing-md)",
+          left: "var(--app-page-padding)",
           zIndex: 20,
         }}
       >
-        <AccountControlsStack align="flex-start">
+        <AccountControlsStack>
           <ThemeToggleButton variant="glass" />
         </AccountControlsStack>
       </div>

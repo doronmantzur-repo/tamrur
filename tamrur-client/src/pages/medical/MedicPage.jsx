@@ -114,11 +114,11 @@ const MedicPage = () => {
         style={{
           position: "absolute",
           top: "var(--mantine-spacing-md)",
-          left: "var(--mantine-spacing-md)",
+          left: "var(--app-page-padding)",
           zIndex: 20,
         }}
       >
-        <AccountControlsStack align="flex-start">
+        <AccountControlsStack>
           <ActionIcon
             aria-label="שאילתת ספר הטראומה"
             title="שאילתת ספר הטראומה"
