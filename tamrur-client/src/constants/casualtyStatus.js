@@ -339,6 +339,27 @@ export function matchesUrgencySelection(casualty, selected) {
 }
 
 /**
+ * The most urgent (lowest) `evac-priority` among a list of casualties.
+ *
+ * Used to rank events in the airforce triage queue — an event's most urgent
+ * casualty determines how soon it needs an aerial-evac decision. Ignores
+ * casualties with no priority set yet, matching `sortCasualties`'s
+ * "blanks aren't a value" convention.
+ *
+ * @param {Array<Object>} casualties
+ * @returns {number | null} The lowest evac-priority present, or null if none is set.
+ */
+export function getMostUrgentEvacPriority(casualties) {
+  const priorities = casualties
+    .map((casualty) => casualty["evac-priority"])
+    .filter((value) => value !== null && value !== undefined)
+    .map(Number)
+    .filter((value) => !Number.isNaN(value));
+
+  return priorities.length ? Math.min(...priorities) : null;
+}
+
+/**
  * Sorts casualties by one numeric column, blanks last.
  *
  * Blanks sink to the bottom in *both* directions rather than following the sort:
