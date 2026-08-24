@@ -2,18 +2,17 @@
 import { useEffect, useState } from "react";
 
 // External libraries
-import { Box, Group, SimpleGrid, Stack, Text } from "@mantine/core";
-import { IconHistory, IconLayoutKanban, IconList, IconTable } from "@tabler/icons-react";
+import { Box, Group, Stack } from "@mantine/core";
+import { IconLayoutKanban, IconList, IconTable } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
 import AuthHeader from "../../components/auth/AuthHeader";
 import AuthFooter from "../../components/auth/AuthFooter";
-import AerialEvacCard from "../../components/airforce/AerialEvacCard";
 import TriageQueueList from "../../components/airforce/TriageQueueList";
 import AerialEvacTable from "../../components/airforce/AerialEvacTable";
-import CasualtiesCard from "../../components/dashboard/CasualtiesCard";
+import AerialEvacKanbanBoard from "../../components/airforce/AerialEvacKanbanBoard";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import AccountControlsStack from "../../components/common/AccountControlsStack";
 import { fetchEvents } from "../../features/events/eventsSlice";
@@ -23,16 +22,11 @@ import { POLL_INTERVAL_MS } from "../../constants/polling";
 
 // Styles
 
-/**
- * The ways to look at the aerial-evac queue. "legacy" is temporary scaffolding
- * for the rollout: it keeps today's 2-column card grid reachable while table
- * and kanban are still placeholders, and should be removed once both ship.
- */
+/** The three ways to look at the aerial-evac queue. Triage is the default — the "what needs my attention right now" view. */
 const VIEW_OPTIONS = [
   { key: "triage", label: "תור", icon: IconList },
   { key: "table", label: "טבלה", icon: IconTable },
   { key: "kanban", label: "לוח", icon: IconLayoutKanban },
-  { key: "legacy", label: "תצוגה קודמת", icon: IconHistory },
 ];
 
 /**
@@ -189,33 +183,11 @@ const AerialEvacuationPage = () => {
             )}
 
             {viewMode === "kanban" && (
-              <Text ta="center" c="var(--app-color-text-muted)" py="xl">
-                התצוגה הזו תמומש בהמשך
-              </Text>
-            )}
-
-            {/* Temporary: today's original view, kept reachable until table
-                and kanban are both implemented — remove this branch and the
-                "legacy" tab in VIEW_OPTIONS once they are. */}
-            {viewMode === "legacy" && (
-              <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl" verticalSpacing="xl">
-                {aerialEvacEvents.map((event) => (
-                  <Stack key={event.id} align="stretch" gap="md">
-                    <AerialEvacCard
-                      event={event}
-                      mission={missionsByEventId[event.id]?.[0]}
-                    />
-                    {/* Airforce only needs to see who's actually waiting on them,
-                        broken down by evacuation posture rather than triage
-                        urgency — that's what determines how each casualty
-                        loads onto the helicopter. */}
-                    <CasualtiesCard
-                      casualties={(casualtiesByEventId[event.id] || []).filter((casualty) => casualty.helivac)}
-                      statBreakdown="ability"
-                    />
-                  </Stack>
-                ))}
-              </SimpleGrid>
+              <AerialEvacKanbanBoard
+                events={aerialEvacEvents}
+                casualtiesByEventId={casualtiesByEventId}
+                missionsByEventId={missionsByEventId}
+              />
             )}
 
             <AuthFooter />

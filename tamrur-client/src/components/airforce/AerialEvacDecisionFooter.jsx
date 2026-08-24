@@ -6,6 +6,7 @@ import { Button, Group } from "@mantine/core";
 import { IconCheck, IconRadio, IconX } from "@tabler/icons-react";
 
 // Internal application modules
+import DenyConfirmModal from "./DenyConfirmModal";
 import { AERIAL_EVAC_COLOR_VARS } from "../../constants/aerialEvacStatus";
 import { useAerialEvacDecision } from "../../hooks/useAerialEvacDecision";
 
@@ -41,12 +42,13 @@ const DECISION_CONTROL_HEIGHT = "3rem";
  * placeholder text, and chasing that through Mantine's internal styles was
  * less reliable than just controlling the box directly. Sized to
  * `DECISION_CONTROL_HEIGHT` so it lines up exactly with the deny/approve
- * buttons beside it.
+ * buttons beside it. Exported so the kanban board's approve modal can reuse
+ * the same field instead of re-hitting the same Mantine issue.
  *
  * @param {{ id: string, value: string, onChange: (event: React.ChangeEvent<HTMLInputElement>) => void }} props
  * @returns {JSX.Element} The radio sign field.
  */
-function RadioSignInput({ id, value, onChange }) {
+export function RadioSignInput({ id, value, onChange }) {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -98,16 +100,17 @@ function RadioSignInput({ id, value, onChange }) {
 
 /**
  * The aerial-evac approve/deny footer, shared by every Airforce view that
- * shows an event's full decision UI (triage queue, table — kanban and any
- * future view need it too, since every view offers the same full
- * functionality, just laid out differently).
+ * shows an event's full decision UI inline (triage queue, table — kanban
+ * uses the same underlying pieces via its own modal instead, since every
+ * view offers the same full functionality, just laid out differently).
  *
- * Unlike `AerialEvacCard`'s two-step approve flow, the radio call-sign input
- * and both buttons are always shown together; approving is just disabled
- * until the call sign is filled in. Once decided, a colored pill states the
- * outcome (and, if approved, the radio sign that was used) — read from the
- * mission itself rather than a session-local decision timestamp, so it still
- * shows correctly after a reload or for a decision made by someone else.
+ * The radio call-sign input and both buttons are always shown together;
+ * approving is just disabled until the call sign is filled in, and denying
+ * opens `DenyConfirmModal` rather than dispatching immediately. Once
+ * decided, a colored pill states the outcome (and, if approved, the radio
+ * sign that was used) — read from the mission itself rather than a
+ * session-local decision timestamp, so it still shows correctly after a
+ * reload or for a decision made by someone else.
  *
  * @param {{ event: object, mission: object | undefined }} props
  * @returns {JSX.Element} The decision footer.
@@ -118,6 +121,7 @@ const AerialEvacDecisionFooter = ({ event, mission }) => {
     mission,
   );
   const color = AERIAL_EVAC_COLOR_VARS[status] || "var(--app-color-text-muted)";
+  const [isDenyConfirmOpen, setIsDenyConfirmOpen] = useState(false);
 
   if (isActionable) {
     const isDenyPending = pendingAction === "denied";
@@ -127,35 +131,44 @@ const AerialEvacDecisionFooter = ({ event, mission }) => {
     const otherPending = pendingAction !== null;
 
     return (
-      <div style={{ display: "flex", alignItems: "flex-end", gap: "0.6rem", flexWrap: "wrap" }}>
-        <RadioSignInput
-          id={`radio-sign-${event.id}`}
-          value={radioSign}
-          onChange={(evt) => setRadioSign(evt.target.value)}
+      <>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: "0.6rem", flexWrap: "wrap" }}>
+          <RadioSignInput
+            id={`radio-sign-${event.id}`}
+            value={radioSign}
+            onChange={(evt) => setRadioSign(evt.target.value)}
+          />
+
+          <Button
+            leftSection={<IconX size={18} stroke={1.8} />}
+            disabled={otherPending}
+            onClick={() => setIsDenyConfirmOpen(true)}
+            styles={denyButtonStyles}
+            style={{ height: DECISION_CONTROL_HEIGHT }}
+          >
+            דחה
+          </Button>
+
+          <Button
+            leftSection={<IconCheck size={18} stroke={1.8} />}
+            disabled={!radioSign.trim() || (otherPending && !isApprovePending)}
+            loading={isApprovePending}
+            onClick={() => handleDecision("approved")}
+            styles={approveButtonStyles}
+            style={{ height: DECISION_CONTROL_HEIGHT }}
+          >
+            אשר פינוי
+          </Button>
+        </div>
+
+        <DenyConfirmModal
+          opened={isDenyConfirmOpen}
+          eventName={event.name || "אירוע ללא שם"}
+          onCancel={() => setIsDenyConfirmOpen(false)}
+          onConfirm={() => handleDecision("denied").then(() => setIsDenyConfirmOpen(false))}
+          isSubmitting={isDenyPending}
         />
-
-        <Button
-          leftSection={<IconX size={18} stroke={1.8} />}
-          loading={isDenyPending}
-          disabled={otherPending && !isDenyPending}
-          onClick={() => handleDecision("denied")}
-          styles={denyButtonStyles}
-          style={{ height: DECISION_CONTROL_HEIGHT }}
-        >
-          דחה
-        </Button>
-
-        <Button
-          leftSection={<IconCheck size={18} stroke={1.8} />}
-          disabled={!radioSign.trim() || (otherPending && !isApprovePending)}
-          loading={isApprovePending}
-          onClick={() => handleDecision("approved")}
-          styles={approveButtonStyles}
-          style={{ height: DECISION_CONTROL_HEIGHT }}
-        >
-          אשר פינוי
-        </Button>
-      </div>
+      </>
     );
   }
 

@@ -16,6 +16,7 @@ import { EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from 
 import { EVAC_ABILITY_COLOR_VARS, EVAC_ABILITY_LABELS, getMostUrgentEvacPriority } from "../../constants/casualtyStatus";
 import { toLatLng } from "../../utils/geo";
 import { compareValues, nextSortDirection } from "../../utils/tableFilterSort";
+import { byDefaultPriority } from "../../utils/aerialEvacRowOrder";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
 import { formatDuration } from "../../utils/duration";
 
@@ -41,23 +42,6 @@ const COLUMN_ACCESSORS = {
   casualties: (row) => row.casualties.length,
   elapsed: (row) => new Date(row.event.created_at).getTime(),
 };
-
-/**
- * Default (no explicit column sort) row order: most urgent first — lowest
- * `evac-priority` among a row's helivac casualties, `null` last, then
- * longest-waiting first among ties. Used independently by each section, so
- * a pending row and a decided row are never compared against each other —
- * that split already happened before this runs.
- */
-function byDefaultPriority(a, b) {
-  if (a.topPriority !== b.topPriority) {
-    if (a.topPriority === null) return 1;
-    if (b.topPriority === null) return -1;
-    return a.topPriority - b.topPriority;
-  }
-
-  return new Date(a.event.created_at) - new Date(b.event.created_at);
-}
 
 /**
  * The location cell: click the coordinates to copy them, with a "מיקום הועתק"

@@ -11,22 +11,22 @@ import { createAerialMission, updateAerialMission } from "../features/aerialMiss
 // Styles
 
 /**
- * Shared approve/deny logic for an event's aerial-evacuation request, used by
- * both `AerialEvacCard` and the triage queue's decision footer so the two
- * UIs dispatch identically instead of duplicating this. Either decision
- * creates the event's `aerial_mission` row if it doesn't have one yet, or
- * updates it if it does.
+ * Shared approve/deny logic for an event's aerial-evacuation request, used
+ * by every view's decision UI — `AerialEvacDecisionFooter` (triage, table)
+ * and `AerialEvacKanbanDecisionModal` (kanban) — so they all dispatch
+ * identically instead of duplicating this. Either decision creates the
+ * event's `aerial_mission` row if it doesn't have one yet, or updates it if
+ * it does.
  *
  * `decidedAt` is local state only, not persisted server-side — it reflects a
  * decision made in this browser tab this session and is lost on refresh.
  *
  * `pendingAction` (not just a single `isSubmitting` boolean) tracks *which*
  * decision is in flight — "approved", "denied", or null — so a UI showing
- * both buttons at once (the triage/table decision footer) can put the
- * loading spinner on only the one actually clicked, instead of both.
- * `isSubmitting` is kept as a derived convenience for callers (like
- * `AerialEvacCard`) that only ever show one action at a time and don't need
- * to distinguish which.
+ * both buttons at once (the decision footer) can put the loading spinner on
+ * only the one actually clicked, instead of both. `isSubmitting` is kept as
+ * a derived convenience for callers that only ever show one action at a
+ * time and don't need to distinguish which.
  *
  * @param {object} event
  * @param {object | undefined} mission
