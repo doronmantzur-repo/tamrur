@@ -2,9 +2,10 @@
 import { useEffect, useState } from "react";
 
 // External libraries
-import { Badge, Box, Button, Grid, Group, Loader, Modal, Stack, Text, Title } from "@mantine/core";
-import { IconAlertTriangle, IconEye, IconShieldHalfFilled } from "@tabler/icons-react";
+import { ActionIcon, Badge, Box, Button, Grid, Group, Loader, Modal, Stack, Text, Title } from "@mantine/core";
+import { IconAlertTriangle, IconEye, IconLayoutKanban, IconShieldHalfFilled } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 // Internal application modules
 import ThemeToggleButton from "../common/ThemeToggleButton";
@@ -31,6 +32,7 @@ import {
 } from "../../features/evacuations/evacuationsSlice";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -80,9 +82,11 @@ const EMPTY_ARRAY = [];
  */
 const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [isMapCollapsed, setIsMapCollapsed] = useState(false);
+  const [isBackButtonHovered, backButtonHoverHandlers] = useHoverState();
 
   // Recorded locally at the moment the brigade actually closes the event,
   // rather than trusting event.closure_at to round-trip back from the API —
@@ -293,27 +297,55 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
           )}
         </Stack>
 
-        <AccountControlsStack style={{ justifySelf: "end" }}>
-          {readOnly ? (
-            // States the mode plainly, so an operator who cannot find the action
-            // buttons knows they were withheld rather than failing to render.
-            <Badge
-              variant="outline"
-              leftSection={<IconEye size={14} stroke={1.8} />}
-              styles={{
-                root: {
-                  backgroundColor: "var(--app-color-surface-high)",
-                  borderColor: "var(--app-color-border)",
-                  color: "var(--app-color-text-muted)",
-                  height: "2.5rem",
-                  paddingInline: "0.75rem",
-                },
-                label: { overflow: "visible" },
-              }}
-            >
-              צפייה בלבד
-            </Badge>
-          ) : (
+        <Stack gap="md" align="flex-end" style={{ justifySelf: "end" }}>
+          <AccountControlsStack>
+            {readOnly ? (
+              // States the mode plainly, so an operator who cannot find the action
+              // buttons knows they were withheld rather than failing to render.
+              <Badge
+                variant="outline"
+                leftSection={<IconEye size={14} stroke={1.8} />}
+                styles={{
+                  root: {
+                    backgroundColor: "var(--app-color-surface-high)",
+                    borderColor: "var(--app-color-border)",
+                    color: "var(--app-color-text-muted)",
+                    height: "2.5rem",
+                    paddingInline: "0.75rem",
+                  },
+                  label: { overflow: "visible" },
+                }}
+              >
+                צפייה בלבד
+              </Badge>
+            ) : (
+              <ActionIcon
+                aria-label="חזרה ללוח מעקב אירועים"
+                title="חזרה ללוח מעקב אירועים"
+                variant="default"
+                size={40}
+                radius="xl"
+                onClick={() => navigate("/brigade")}
+                {...backButtonHoverHandlers}
+                style={{
+                  backgroundColor: isBackButtonHovered ? "var(--app-color-primary)" : "var(--app-color-surface)",
+                  borderColor: isBackButtonHovered ? "var(--app-color-primary)" : "var(--app-color-border)",
+                  color: isBackButtonHovered ? "var(--app-color-primary-text)" : "var(--app-color-text)",
+                  transform: isBackButtonHovered ? "translateY(-1px)" : undefined,
+                  transition:
+                    "background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
+                }}
+              >
+                <IconLayoutKanban aria-hidden="true" size={20} stroke={1.8} />
+              </ActionIcon>
+            )}
+
+            {/* Last child, so it renders visually leftmost in this RTL row —
+                every page's controls row keeps the theme toggle there. */}
+            <ThemeToggleButton variant="glass" />
+          </AccountControlsStack>
+
+          {!readOnly &&
             !isInitialLoad &&
             isShowingCurrentEvent &&
             event && (
@@ -322,13 +354,8 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
                 canClose={isEventFullEvacuation}
                 onCloseEvent={() => setCloseConfirmOpen(true)}
               />
-            )
-          )}
-
-          {/* Last child, so it renders visually leftmost in this RTL row —
-              every page's controls row keeps the theme toggle there. */}
-          <ThemeToggleButton variant="glass" />
-        </AccountControlsStack>
+            )}
+        </Stack>
       </Box>
 
       {isInitialLoad && (
