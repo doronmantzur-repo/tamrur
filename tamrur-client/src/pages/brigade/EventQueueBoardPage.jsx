@@ -249,7 +249,7 @@ const EventQueueBoardPage = () => {
           <Group
             gap={4}
             p={4}
-            mt={8}
+            mt={56}
             style={{
               backgroundColor: "var(--app-color-surface)",
               border: "1px solid var(--app-color-border)",
