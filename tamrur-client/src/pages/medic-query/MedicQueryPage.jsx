@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import PdfQaCard from "../../components/analyst/PdfQaCard";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
-import AccountBar from "../../components/brigade/AccountBar";
+import AccountControlsStack from "../../components/common/AccountControlsStack";
 import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
@@ -30,34 +30,31 @@ const MedicQueryPage = () => {
           position: "absolute",
           top: "var(--mantine-spacing-md)",
           left: "var(--mantine-spacing-md)",
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--mantine-spacing-sm)",
           zIndex: 20,
         }}
       >
-        <ActionIcon
-          aria-label="חזרה לממשק הרפואי"
-          title="חזרה לממשק הרפואי"
-          variant="default"
-          size={40}
-          radius="xl"
-          onClick={() => navigate("/medic")}
-          {...backButtonHoverHandlers}
-          style={{
-            backgroundColor: isBackButtonHovered ? "var(--app-color-primary)" : "var(--app-color-surface)",
-            borderColor: isBackButtonHovered ? "var(--app-color-primary)" : "var(--app-color-border)",
-            color: isBackButtonHovered ? "var(--app-color-primary-text)" : "var(--app-color-text)",
-            transform: isBackButtonHovered ? "translateY(-1px)" : undefined,
-            transition: "background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
-          }}
-        >
-          <IconStethoscope aria-hidden="true" size={20} stroke={1.8} />
-        </ActionIcon>
+        <AccountControlsStack align="flex-start">
+          <ActionIcon
+            aria-label="חזרה לממשק הרפואי"
+            title="חזרה לממשק הרפואי"
+            variant="default"
+            size={40}
+            radius="xl"
+            onClick={() => navigate("/medic")}
+            {...backButtonHoverHandlers}
+            style={{
+              backgroundColor: isBackButtonHovered ? "var(--app-color-primary)" : "var(--app-color-surface)",
+              borderColor: isBackButtonHovered ? "var(--app-color-primary)" : "var(--app-color-border)",
+              color: isBackButtonHovered ? "var(--app-color-primary-text)" : "var(--app-color-text)",
+              transform: isBackButtonHovered ? "translateY(-1px)" : undefined,
+              transition: "background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
+            }}
+          >
+            <IconStethoscope aria-hidden="true" size={20} stroke={1.8} />
+          </ActionIcon>
 
-        <ThemeToggleButton variant="glass" />
-
-        <AccountBar />
+          <ThemeToggleButton variant="glass" />
+        </AccountControlsStack>
       </div>
 
       <Box

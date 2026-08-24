@@ -20,7 +20,7 @@ import MedicEventBar from "../../components/medical/MedicEventBar";
 import MedicCasualtiesCard from "../../components/medical/MedicCasualtiesCard";
 import CasualtyFormModal from "../../components/medical/CasualtyFormModal";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
-import AccountBar from "../../components/brigade/AccountBar";
+import AccountControlsStack from "../../components/common/AccountControlsStack";
 import { useHoverState } from "../../hooks/useHoverState";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { fetchEvents } from "../../features/events/eventsSlice";
@@ -115,34 +115,31 @@ const MedicPage = () => {
           position: "absolute",
           top: "var(--mantine-spacing-md)",
           left: "var(--mantine-spacing-md)",
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--mantine-spacing-sm)",
           zIndex: 20,
         }}
       >
-        <ActionIcon
-          aria-label="שאילתת ספר הטראומה"
-          title="שאילתת ספר הטראומה"
-          variant="default"
-          size={40}
-          radius="xl"
-          onClick={() => navigate("/query")}
-          {...queryButtonHoverHandlers}
-          style={{
-            backgroundColor: isQueryButtonHovered ? "var(--app-color-primary)" : "var(--app-color-surface)",
-            borderColor: isQueryButtonHovered ? "var(--app-color-primary)" : "var(--app-color-border)",
-            color: isQueryButtonHovered ? "var(--app-color-primary-text)" : "var(--app-color-text)",
-            transform: isQueryButtonHovered ? "translateY(-1px)" : undefined,
-            transition: "background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
-          }}
-        >
-          <IconMessageQuestion aria-hidden="true" size={20} stroke={1.8} />
-        </ActionIcon>
+        <AccountControlsStack align="flex-start">
+          <ActionIcon
+            aria-label="שאילתת ספר הטראומה"
+            title="שאילתת ספר הטראומה"
+            variant="default"
+            size={40}
+            radius="xl"
+            onClick={() => navigate("/query")}
+            {...queryButtonHoverHandlers}
+            style={{
+              backgroundColor: isQueryButtonHovered ? "var(--app-color-primary)" : "var(--app-color-surface)",
+              borderColor: isQueryButtonHovered ? "var(--app-color-primary)" : "var(--app-color-border)",
+              color: isQueryButtonHovered ? "var(--app-color-primary-text)" : "var(--app-color-text)",
+              transform: isQueryButtonHovered ? "translateY(-1px)" : undefined,
+              transition: "background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
+            }}
+          >
+            <IconMessageQuestion aria-hidden="true" size={20} stroke={1.8} />
+          </ActionIcon>
 
-        <ThemeToggleButton variant="glass" />
-
-        <AccountBar />
+          <ThemeToggleButton variant="glass" />
+        </AccountControlsStack>
       </div>
 
       <Box
@@ -175,7 +172,7 @@ const MedicPage = () => {
         align="stretch"
         mih="100vh"
         px="var(--app-page-padding-mobile)"
-        pt={64}
+        pt={112}
         pb="md"
         pos="relative"
         style={{
@@ -186,8 +183,9 @@ const MedicPage = () => {
           {/* Tight rhythm on purpose: everything above the casualty table is
               chrome, and the table is what the medic actually works in. The
               extra top offset (vs. the pb below) clears the absolutely
-              positioned corner buttons — otherwise the event dropdown here
-              can run under them on narrower viewports. */}
+              positioned corner cluster — now two rows tall (AccountBar above
+              the other controls) — otherwise the event dropdown here can run
+              under them on narrower viewports. */}
           <Stack align="stretch" gap="sm">
             <MedicEventBar
               selectedEventId={selectedEventId}

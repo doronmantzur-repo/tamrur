@@ -12,7 +12,7 @@ import AuthFooter from "../../components/auth/AuthFooter";
 import AerialEvacCard from "../../components/airforce/AerialEvacCard";
 import CasualtiesCard from "../../components/dashboard/CasualtiesCard";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
-import AccountBar from "../../components/brigade/AccountBar";
+import AccountControlsStack from "../../components/common/AccountControlsStack";
 import { fetchEvents } from "../../features/events/eventsSlice";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { fetchAerialMissionsByEvent } from "../../features/aerialMission/aerialMissionSlice";
@@ -69,15 +69,12 @@ const AerialEvacuationPage = () => {
           position: "absolute",
           top: "var(--mantine-spacing-md)",
           left: "var(--mantine-spacing-md)",
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--mantine-spacing-sm)",
           zIndex: 20,
         }}
       >
-        <ThemeToggleButton variant="glass" />
-
-        <AccountBar />
+        <AccountControlsStack align="flex-start">
+          <ThemeToggleButton variant="glass" />
+        </AccountControlsStack>
       </div>
 
       <Box
