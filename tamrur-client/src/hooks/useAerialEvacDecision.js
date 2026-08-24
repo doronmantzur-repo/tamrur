@@ -20,6 +20,14 @@ import { createAerialMission, updateAerialMission } from "../features/aerialMiss
  * `decidedAt` is local state only, not persisted server-side — it reflects a
  * decision made in this browser tab this session and is lost on refresh.
  *
+ * `pendingAction` (not just a single `isSubmitting` boolean) tracks *which*
+ * decision is in flight — "approved", "denied", or null — so a UI showing
+ * both buttons at once (the triage/table decision footer) can put the
+ * loading spinner on only the one actually clicked, instead of both.
+ * `isSubmitting` is kept as a derived convenience for callers (like
+ * `AerialEvacCard`) that only ever show one action at a time and don't need
+ * to distinguish which.
+ *
  * @param {object} event
  * @param {object | undefined} mission
  * @returns {{
@@ -28,6 +36,7 @@ import { createAerialMission, updateAerialMission } from "../features/aerialMiss
  *   radioSign: string,
  *   setRadioSign: (value: string) => void,
  *   isSubmitting: boolean,
+ *   pendingAction: "approved" | "denied" | null,
  *   decidedAt: Date | null,
  *   handleDecision: (requestStatus: "approved" | "denied") => Promise<void>,
  * }}
@@ -35,14 +44,14 @@ import { createAerialMission, updateAerialMission } from "../features/aerialMiss
 export function useAerialEvacDecision(event, mission) {
   const dispatch = useDispatch();
   const [radioSign, setRadioSign] = useState(mission?.radio_sign || "");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
   const [decidedAt, setDecidedAt] = useState(null);
 
   const status = getAerialMissionStatus(mission);
   const isActionable = status === "needed";
 
   function handleDecision(requestStatus) {
-    setIsSubmitting(true);
+    setPendingAction(requestStatus);
     const missionAction = mission
       ? updateAerialMission({
           id: mission.id,
@@ -59,8 +68,17 @@ export function useAerialEvacDecision(event, mission) {
       .unwrap()
       .then(() => setDecidedAt(new Date()))
       .catch(() => {})
-      .finally(() => setIsSubmitting(false));
+      .finally(() => setPendingAction(null));
   }
 
-  return { status, isActionable, radioSign, setRadioSign, isSubmitting, decidedAt, handleDecision };
+  return {
+    status,
+    isActionable,
+    radioSign,
+    setRadioSign,
+    isSubmitting: pendingAction !== null,
+    pendingAction,
+    decidedAt,
+    handleDecision,
+  };
 }

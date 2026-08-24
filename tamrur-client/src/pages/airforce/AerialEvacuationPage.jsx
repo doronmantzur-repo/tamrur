@@ -12,6 +12,7 @@ import AuthHeader from "../../components/auth/AuthHeader";
 import AuthFooter from "../../components/auth/AuthFooter";
 import AerialEvacCard from "../../components/airforce/AerialEvacCard";
 import TriageQueueList from "../../components/airforce/TriageQueueList";
+import AerialEvacTable from "../../components/airforce/AerialEvacTable";
 import CasualtiesCard from "../../components/dashboard/CasualtiesCard";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import AccountControlsStack from "../../components/common/AccountControlsStack";
@@ -179,7 +180,15 @@ const AerialEvacuationPage = () => {
               />
             )}
 
-            {(viewMode === "table" || viewMode === "kanban") && (
+            {viewMode === "table" && (
+              <AerialEvacTable
+                events={aerialEvacEvents}
+                casualtiesByEventId={casualtiesByEventId}
+                missionsByEventId={missionsByEventId}
+              />
+            )}
+
+            {viewMode === "kanban" && (
               <Text ta="center" c="var(--app-color-text-muted)" py="xl">
                 התצוגה הזו תמומש בהמשך
               </Text>
