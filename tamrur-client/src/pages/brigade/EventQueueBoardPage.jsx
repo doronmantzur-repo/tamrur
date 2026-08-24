@@ -214,41 +214,42 @@ const EventQueueBoardPage = () => {
           </AccountControlsStack>
         </Group>
 
-        <Group
-          gap="xs"
-          style={{
-            flex: 1,
-            minWidth: "16rem",
-            maxWidth: "22rem",
-            backgroundColor: "var(--app-color-surface)",
-            border: "1px solid var(--app-color-border)",
-            borderRadius: "var(--mantine-radius-sm)",
-            padding: "0.4rem 0.7rem",
-          }}
-        >
-          <IconSearch size={15} stroke={2} color="var(--app-color-text-muted)" />
-          <input
-            type="text"
-            placeholder="חיפוש אירוע לפי שם..."
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.currentTarget.value)}
+        <Group justify="space-between" gap="sm" wrap="wrap">
+          <Group
+            gap="xs"
             style={{
               flex: 1,
-              minWidth: 0,
-              background: "transparent",
-              border: 0,
-              outline: "none",
-              color: "var(--app-color-text)",
-              fontFamily: "inherit",
-              fontSize: "0.9rem",
+              minWidth: "16rem",
+              maxWidth: "22rem",
+              backgroundColor: "var(--app-color-surface)",
+              border: "1px solid var(--app-color-border)",
+              borderRadius: "var(--mantine-radius-sm)",
+              padding: "0.4rem 0.7rem",
             }}
-          />
-        </Group>
+          >
+            <IconSearch size={15} stroke={2} color="var(--app-color-text-muted)" />
+            <input
+              type="text"
+              placeholder="חיפוש אירוע לפי שם..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.currentTarget.value)}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: "transparent",
+                border: 0,
+                outline: "none",
+                color: "var(--app-color-text)",
+                fontFamily: "inherit",
+                fontSize: "0.9rem",
+              }}
+            />
+          </Group>
 
-        <Group justify="space-between" gap="sm" wrap="wrap">
           <Group
             gap={4}
             p={4}
+            mt={8}
             style={{
               backgroundColor: "var(--app-color-surface)",
               border: "1px solid var(--app-color-border)",
@@ -281,9 +282,9 @@ const EventQueueBoardPage = () => {
               </Box>
             ))}
           </Group>
-
-          <DateNavBar selectedDate={selectedDate} onChange={setSelectedDate} />
         </Group>
+
+        <DateNavBar selectedDate={selectedDate} onChange={setSelectedDate} />
 
         {apiStatus === "failed" && (
           <Alert
