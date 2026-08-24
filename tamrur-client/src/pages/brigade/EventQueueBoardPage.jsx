@@ -1,5 +1,5 @@
 // React
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // External libraries
 import { ActionIcon, Alert, Box, Button, Group, Loader, Stack, Text, Title } from "@mantine/core";
@@ -11,6 +11,7 @@ import {
   IconReportAnalytics,
   IconSearch,
   IconTable,
+  IconX,
 } from "@tabler/icons-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -22,6 +23,7 @@ import EventQueueTable from "../../components/brigade/EventQueueTable";
 import EventQueueMap from "../../components/brigade/EventQueueMap";
 import EventQueueBoard from "../../components/brigade/EventQueueBoard";
 import AccountControlsStack from "../../components/common/AccountControlsStack";
+import AppBrandMark from "../../components/common/AppBrandMark";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import CreateEventModal from "../../components/events/CreateEventModal";
 import { fetchEvents, closeEvent } from "../../features/events/eventsSlice";
@@ -40,6 +42,136 @@ const VIEW_OPTIONS = [
   { key: "map", label: "מפה", icon: IconMap2 },
   { key: "board", label: "לוח", icon: IconLayoutKanban },
 ];
+
+/**
+ * The clear ("x") button, only rendered once there's something to clear.
+ * Hover/press feedback is the same local-state pattern `EventActionButtons`
+ * already uses elsewhere (`useHoverState` + `onMouseDown`/`onMouseUp`, with
+ * `onMouseLeave` resetting both) rather than a `styles` "&:hover"/"&:active"
+ * key, since this sits on a plain `<button>` with an inline `style`, where
+ * pseudo-selectors inside a style object are never compiled into real CSS.
+ *
+ * @param {{ onClick: () => void }} props
+ * @returns {JSX.Element} The clear button.
+ */
+function ClearSearchButton({ onClick }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+  const [isPressed, setIsPressed] = useState(false);
+  const isActive = isHovered || isPressed;
+
+  return (
+    <button
+      type="button"
+      aria-label="נקה חיפוש"
+      title="נקה חיפוש"
+      onClick={onClick}
+      {...hoverHandlers}
+      onMouseLeave={() => {
+        hoverHandlers.onMouseLeave();
+        setIsPressed(false);
+      }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        width: "1.35rem",
+        height: "1.35rem",
+        padding: 0,
+        border: 0,
+        borderRadius: "999px",
+        cursor: "pointer",
+        backgroundColor: isActive ? "color-mix(in srgb, var(--app-color-error) 16%, transparent)" : "transparent",
+        color: isActive ? "var(--app-color-error)" : "var(--app-color-text-muted)",
+        transform: isPressed ? "scale(0.85)" : "scale(1)",
+        transition: "background-color 0.15s ease, color 0.15s ease, transform 0.1s ease",
+      }}
+    >
+      <IconX size={13} stroke={2} />
+    </button>
+  );
+}
+
+/**
+ * The event-name search box, as a plain HTML wrapper (`<div>` + native
+ * `<input>`) rather than Mantine's `Group` — hover and focus both need to
+ * change the border color, and an inline `style` attribute can't express a
+ * `:hover`/`:focus` pseudo-class either way, so both are driven by real
+ * state here: `useHoverState` for hover, a local `isFocused` for focus
+ * (same pattern `RadioSignInput` already uses elsewhere for its own
+ * focus-only version of this). The clear button only shows once there's a
+ * query to clear, and refocuses the input afterward so typing a new search
+ * doesn't need an extra click.
+ *
+ * @param {{ value: string, onChange: (event: React.ChangeEvent<HTMLInputElement>) => void, onClear: () => void }} props
+ * @returns {JSX.Element} The search box.
+ */
+function EventSearchInput({ value, onChange, onClear }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef(null);
+
+  const borderColor = isFocused
+    ? "var(--app-color-primary)"
+    : isHovered
+      ? "color-mix(in srgb, var(--app-color-primary) 45%, transparent)"
+      : "var(--app-color-border)";
+
+  const handleClear = () => {
+    onClear();
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div
+      {...hoverHandlers}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem",
+        flex: 1,
+        minWidth: "16rem",
+        maxWidth: "22rem",
+        height: "2.5rem",
+        boxSizing: "border-box",
+        backgroundColor: "var(--app-color-surface)",
+        border: `1px solid ${borderColor}`,
+        borderRadius: "var(--mantine-radius-sm)",
+        padding: "0 0.7rem",
+        transition: "border-color 0.15s ease",
+      }}
+    >
+      <IconSearch
+        size={15}
+        stroke={2}
+        color={isFocused ? "var(--app-color-primary)" : "var(--app-color-text-muted)"}
+        style={{ flexShrink: 0, transition: "color 0.15s ease" }}
+      />
+      <input
+        ref={inputRef}
+        type="text"
+        placeholder="חיפוש אירוע לפי שם..."
+        value={value}
+        onChange={onChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          background: "transparent",
+          border: 0,
+          outline: "none",
+          color: "var(--app-color-text)",
+          fontFamily: "inherit",
+          fontSize: "0.9rem",
+        }}
+      />
+      {value && <ClearSearchButton onClick={handleClear} />}
+    </div>
+  );
+}
 
 /**
  * The brigade's event queue board — every event, filterable by date and by
@@ -158,10 +290,23 @@ const EventQueueBoardPage = () => {
         pos="relative"
         style={{ zIndex: 10, overflow: "hidden" }}
       >
-        <Group justify="space-between" align="center">
+        {/* Page title, the app's brand mark, and the account controls all
+            share this one row — the mark is centered on the row the same
+            way `DateNavBar` is centered in the toolbar row below (absolute +
+            a relative wrapper), rather than `space-between`, since it has
+            two differently-sized siblings on either side of it. The board
+            below sits in a `flex: 1, minHeight: 0` slot (EventQueueBoard.jsx),
+            so this row taking more vertical space than before shrinks the
+            board's rendered height automatically — nothing else has to
+            change for that. */}
+        <Group justify="space-between" align="center" pos="relative">
           <Title order={1} fz="1.5rem" fw={700} c="var(--app-color-text)">
             לוח מעקב אירועים
           </Title>
+
+          <Box style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}>
+            <AppBrandMark />
+          </Box>
 
           <AccountControlsStack>
             <ActionIcon
@@ -214,43 +359,32 @@ const EventQueueBoardPage = () => {
           </AccountControlsStack>
         </Group>
 
-        <Group justify="space-between" gap="sm" wrap="wrap">
-          <Group
-            gap="xs"
-            style={{
-              flex: 1,
-              minWidth: "16rem",
-              maxWidth: "22rem",
-              backgroundColor: "var(--app-color-surface)",
-              border: "1px solid var(--app-color-border)",
-              borderRadius: "var(--mantine-radius-sm)",
-              padding: "0.4rem 0.7rem",
-            }}
-          >
-            <IconSearch size={15} stroke={2} color="var(--app-color-text-muted)" />
-            <input
-              type="text"
-              placeholder="חיפוש אירוע לפי שם..."
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.currentTarget.value)}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                background: "transparent",
-                border: 0,
-                outline: "none",
-                color: "var(--app-color-text)",
-                fontFamily: "inherit",
-                fontSize: "0.9rem",
-              }}
-            />
-          </Group>
+        {/* Search, date nav, and the view switcher all share the same
+            2.5rem height (each sets it explicitly, since their internal
+            padding/content wouldn't otherwise land on the same value) so
+            this single row reads as one consistent toolbar. Date nav is
+            pulled out of the flex flow and centered on the row itself
+            (absolute + a relative wrapper) rather than left to wherever
+            `space-between` would otherwise land it between two differently
+            sized siblings — search and the view switcher end up simply
+            space-between'd with each other underneath it. */}
+        <Group justify="space-between" align="center" gap="sm" wrap="wrap" pos="relative">
+          <EventSearchInput
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.currentTarget.value)}
+            onClear={() => setSearchQuery("")}
+          />
+
+          <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}>
+            <DateNavBar selectedDate={selectedDate} onChange={setSelectedDate} />
+          </div>
 
           <Group
             gap={4}
             p={4}
-            mt={56}
             style={{
+              height: "2.5rem",
+              boxSizing: "border-box",
               backgroundColor: "var(--app-color-surface)",
               border: "1px solid var(--app-color-border)",
               borderRadius: "var(--mantine-radius-sm)",
@@ -283,8 +417,6 @@ const EventQueueBoardPage = () => {
             ))}
           </Group>
         </Group>
-
-        <DateNavBar selectedDate={selectedDate} onChange={setSelectedDate} />
 
         {apiStatus === "failed" && (
           <Alert

@@ -1,8 +1,9 @@
 // React
+import { useState } from "react";
 
 // External libraries
 import { Badge, Box, Group, Text } from "@mantine/core";
-import { IconClock, IconLock } from "@tabler/icons-react";
+import { IconClock, IconHelicopter, IconLock } from "@tabler/icons-react";
 import { useDraggable } from "@dnd-kit/core";
 
 // Internal application modules
@@ -12,6 +13,8 @@ import {
   EVENT_TYPE_LABELS,
   FULL_EVACUATION_STATUS,
 } from "../../constants/eventStatus";
+import { AERIAL_EVAC_COLOR_VARS, AERIAL_EVAC_LABELS, PULSING_AERIAL_EVAC_STATUSES } from "../../constants/aerialEvacStatus";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -37,22 +40,47 @@ export function EventQueueCardContent({ event }) {
   const isClosed = event.status === CLOSED_STATUS;
   const color = EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)";
 
+  // Same field EventBadgesRow reads for its own aerial-evac badge — the
+  // brigade side has no aerial-mission data loaded here, so this is the
+  // event's own request flag, not a mission's (possibly more current)
+  // decision; hidden entirely once "no_needed", same as there.
+  const aerialEvacStatus = event["aerial-evac"];
+  const showAerialEvacBadge = aerialEvacStatus && aerialEvacStatus !== "no_needed";
+  const aerialEvacColor = AERIAL_EVAC_COLOR_VARS[aerialEvacStatus] || "var(--app-color-text-muted)";
+
   return (
     <>
-      <Badge
-        size="xs"
-        variant="outline"
-        mb={6}
-        styles={{
-          root: {
-            backgroundColor: "var(--app-color-surface)",
-            borderColor: "var(--app-color-border)",
-            color: "var(--app-color-text-muted)",
-          },
-        }}
-      >
-        {EVENT_TYPE_LABELS[event.type] || event.type}
-      </Badge>
+      <Group gap={4} wrap="wrap" mb={6}>
+        <Badge
+          size="xs"
+          variant="outline"
+          styles={{
+            root: {
+              backgroundColor: "var(--app-color-surface)",
+              borderColor: "var(--app-color-border)",
+              color: "var(--app-color-text-muted)",
+            },
+          }}
+        >
+          {EVENT_TYPE_LABELS[event.type] || event.type}
+        </Badge>
+
+        {showAerialEvacBadge && (
+          <Badge
+            size="xs"
+            leftSection={<IconHelicopter size={11} />}
+            className={PULSING_AERIAL_EVAC_STATUSES.includes(aerialEvacStatus) ? "app-pulse-glow" : undefined}
+            styles={{
+              root: {
+                backgroundColor: `color-mix(in srgb, ${aerialEvacColor} 16%, transparent)`,
+                color: aerialEvacColor,
+              },
+            }}
+          >
+            {AERIAL_EVAC_LABELS[aerialEvacStatus] || aerialEvacStatus}
+          </Badge>
+        )}
+      </Group>
 
       <Text fz="sm" fw={700} mb={4} lineClamp={2}>
         {event.name}
@@ -95,6 +123,18 @@ export function EventQueueCardContent({ event }) {
  * `DragOverlay` (portal-rendered, unaffected by any column's overflow) is
  * what actually renders the moving copy.
  *
+ * Hover feedback (tinted background/border in the event's own status color,
+ * plus a small lift) applies to every card regardless of `isDraggable` —
+ * every card opens on click, only dragging is status/date-gated — via
+ * `useHoverState`, this app's working hover mechanism for a plain inline-
+ * styled `Box` (a `"&:hover"` key in Mantine's `styles` prop is silently
+ * dropped here, see that hook's own docstring). Pressed state (mouse down,
+ * not yet released) shrinks the card slightly, same `onMouseDown`/`onMouseUp`
+ * + `onMouseLeave` reset pattern `EventActionButtons` already uses for its
+ * own press feedback — the leave-reset matters here too, since pressing down
+ * then dragging the pointer off the card without releasing shouldn't leave
+ * it stuck looking pressed.
+ *
  * @param {{ event: object, isToday: boolean, onOpen: () => void }} props
  * @returns {JSX.Element} The kanban card.
  */
@@ -105,20 +145,38 @@ const EventQueueCard = ({ event, isToday, onOpen }) => {
     id: event.id,
     disabled: !isDraggable || !isToday,
   });
+  const [isHovered, hoverHandlers] = useHoverState();
+  const [isPressed, setIsPressed] = useState(false);
+
+  const statusColor = EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)";
+  const isActive = isHovered && !isDragging;
+  const isActivePressed = isPressed && !isDragging;
 
   return (
     <Box
       ref={setNodeRef}
       style={{
-        backgroundColor: "var(--app-color-surface-high)",
-        border: "1px solid var(--app-color-border)",
+        backgroundColor: isActive
+          ? `color-mix(in srgb, ${statusColor} 10%, var(--app-color-surface-high))`
+          : "var(--app-color-surface-high)",
+        border: `1px solid ${isActive ? `color-mix(in srgb, ${statusColor} 45%, transparent)` : "var(--app-color-border)"}`,
         borderRadius: "var(--mantine-radius-sm)",
         padding: "0.55rem 0.65rem",
-        cursor: !isDraggable || !isToday ? "default" : "grab",
+        // Never the plain arrow: every card opens on click (pointer), and a
+        // draggable one also gets the hand-drag cursor (grab) on top of that.
+        cursor: isDraggable && isToday ? "grab" : "pointer",
         opacity: isDragging ? 0.4 : 1,
-        transition: "border-color 0.15s ease, filter 0.15s ease",
+        transform: isActivePressed ? "scale(0.97)" : isActive ? "translateY(-1px)" : "none",
+        transition: "transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease",
       }}
       onClick={onOpen}
+      {...hoverHandlers}
+      onMouseLeave={() => {
+        hoverHandlers.onMouseLeave();
+        setIsPressed(false);
+      }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
       {...listeners}
       {...attributes}
     >

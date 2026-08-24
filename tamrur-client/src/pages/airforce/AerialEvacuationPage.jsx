@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import Layout from "../../components/layout/Layout";
-import AuthHeader from "../../components/auth/AuthHeader";
+import AppBrandMark from "../../components/common/AppBrandMark";
 import AuthFooter from "../../components/auth/AuthFooter";
 import TriageQueueList from "../../components/airforce/TriageQueueList";
 import AerialEvacTable from "../../components/airforce/AerialEvacTable";
@@ -74,19 +74,6 @@ const AerialEvacuationPage = () => {
 
   return (
     <Layout>
-      <div
-        style={{
-          position: "absolute",
-          top: "var(--mantine-spacing-md)",
-          left: "var(--app-page-padding)",
-          zIndex: 20,
-        }}
-      >
-        <AccountControlsStack>
-          <ThemeToggleButton variant="glass" />
-        </AccountControlsStack>
-      </div>
-
       <Box
         aria-hidden="true"
         pos="absolute"
@@ -113,9 +100,15 @@ const AerialEvacuationPage = () => {
         }}
       />
 
+      {/* `justify="flex-start"` (not `center`) — the brand/table/triage/kanban
+          views each render a different content height, and centering here
+          would re-center the whole block vertically every time the view
+          switches, reading as the page suddenly jumping up or down. Anchoring
+          to the top keeps everything landing in the same place regardless of
+          which view's content is shorter or taller. */}
       <Stack
         align="center"
-        justify="center"
+        justify="flex-start"
         mih="100vh"
         px="var(--app-page-padding-mobile)"
         py="xl"
@@ -126,7 +119,19 @@ const AerialEvacuationPage = () => {
       >
         <Box w="100%" maw={1240}>
           <Stack align="stretch" gap="xl">
-            <AuthHeader />
+            {/* The app's brand mark and the account controls share this row,
+                same as the brigade board page — the mark is centered via
+                absolute + a relative wrapper since there's no page title on
+                this side to `space-between` against. */}
+            <Group justify="flex-end" align="center" pos="relative">
+              <Box style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}>
+                <AppBrandMark />
+              </Box>
+
+              <AccountControlsStack>
+                <ThemeToggleButton variant="glass" />
+              </AccountControlsStack>
+            </Group>
 
             <Group justify="flex-end">
               <Group

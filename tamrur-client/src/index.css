@@ -255,6 +255,14 @@ table {
   animation: app-fade-in 0.25s ease-out both;
 }
 
+/* The native date input's calendar icon is its own pseudo-element — it
+   doesn't inherit the input's own `cursor` style, so DateNavBar's
+   date-jump input needs this set explicitly for the icon to read as
+   clickable rather than showing the default text-caret cursor. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
 /* Leaflet's required tile-provider attribution: theme-matched instead of
    Leaflet's default white box, and collapsed to a small marker until
    hovered/focused so it doesn't compete with the map. */
