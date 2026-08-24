@@ -21,7 +21,7 @@ import DateNavBar from "../../components/brigade/DateNavBar";
 import EventQueueTable from "../../components/brigade/EventQueueTable";
 import EventQueueMap from "../../components/brigade/EventQueueMap";
 import EventQueueBoard from "../../components/brigade/EventQueueBoard";
-import AccountBar from "../../components/brigade/AccountBar";
+import AccountControlsStack from "../../components/common/AccountControlsStack";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import CreateEventModal from "../../components/events/CreateEventModal";
 import { fetchEvents, closeEvent } from "../../features/events/eventsSlice";
@@ -163,7 +163,7 @@ const EventQueueBoardPage = () => {
             לוח מעקב אירועים
           </Title>
 
-          <Group gap="sm" wrap="nowrap">
+          <AccountControlsStack>
             <ActionIcon
               aria-label="מעבר לניתוח אירוע"
               title="מעבר לניתוח אירוע"
@@ -209,9 +209,7 @@ const EventQueueBoardPage = () => {
             >
               פתח אירוע
             </Button>
-
-            <AccountBar />
-          </Group>
+          </AccountControlsStack>
         </Group>
 
         <Group justify="space-between" gap="sm" wrap="wrap">

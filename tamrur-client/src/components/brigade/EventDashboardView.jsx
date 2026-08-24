@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 // Internal application modules
 import ThemeToggleButton from "../common/ThemeToggleButton";
-import AccountBar from "./AccountBar";
+import AccountControlsStack from "../common/AccountControlsStack";
 import EventDescriptionBlock from "./EventDescriptionBlock";
 import EventBadgesRow from "./EventBadgesRow";
 import EventTimerChip from "./EventTimerChip";
@@ -293,7 +293,7 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
           )}
         </Stack>
 
-        <Group gap="xs" wrap="nowrap" style={{ justifySelf: "end" }}>
+        <AccountControlsStack style={{ justifySelf: "end" }}>
           <ThemeToggleButton variant="glass" />
 
           {readOnly ? (
@@ -326,9 +326,7 @@ const EventDashboardView = ({ eventId, readOnly = false, onSelectEvent }) => {
               />
             )
           )}
-
-          <AccountBar />
-        </Group>
+        </AccountControlsStack>
       </Box>
 
       {isInitialLoad && (

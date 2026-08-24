@@ -12,7 +12,7 @@ import EventSelector from "../../components/dashboard/EventSelector";
 import EventReportCard from "../../components/analyst/EventReportCard";
 import ReportsFolderCard from "../../components/analyst/ReportsFolderCard";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
-import AccountBar from "../../components/brigade/AccountBar";
+import AccountControlsStack from "../../components/common/AccountControlsStack";
 import { CLOSED_STATUS } from "../../constants/eventStatus";
 import { useHoverState } from "../../hooks/useHoverState";
 
@@ -40,34 +40,31 @@ const EventAnalystPage = () => {
           position: "absolute",
           top: "var(--mantine-spacing-md)",
           left: "var(--mantine-spacing-md)",
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--mantine-spacing-sm)",
           zIndex: 20,
         }}
       >
-        <ActionIcon
-          aria-label="חזרה ללוח מעקב אירועים"
-          title="חזרה ללוח מעקב אירועים"
-          variant="default"
-          size={40}
-          radius="xl"
-          onClick={() => navigate("/brigade")}
-          {...boardButtonHoverHandlers}
-          style={{
-            backgroundColor: isBoardButtonHovered ? "var(--app-color-primary)" : "var(--app-color-surface)",
-            borderColor: isBoardButtonHovered ? "var(--app-color-primary)" : "var(--app-color-border)",
-            color: isBoardButtonHovered ? "var(--app-color-primary-text)" : "var(--app-color-text)",
-            transform: isBoardButtonHovered ? "translateY(-1px)" : undefined,
-            transition: "background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
-          }}
-        >
-          <IconLayoutKanban aria-hidden="true" size={20} stroke={1.8} />
-        </ActionIcon>
+        <AccountControlsStack align="flex-start">
+          <ActionIcon
+            aria-label="חזרה ללוח מעקב אירועים"
+            title="חזרה ללוח מעקב אירועים"
+            variant="default"
+            size={40}
+            radius="xl"
+            onClick={() => navigate("/brigade")}
+            {...boardButtonHoverHandlers}
+            style={{
+              backgroundColor: isBoardButtonHovered ? "var(--app-color-primary)" : "var(--app-color-surface)",
+              borderColor: isBoardButtonHovered ? "var(--app-color-primary)" : "var(--app-color-border)",
+              color: isBoardButtonHovered ? "var(--app-color-primary-text)" : "var(--app-color-text)",
+              transform: isBoardButtonHovered ? "translateY(-1px)" : undefined,
+              transition: "background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
+            }}
+          >
+            <IconLayoutKanban aria-hidden="true" size={20} stroke={1.8} />
+          </ActionIcon>
 
-        <ThemeToggleButton variant="glass" />
-
-        <AccountBar />
+          <ThemeToggleButton variant="glass" />
+        </AccountControlsStack>
       </div>
 
       <Box
