@@ -11,7 +11,7 @@ import { DndContext, DragOverlay, PointerSensor, closestCenter, useSensor, useSe
 import QueueColumn from "./QueueColumn";
 import { EventQueueCardContent } from "./EventQueueCard";
 import CreateEventModal from "../events/CreateEventModal";
-import { CLOSED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
+import { CLOSED_STATUS, EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS } from "../../constants/eventStatus";
 
 // Styles
 
@@ -25,8 +25,8 @@ const STATUS_LIST = Object.entries(EVENT_STATUS_LABELS).map(([key, label]) => ({
 const SORTERS = {
   created_desc: (a, b) => new Date(b.created_at) - new Date(a.created_at),
   created_asc: (a, b) => new Date(a.created_at) - new Date(b.created_at),
-  name: (a, b) => a.name.localeCompare(b.name, "he"),
-  type: (a, b) => (EVENT_TYPE_LABELS[a.type] || a.type).localeCompare(EVENT_TYPE_LABELS[b.type] || b.type, "he"),
+  name_asc: (a, b) => a.name.localeCompare(b.name, "he"),
+  name_desc: (a, b) => b.name.localeCompare(a.name, "he"),
 };
 
 /**
@@ -72,6 +72,9 @@ const EventQueueBoard = ({ events, isToday, onCloseEvent }) => {
   const [sortModeByStatus, setSortModeByStatus] = useState(() =>
     Object.fromEntries(STATUS_LIST.map((s) => [s.key, "created_desc"])),
   );
+  const [filtersByStatus, setFiltersByStatus] = useState(() =>
+    Object.fromEntries(STATUS_LIST.map((s) => [s.key, { aerialEvac: "all", type: "all" }])),
+  );
   const [pendingDrop, setPendingDrop] = useState(null); // { eventId, name } | null
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [activeEvent, setActiveEvent] = useState(null);
@@ -91,15 +94,31 @@ const EventQueueBoard = ({ events, isToday, onCloseEvent }) => {
 
   const columns = useMemo(
     () =>
-      STATUS_LIST.map((status) => ({
-        status,
-        events: effectiveEvents.filter((event) => event.status === status.key).sort(SORTERS[sortModeByStatus[status.key]]),
-      })),
-    [effectiveEvents, sortModeByStatus],
+      STATUS_LIST.map((status) => {
+        const filters = filtersByStatus[status.key];
+        const filtered = effectiveEvents
+          .filter((event) => event.status === status.key)
+          .filter((event) => filters.aerialEvac === "all" || event["aerial-evac"] === filters.aerialEvac)
+          .filter((event) => filters.type === "all" || event.type === filters.type);
+
+        return {
+          status,
+          events: filtered.sort(SORTERS[sortModeByStatus[status.key]]),
+        };
+      }),
+    [effectiveEvents, sortModeByStatus, filtersByStatus],
   );
 
   const handleSortChange = (statusKey, mode) => {
     setSortModeByStatus((prev) => ({ ...prev, [statusKey]: mode }));
+  };
+
+  const handleFilterChange = (statusKey, filterKey, value) => {
+    setFiltersByStatus((prev) => ({ ...prev, [statusKey]: { ...prev[statusKey], [filterKey]: value } }));
+  };
+
+  const handleClearFilters = (statusKey) => {
+    setFiltersByStatus((prev) => ({ ...prev, [statusKey]: { aerialEvac: "all", type: "all" } }));
   };
 
   const clearOverride = (eventId) => {
@@ -202,6 +221,9 @@ const EventQueueBoard = ({ events, isToday, onCloseEvent }) => {
               isToday={isToday}
               sortMode={sortModeByStatus[status.key]}
               onSortChange={(mode) => handleSortChange(status.key, mode)}
+              filters={filtersByStatus[status.key]}
+              onFilterChange={(key, value) => handleFilterChange(status.key, key, value)}
+              onClearFilters={() => handleClearFilters(status.key)}
               onAddEvent={() => setIsCreateOpen(true)}
               onOpenEvent={(id) => navigate(`/brigade/${id}`)}
             />
