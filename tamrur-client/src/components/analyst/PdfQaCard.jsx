@@ -2,8 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 
 // External libraries
-import { Alert, Button, Loader, Stack, Text, Textarea } from "@mantine/core";
+import { Alert, Button, Loader, Stack, Text, Textarea, Typography } from "@mantine/core";
 import { IconAlertCircle, IconSend } from "@tabler/icons-react";
+import ReactMarkdown from "react-markdown";
 
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
@@ -152,13 +153,9 @@ const PdfQaCard = () => {
           )}
 
           {answer && !isAsking && (
-            <Text
-              dir="rtl"
-              c="var(--app-color-text)"
-              style={{ whiteSpace: "pre-wrap" }}
-            >
-              {answer}
-            </Text>
+            <Typography dir="rtl" c="var(--app-color-text)">
+              <ReactMarkdown>{answer}</ReactMarkdown>
+            </Typography>
           )}
         </Stack>
       </DashboardCard>
