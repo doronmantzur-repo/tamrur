@@ -162,6 +162,16 @@ export function AerialEvacKanbanCardContent({ event, casualties, aerialStatus, i
  * glow ring (sized to match `DashboardCard`'s own `radius="sm"`) plus a
  * lift, around the outside of the card it already renders.
  *
+ * A pending card also pulses a gold glow, via `app-pulse-glow-ring`
+ * (`src/index.css`) — a box-shadow-only sibling of `app-pulse-glow` (the
+ * header bell's own pulse) that skips its opacity dip, which on a full card
+ * would read as it going translucent rather than just glowing. `color` sets
+ * the gold accent since that keyframe's box-shadow is `currentColor`-based.
+ * Lives on a second, outer `Box` rather than the hover-ring one below, since
+ * an animated `box-shadow` would otherwise fight that element's own static
+ * `box-shadow` on the same property (a CSS animation overrides whatever it's
+ * animating for as long as it runs, inline style included).
+ *
  * The expand/collapse toggle also lives here rather than inside
  * `AerialEvacKanbanCardContent`, so clicking anywhere on the card (not just
  * its chevron) opens/closes the casualty detail — same "the whole item is
@@ -186,33 +196,38 @@ const AerialEvacKanbanCard = ({ event, casualties, aerialStatus, isPending }) =>
 
   return (
     <Box
-      ref={setNodeRef}
-      onClick={toggleOpen}
-      style={{
-        cursor: isPending ? "grab" : "pointer",
-        opacity: isDragging ? 0.4 : 1,
-        borderRadius: "var(--mantine-radius-sm)",
-        boxShadow: isActive ? `0 0 0 1px color-mix(in srgb, ${color} 45%, transparent)` : "none",
-        transform: isActivePressed ? "scale(0.97)" : isActive ? "translateY(-1px)" : "none",
-        transition: "transform 0.15s ease, box-shadow 0.15s ease",
-      }}
-      {...hoverHandlers}
-      onMouseLeave={() => {
-        hoverHandlers.onMouseLeave();
-        setIsPressed(false);
-      }}
-      onMouseDown={() => setIsPressed(true)}
-      onMouseUp={() => setIsPressed(false)}
-      {...(isPending ? listeners : {})}
-      {...(isPending ? attributes : {})}
+      className={isPending ? "app-pulse-glow-ring" : undefined}
+      style={isPending ? { color: "var(--app-color-primary)", borderRadius: "var(--mantine-radius-sm)" } : undefined}
     >
-      <AerialEvacKanbanCardContent
-        event={event}
-        casualties={casualties}
-        aerialStatus={aerialStatus}
-        isOpen={isOpen}
-        onToggleOpen={toggleOpen}
-      />
+      <Box
+        ref={setNodeRef}
+        onClick={toggleOpen}
+        style={{
+          cursor: isPending ? "grab" : "pointer",
+          opacity: isDragging ? 0.4 : 1,
+          borderRadius: "var(--mantine-radius-sm)",
+          boxShadow: isActive ? `0 0 0 1px color-mix(in srgb, ${color} 45%, transparent)` : "none",
+          transform: isActivePressed ? "scale(0.97)" : isActive ? "translateY(-1px)" : "none",
+          transition: "transform 0.15s ease, box-shadow 0.15s ease",
+        }}
+        {...hoverHandlers}
+        onMouseLeave={() => {
+          hoverHandlers.onMouseLeave();
+          setIsPressed(false);
+        }}
+        onMouseDown={() => setIsPressed(true)}
+        onMouseUp={() => setIsPressed(false)}
+        {...(isPending ? listeners : {})}
+        {...(isPending ? attributes : {})}
+      >
+        <AerialEvacKanbanCardContent
+          event={event}
+          casualties={casualties}
+          aerialStatus={aerialStatus}
+          isOpen={isOpen}
+          onToggleOpen={toggleOpen}
+        />
+      </Box>
     </Box>
   );
 };

@@ -47,7 +47,17 @@ const TriageQueueRow = ({ event, mission, casualties, rank, isPending }) => {
   const color = AERIAL_EVAC_COLOR_VARS[status] || "var(--app-color-text-muted)";
 
   return (
-    <Box style={{ opacity: isPending ? 1 : 0.7 }}>
+    // Pending cards pulse a gold glow — `app-pulse-glow-ring` (`src/index.css`),
+    // a box-shadow-only sibling of `app-pulse-glow` (the header bell's own
+    // pulse) that skips the opacity dip, which reads as a card going
+    // translucent rather than just glowing. `color` sets the gold accent
+    // since that keyframe's box-shadow is `currentColor`-based. Lives on this
+    // outer wrapper rather than on `DashboardCard`'s own `Paper`, which is a
+    // shared component used well beyond this one card.
+    <Box
+      className={isPending ? "app-pulse-glow-ring" : undefined}
+      style={{ opacity: isPending ? 1 : 0.7, color: "var(--app-color-primary)", borderRadius: "var(--mantine-radius-sm)" }}
+    >
       <DashboardCard
         accentColor={status === "approved" || status === "denied" ? color : undefined}
         titleContent={

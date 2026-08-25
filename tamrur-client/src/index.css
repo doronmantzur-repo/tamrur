@@ -222,6 +222,20 @@ table {
   }
 }
 
+/* Same glow as `app-pulse-glow`, minus the opacity dip — for a full card or
+   table row, that dip reads as the whole thing going translucent, not just
+   glowing. `app-pulse-glow` itself stays as-is for its existing small-badge
+   uses (EventBadgesRow.jsx, EventQueueCard.jsx), where the fade is fine. */
+@keyframes app-pulse-glow-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  50% {
+    box-shadow: 0 0 10px 3px currentColor;
+  }
+}
+
 @keyframes app-pulse-scale {
   0%,
   100% {
@@ -245,6 +259,10 @@ table {
 
 .app-pulse-glow {
   animation: app-pulse-glow 1.6s ease-in-out infinite;
+}
+
+.app-pulse-glow-ring {
+  animation: app-pulse-glow-ring 1.6s ease-in-out infinite;
 }
 
 .app-pulse-scale {
