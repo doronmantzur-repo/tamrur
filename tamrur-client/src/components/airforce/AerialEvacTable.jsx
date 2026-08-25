@@ -121,6 +121,10 @@ function ElapsedCell({ event, style }) {
  * correct in this RTL layout without hardcoding a side) reads as one
  * rounded row instead.
  *
+ * The pending section's gold pulse (see `EventTableSection` below) lives on
+ * that section's own card, not on individual rows here — a row-by-row pulse
+ * read as too busy against the section already glowing as a whole.
+ *
  * @param {{
  *   event: object,
  *   mission: object | undefined,
@@ -387,14 +391,22 @@ function EventTableSection({
     onClearFilter: () => handleClearFilter(key),
   });
 
+  // Toggling isn't limited to the title/chevron — the count badge is the
+  // rest of this card's header (`DashboardCard` lays `titleContent` and
+  // `headerExtra` out as the header's only two pieces), so it shares the
+  // same click handler when this section is collapsible, making the whole
+  // header row clickable rather than just its title half.
   const countBadge = (
     <Badge
       variant="outline"
+      onClick={collapsible ? onToggleOpen : undefined}
       styles={{
         root: {
           backgroundColor: "var(--app-color-surface-high)",
           borderColor: "var(--app-color-border)",
           color: "var(--app-color-text-muted)",
+          cursor: collapsible ? "pointer" : "default",
+          userSelect: collapsible ? "none" : undefined,
         },
       }}
     >
@@ -448,38 +460,60 @@ function EventTableSection({
     </Box>
   );
 
+  // The pending section's own card pulses too, alongside each of its rows —
+  // `!dimmed` identifies the pending section (this component is always
+  // homogeneously one or the other), and `totalCount > 0` skips the pulse on
+  // an empty pending section, which has nothing to alert about. Lives on
+  // this outer wrapper rather than on `DashboardCard`'s own `Paper`, which is
+  // a shared component used well beyond this one table.
+  //
+  // The gold `color` here is only meant for this Box's own `box-shadow:
+  // currentColor` — but `color` inherits, and not everything inside sets its
+  // own explicit text color (the column headers' labels, a row's event-name
+  // cell), so left alone it also turned that text gold. The inner wrapper
+  // resets `color` back to normal immediately, before any real content
+  // renders, so only the glow itself reads gold.
+  const hasPendingGlow = !dimmed && totalCount > 0;
+
   return (
-    <DashboardCard
-      padding="md"
-      gap="sm"
-      accentColor={accentColor}
-      titleContent={
-        collapsible ? (
-          <Group
-            gap="xs"
-            wrap="nowrap"
-            onClick={onToggleOpen}
-            style={{ cursor: "pointer", userSelect: "none" }}
-          >
-            {isOpen ? (
-              <IconChevronUp size={18} color="var(--app-color-text-muted)" />
-            ) : (
-              <IconChevronDown size={18} color="var(--app-color-text-muted)" />
-            )}
-            <Title order={2} fz="lg" fw={700} c="var(--app-color-text)">
-              {title}
-            </Title>
-          </Group>
-        ) : (
-          <Title order={2} fz="lg" fw={700} c="var(--app-color-text)">
-            {title}
-          </Title>
-        )
-      }
-      headerExtra={countBadge}
+    <Box
+      className={hasPendingGlow ? "app-pulse-glow-ring" : undefined}
+      style={hasPendingGlow ? { color: "var(--app-color-primary)", borderRadius: "var(--mantine-radius-sm)" } : undefined}
     >
-      {collapsible ? <Collapse expanded={isOpen}>{tableBody}</Collapse> : tableBody}
-    </DashboardCard>
+      <Box style={hasPendingGlow ? { color: "var(--app-color-text)" } : undefined}>
+        <DashboardCard
+          padding="md"
+          gap="sm"
+          accentColor={accentColor}
+          titleContent={
+            collapsible ? (
+              <Group
+                gap="xs"
+                wrap="nowrap"
+                onClick={onToggleOpen}
+                style={{ cursor: "pointer", userSelect: "none" }}
+              >
+                {isOpen ? (
+                  <IconChevronUp size={18} color="var(--app-color-text-muted)" />
+                ) : (
+                  <IconChevronDown size={18} color="var(--app-color-text-muted)" />
+                )}
+                <Title order={2} fz="lg" fw={700} c="var(--app-color-text)">
+                  {title}
+                </Title>
+              </Group>
+            ) : (
+              <Title order={2} fz="lg" fw={700} c="var(--app-color-text)">
+                {title}
+              </Title>
+            )
+          }
+          headerExtra={countBadge}
+        >
+          {collapsible ? <Collapse expanded={isOpen}>{tableBody}</Collapse> : tableBody}
+        </DashboardCard>
+      </Box>
+    </Box>
   );
 }
 

@@ -13,11 +13,13 @@ import AuthFooter from "../../components/auth/AuthFooter";
 import TriageQueueList from "../../components/airforce/TriageQueueList";
 import AerialEvacTable from "../../components/airforce/AerialEvacTable";
 import AerialEvacKanbanBoard from "../../components/airforce/AerialEvacKanbanBoard";
+import { PendingDecisionBanner, PendingDecisionBell } from "../../components/airforce/PendingDecisionAlert";
 import ThemeToggleButton from "../../components/common/ThemeToggleButton";
 import AccountControlsStack from "../../components/common/AccountControlsStack";
 import { fetchEvents } from "../../features/events/eventsSlice";
 import { fetchCasualtiesByEvent } from "../../features/casualties/casualtiesSlice";
 import { fetchAerialMissionsByEvent } from "../../features/aerialMission/aerialMissionSlice";
+import { getAerialMissionStatus } from "../../constants/aerialEvacStatus";
 import { POLL_INTERVAL_MS } from "../../constants/polling";
 
 // Styles
@@ -45,6 +47,18 @@ const AerialEvacuationPage = () => {
   const aerialEvacEvents = events.filter(
     (event) => event.status !== "completed" && event["aerial-evac"] === "needed",
   );
+
+  // `event["aerial-evac"]` never changes once an event requests aerial evac
+  // (see every view's own docstring: deciding only updates the *mission*
+  // row) — so `aerialEvacEvents` above still includes already-approved/
+  // -denied events. The header bell and per-view banner need the actual
+  // still-pending count, which lives on the mission's own status instead —
+  // the same `getAerialMissionStatus(mission) === "needed"` check
+  // `TriageQueueList`/`AerialEvacTable`/`AerialEvacKanbanBoard` each already
+  // use for their own "isPending" flag.
+  const pendingCount = aerialEvacEvents.filter(
+    (event) => getAerialMissionStatus(missionsByEventId[event.id]?.[0]) === "needed",
+  ).length;
 
   useEffect(() => {
     dispatch(fetchEvents());
@@ -129,6 +143,7 @@ const AerialEvacuationPage = () => {
               </Box>
 
               <AccountControlsStack>
+                <PendingDecisionBell count={pendingCount} />
                 <ThemeToggleButton variant="glass" />
               </AccountControlsStack>
             </Group>
@@ -170,6 +185,8 @@ const AerialEvacuationPage = () => {
                 ))}
               </Group>
             </Group>
+
+            <PendingDecisionBanner count={pendingCount} />
 
             {viewMode === "triage" && (
               <TriageQueueList
