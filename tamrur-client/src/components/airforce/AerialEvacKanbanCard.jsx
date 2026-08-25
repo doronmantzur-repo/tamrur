@@ -12,6 +12,7 @@ import CasualtiesCard from "../dashboard/CasualtiesCard";
 import { AERIAL_EVAC_COLOR_VARS, AERIAL_EVAC_LABELS } from "../../constants/aerialEvacStatus";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
 import { formatDuration } from "../../utils/duration";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -29,11 +30,17 @@ const MONO_FONT = 'ui-monospace, "SF Mono", "Consolas", monospace';
  * only happens by dragging the card to a column, not from inside it (see
  * `AerialEvacKanbanBoard`'s docstring for why).
  *
- * @param {{ event: object, casualties: Array<object>, aerialStatus: string }} props
+ * `isOpen`/`onToggleOpen` are owned by the caller (`AerialEvacKanbanCard`,
+ * below) rather than local state here, so a click anywhere on the card can
+ * drive the same toggle the chevron itself uses — this component no longer
+ * has its own opinion about whether it's open. The `DragOverlay` ghost in
+ * `AerialEvacKanbanBoard` doesn't pass either, since that copy is never
+ * interactive; the defaults keep it rendering closed.
+ *
+ * @param {{ event: object, casualties: Array<object>, aerialStatus: string, isOpen?: boolean, onToggleOpen?: () => void }} props
  * @returns {JSX.Element} The card's inner content.
  */
-export function AerialEvacKanbanCardContent({ event, casualties, aerialStatus }) {
-  const [isOpen, setIsOpen] = useState(false);
+export function AerialEvacKanbanCardContent({ event, casualties, aerialStatus, isOpen = false, onToggleOpen = () => {} }) {
   const waitSeconds = useElapsedSeconds(event.created_at, null);
   const color = AERIAL_EVAC_COLOR_VARS[aerialStatus] || "var(--app-color-text-muted)";
 
@@ -51,7 +58,14 @@ export function AerialEvacKanbanCardContent({ event, casualties, aerialStatus })
         <Box
           component="button"
           type="button"
-          onClick={() => setIsOpen((current) => !current)}
+          // The whole card also toggles on click (see `AerialEvacKanbanCard`
+          // below) — stopping propagation here keeps a direct click on the
+          // chevron from also bubbling into that handler and toggling twice
+          // (which would cancel itself out).
+          onClick={(clickEvent) => {
+            clickEvent.stopPropagation();
+            onToggleOpen();
+          }}
           style={{
             display: "flex",
             alignItems: "center",
@@ -111,7 +125,16 @@ export function AerialEvacKanbanCardContent({ event, casualties, aerialStatus })
           </Group>
         </Group>
 
-        {isOpen && <CasualtiesCard casualties={casualties} statBreakdown="ability" bare rowHover />}
+        {isOpen && (
+          // Its own click boundary: the whole card toggles on click, but
+          // once the detail table is open, clicking a row inside it (e.g.
+          // the hover-highlighted rows CasualtiesCard now supports) should
+          // read that row, not immediately collapse the card back out from
+          // under it.
+          <Box onClick={(clickEvent) => clickEvent.stopPropagation()}>
+            <CasualtiesCard casualties={casualties} statBreakdown="ability" bare rowHover />
+          </Box>
+        )}
       </Stack>
     </DashboardCard>
   );
@@ -131,6 +154,19 @@ export function AerialEvacKanbanCardContent({ event, casualties, aerialStatus })
  * (portal-rendered, unaffected by any column's overflow) renders the moving
  * copy instead.
  *
+ * Hover/press (`useHoverState` + `onMouseDown`/`onMouseUp`, matching
+ * `EventQueueCard`'s own treatment) live on this wrapper `Box`, not on
+ * `AerialEvacKanbanCardContent`'s `DashboardCard` — `DashboardCard` is a
+ * shared component used well beyond this one card, so its own
+ * background/border stay untouched; instead the wrapper adds an outward
+ * glow ring (sized to match `DashboardCard`'s own `radius="sm"`) plus a
+ * lift, around the outside of the card it already renders.
+ *
+ * The expand/collapse toggle also lives here rather than inside
+ * `AerialEvacKanbanCardContent`, so clicking anywhere on the card (not just
+ * its chevron) opens/closes the casualty detail — same "the whole item is
+ * clickable" treatment `EventQueueCard` gives the brigade board's cards.
+ *
  * @param {{ event: object, mission: object | undefined, casualties: Array<object>, aerialStatus: string, isPending: boolean }} props
  * @returns {JSX.Element} The kanban card.
  */
@@ -139,18 +175,44 @@ const AerialEvacKanbanCard = ({ event, casualties, aerialStatus, isPending }) =>
     id: event.id,
     disabled: !isPending,
   });
+  const [isHovered, hoverHandlers] = useHoverState();
+  const [isPressed, setIsPressed] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const color = AERIAL_EVAC_COLOR_VARS[aerialStatus] || "var(--app-color-text-muted)";
+  const isActive = isHovered && !isDragging;
+  const isActivePressed = isPressed && !isDragging;
+  const toggleOpen = () => setIsOpen((current) => !current);
 
   return (
     <Box
       ref={setNodeRef}
+      onClick={toggleOpen}
       style={{
-        cursor: isPending ? "grab" : "default",
+        cursor: isPending ? "grab" : "pointer",
         opacity: isDragging ? 0.4 : 1,
+        borderRadius: "var(--mantine-radius-sm)",
+        boxShadow: isActive ? `0 0 0 1px color-mix(in srgb, ${color} 45%, transparent)` : "none",
+        transform: isActivePressed ? "scale(0.97)" : isActive ? "translateY(-1px)" : "none",
+        transition: "transform 0.15s ease, box-shadow 0.15s ease",
       }}
+      {...hoverHandlers}
+      onMouseLeave={() => {
+        hoverHandlers.onMouseLeave();
+        setIsPressed(false);
+      }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
       {...(isPending ? listeners : {})}
       {...(isPending ? attributes : {})}
     >
-      <AerialEvacKanbanCardContent event={event} casualties={casualties} aerialStatus={aerialStatus} />
+      <AerialEvacKanbanCardContent
+        event={event}
+        casualties={casualties}
+        aerialStatus={aerialStatus}
+        isOpen={isOpen}
+        onToggleOpen={toggleOpen}
+      />
     </Box>
   );
 };

@@ -241,17 +241,39 @@ const QueueColumn = ({
     id: status.key,
     disabled: !isToday || status.key !== CLOSED_STATUS,
   });
+  const [isHovered, hoverHandlers] = useHoverState();
+
+  // `isOver` (an active drag over this column) always wins over plain mouse
+  // hover — both are folded into the same border/boxShadow computation
+  // rather than a separate hover-only style, so there's exactly one place
+  // deciding this element's visual state. The hover ring reuses the
+  // column's own `status.color` at a lower mix than the isOver ring, and
+  // stays inset (no size increase) — the grid this column sits in
+  // (`EventQueueBoard.jsx`, no fixed column width, 0.75rem gap) has no room
+  // for an outward-growing effect to grow into without visually touching
+  // the next column.
+  const borderColor = isOver
+    ? status.color
+    : isHovered
+      ? `color-mix(in srgb, ${status.color} 35%, var(--app-color-border))`
+      : "var(--app-color-border)";
+  const boxShadow = isOver
+    ? `0 0 0 1px ${status.color} inset`
+    : isHovered
+      ? `0 0 0 1px color-mix(in srgb, ${status.color} 25%, transparent) inset`
+      : "none";
 
   return (
     <Stack
       ref={setNodeRef}
       gap={0}
+      {...hoverHandlers}
       style={{
         minHeight: 0,
         height: "100%",
         backgroundColor: "var(--app-color-surface)",
-        border: `1px solid ${isOver ? status.color : "var(--app-color-border)"}`,
-        boxShadow: isOver ? `0 0 0 1px ${status.color} inset` : "none",
+        border: `1px solid ${borderColor}`,
+        boxShadow,
         borderRadius: "var(--mantine-radius-sm)",
         overflow: "hidden",
         transition: "border-color 0.15s ease, box-shadow 0.15s ease",

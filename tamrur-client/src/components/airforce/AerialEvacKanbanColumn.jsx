@@ -7,6 +7,7 @@ import { useDroppable } from "@dnd-kit/core";
 
 // Internal application modules
 import AerialEvacKanbanCard from "./AerialEvacKanbanCard";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -105,16 +106,35 @@ function KanbanSortSelect({ value, onChange, ariaLabel }) {
  */
 const AerialEvacKanbanColumn = ({ columnKey, label, color, rows, droppable, emptyMessage, sortMode, onSortChange }) => {
   const { setNodeRef, isOver } = useDroppable({ id: columnKey, disabled: !droppable });
+  const [isHovered, hoverHandlers] = useHoverState();
+
+  // `isOver` (an active drag over this column) always wins over plain mouse
+  // hover — both are folded into the same border/boxShadow computation, same
+  // as the brigade board's own `QueueColumn.jsx`. The hover ring reuses the
+  // column's own `color` at a lower mix than the isOver ring and stays inset
+  // (no size increase), since this column sits in a `gap: 0.75rem` grid with
+  // no fixed width to grow into.
+  const borderColor = isOver
+    ? color
+    : isHovered
+      ? `color-mix(in srgb, ${color} 35%, var(--app-color-border))`
+      : "var(--app-color-border)";
+  const boxShadow = isOver
+    ? `0 0 0 1px ${color} inset`
+    : isHovered
+      ? `0 0 0 1px color-mix(in srgb, ${color} 25%, transparent) inset`
+      : "none";
 
   return (
     <Stack
       ref={setNodeRef}
       gap={0}
+      {...hoverHandlers}
       style={{
         minHeight: 0,
         backgroundColor: "var(--app-color-surface)",
-        border: `1px solid ${isOver ? color : "var(--app-color-border)"}`,
-        boxShadow: isOver ? `0 0 0 1px ${color} inset` : "none",
+        border: `1px solid ${borderColor}`,
+        boxShadow,
         borderRadius: "var(--mantine-radius-sm)",
         overflow: "hidden",
         transition: "border-color 0.15s ease, box-shadow 0.15s ease",
