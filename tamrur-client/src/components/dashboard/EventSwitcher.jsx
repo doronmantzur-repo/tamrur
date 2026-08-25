@@ -1,5 +1,5 @@
 // React
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // External libraries
 import { Badge, Button, Group, Loader, Menu, ScrollArea, Text } from "@mantine/core";
@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from "react-redux";
 // Internal application modules
 import { fetchEvents } from "../../features/events/eventsSlice";
 import { EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS } from "../../constants/eventStatus";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -37,6 +38,8 @@ import { EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS } from "../../constants/ev
 const EventSwitcher = ({ value, onChange, label = "החלף אירוע" }) => {
   const dispatch = useDispatch();
   const { events, status } = useSelector((state) => state.events);
+  const [isHovered, hoverHandlers] = useHoverState();
+  const [isPressed, setIsPressed] = useState(false);
 
   useEffect(() => {
     dispatch(fetchEvents());
@@ -64,6 +67,13 @@ const EventSwitcher = ({ value, onChange, label = "החלף אירוע" }) => {
           rightSection={<IconChevronDown size={14} stroke={2} />}
           loading={isLoading}
           disabled={isLoading}
+          {...hoverHandlers}
+          onMouseLeave={() => {
+            hoverHandlers.onMouseLeave();
+            setIsPressed(false);
+          }}
+          onMouseDown={() => setIsPressed(true)}
+          onMouseUp={() => setIsPressed(false)}
           // Height is left to the theme's 3rem minTouchTarget, which every
           // other button here honours. It makes this one ~17px taller than the
           // heading beside it, and since it is the tallest thing in that row it
@@ -71,10 +81,20 @@ const EventSwitcher = ({ value, onChange, label = "החלף אירוע" }) => {
           // the whole selector row it replaced, and undercutting an app-wide
           // touch-target token to reclaim 17px more is a poor trade. Compact
           // here means the 93px-wide button that replaced a 260px combobox.
+          // Hover/press feedback (underline + scale) is real state, not CSS
+          // `&:hover`/`&:active` keys — Mantine's `styles` prop flattens
+          // straight into a plain inline `style` attribute here, so
+          // pseudo-selectors inside it are silently dropped rather than
+          // compiled into real CSS (same gotcha `ColumnHeader.jsx`'s
+          // `ClearFilterButton` works around the same way).
           styles={{
             root: {
-              color: "var(--app-color-primary)",
+              color: isHovered ? "var(--app-color-primary)" : "var(--app-color-text-muted)",
               paddingInline: "0.5rem",
+              backgroundColor: "transparent",
+              textDecoration: isHovered ? "underline" : "none",
+              transform: isPressed ? "scale(0.95)" : isHovered ? "scale(1.05)" : "scale(1)",
+              transition: "color 0.15s ease, transform 0.15s ease",
             },
             label: { fontSize: "0.8rem", fontWeight: 600 },
           }}

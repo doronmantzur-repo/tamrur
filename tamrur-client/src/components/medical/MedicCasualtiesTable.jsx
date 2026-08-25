@@ -44,6 +44,7 @@ import {
 import { URGENCY_FILTER_OPTIONS } from "../../constants/casualtyStatus";
 import { MONO_FONT } from "./formStyles";
 import { useCellSave } from "./useCellSave";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -51,6 +52,52 @@ const groupHeaderStyle = {
   backgroundColor: "var(--app-color-surface-high)",
   color: "var(--app-color-text-muted)",
 };
+
+/**
+ * The urgency filter popover's "נקה סינון" (clear filter) button — same
+ * treatment as the brigade tables' equivalent (`ColumnHeader.jsx`'s
+ * `ClearFilterButton`): hover/press feedback is real state (`useHoverState`
+ * + local `isPressed`), not CSS `&:hover`/`&:active` keys inside Mantine's
+ * `styles` prop, which flattens straight into a plain inline `style`
+ * attribute here and silently drops pseudo-selectors. Stays disabled (not
+ * conditionally unrendered) while nothing is selected, matching this
+ * popover's existing convention — a disabled native button never fires
+ * mouse events, so `isHovered` naturally never goes true in that state.
+ *
+ * @param {{ onClick: () => void, disabled: boolean }} props
+ * @returns {JSX.Element} The clear-filter button.
+ */
+function ClearFilterButton({ onClick, disabled }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+  const [isPressed, setIsPressed] = useState(false);
+
+  return (
+    <Button
+      size="compact-xs"
+      variant="subtle"
+      disabled={disabled}
+      onClick={onClick}
+      {...hoverHandlers}
+      onMouseLeave={() => {
+        hoverHandlers.onMouseLeave();
+        setIsPressed(false);
+      }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      styles={{
+        root: {
+          backgroundColor: "transparent",
+          color: isHovered ? "var(--app-color-primary)" : "var(--app-color-text-muted)",
+          textDecoration: isHovered ? "underline" : "none",
+          transform: isPressed ? "scale(0.95)" : isHovered ? "scale(1.05)" : "scale(1)",
+          transition: "color 0.15s ease, transform 0.15s ease",
+        },
+      }}
+    >
+      נקה סינון
+    </Button>
+  );
+}
 
 /**
  * The urgency column's own multi-select filter, opened from its header.
@@ -64,6 +111,33 @@ const groupHeaderStyle = {
  */
 const UrgencyHeaderFilter = ({ selected, onChange }) => {
   const isFiltering = selected.length > 0;
+  const [isHovered, hoverHandlers] = useHoverState();
+
+  // Same 4-state glyph/color treatment as the brigade board's per-column
+  // filter icon (ColumnHeader.jsx / QueueColumn.jsx's QueueFilterRow) —
+  // outline -> filled glyph swap plus a color/background transition, in
+  // primary/gold since clicking this icon always opens the filter popover
+  // rather than clearing directly (the popover has its own "נקה סינון"
+  // button for that).
+  let icon;
+  let iconColor;
+  let backgroundColor = "transparent";
+
+  if (isFiltering) {
+    icon = <IconFilterFilled size={14} />;
+    if (isHovered) {
+      backgroundColor = "var(--app-color-primary)";
+      iconColor = "var(--app-color-primary-text)";
+    } else {
+      iconColor = "var(--app-color-primary)";
+    }
+  } else if (isHovered) {
+    icon = <IconFilterFilled size={14} />;
+    iconColor = "var(--app-color-primary)";
+  } else {
+    icon = <IconFilter size={14} />;
+    iconColor = "var(--app-color-text-muted)";
+  }
 
   return (
     <Popover position="bottom" withArrow shadow="md" withinPortal trapFocus>
@@ -73,12 +147,16 @@ const UrgencyHeaderFilter = ({ selected, onChange }) => {
           title={isFiltering ? `סנן דחיפות (${selected.length} נבחרו)` : "סנן דחיפות"}
           variant="subtle"
           size="1.4rem"
+          {...hoverHandlers}
+          styles={{
+            root: {
+              backgroundColor,
+              color: iconColor,
+              transition: "background-color 0.15s ease, color 0.15s ease",
+            },
+          }}
         >
-          {isFiltering ? (
-            <IconFilterFilled size={14} color="var(--app-color-primary)" />
-          ) : (
-            <IconFilter size={14} color="var(--app-color-text-muted)" />
-          )}
+          {icon}
         </ActionIcon>
       </Popover.Target>
 
@@ -106,15 +184,7 @@ const UrgencyHeaderFilter = ({ selected, onChange }) => {
             </Stack>
           </Checkbox.Group>
 
-          <Button
-            size="compact-xs"
-            variant="subtle"
-            disabled={!isFiltering}
-            onClick={() => onChange([])}
-            styles={{ root: { color: "var(--app-color-primary)" } }}
-          >
-            נקה סינון
-          </Button>
+          <ClearFilterButton onClick={() => onChange([])} disabled={!isFiltering} />
         </Stack>
       </Popover.Dropdown>
     </Popover>

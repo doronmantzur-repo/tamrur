@@ -1,7 +1,7 @@
 // React
 
 // External libraries
-import { ActionIcon, Badge, Box, Group, Stack, Text } from "@mantine/core";
+import { ActionIcon, Badge, Box, Group, Stack, Text, Tooltip } from "@mantine/core";
 import {
   IconArrowsSort,
   IconChevronDown,
@@ -49,61 +49,69 @@ const TYPE_FILTER_OPTIONS = [
  * styling their open dropdown list, but that's a minor, well-understood
  * browser limitation).
  *
- * @param {{ icon: React.ComponentType, value: string, onChange: (value: string) => void, options: Array<{value: string, label: string}>, ariaLabel: string }} props
+ * `tooltipLabel` is the short, column-agnostic hint shown on hover/focus
+ * (e.g. "סנן לפי סוג אירוע") — naming which column it's in would be
+ * redundant, since the tooltip only ever appears right on that column's own
+ * control. `ariaLabel` stays fully explicit (e.g. "סנן את X לפי סוג אירוע")
+ * since screen-reader users don't get that same visual column context.
+ *
+ * @param {{ icon: React.ComponentType, value: string, onChange: (value: string) => void, options: Array<{value: string, label: string}>, ariaLabel: string, tooltipLabel: string }} props
  * @returns {JSX.Element} The select field.
  */
-function NativeSelectField({ icon: Icon, value, onChange, options, ariaLabel }) {
+function NativeSelectField({ icon: Icon, value, onChange, options, ariaLabel, tooltipLabel }) {
   return (
-    <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
-      <Icon
-        size={13}
-        stroke={2}
-        style={{
-          position: "absolute",
-          insetInlineStart: "0.5rem",
-          color: "var(--app-color-text-muted)",
-          pointerEvents: "none",
-        }}
-      />
-      <select
-        aria-label={ariaLabel}
-        value={value}
-        onChange={(evt) => onChange(evt.target.value)}
-        style={{
-          width: "100%",
-          appearance: "none",
-          WebkitAppearance: "none",
-          MozAppearance: "none",
-          boxSizing: "border-box",
-          height: "1.8rem",
-          paddingInlineStart: "1.6rem",
-          paddingInlineEnd: "1.4rem",
-          borderRadius: "var(--mantine-radius-sm)",
-          border: "1px solid var(--app-color-border)",
-          backgroundColor: "var(--app-color-surface-high)",
-          color: "var(--app-color-text-muted)",
-          fontFamily: "inherit",
-          fontSize: "0.72rem",
-          cursor: "pointer",
-        }}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <IconChevronDown
-        size={12}
-        stroke={2}
-        style={{
-          position: "absolute",
-          insetInlineEnd: "0.5rem",
-          color: "var(--app-color-text-muted)",
-          pointerEvents: "none",
-        }}
-      />
-    </div>
+    <Tooltip label={tooltipLabel} position="top" withArrow>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
+        <Icon
+          size={13}
+          stroke={2}
+          style={{
+            position: "absolute",
+            insetInlineStart: "0.5rem",
+            color: "var(--app-color-text-muted)",
+            pointerEvents: "none",
+          }}
+        />
+        <select
+          aria-label={ariaLabel}
+          value={value}
+          onChange={(evt) => onChange(evt.target.value)}
+          style={{
+            width: "100%",
+            appearance: "none",
+            WebkitAppearance: "none",
+            MozAppearance: "none",
+            boxSizing: "border-box",
+            height: "1.8rem",
+            paddingInlineStart: "1.6rem",
+            paddingInlineEnd: "1.4rem",
+            borderRadius: "var(--mantine-radius-sm)",
+            border: "1px solid var(--app-color-border)",
+            backgroundColor: "var(--app-color-surface-high)",
+            color: "var(--app-color-text-muted)",
+            fontFamily: "inherit",
+            fontSize: "0.72rem",
+            cursor: "pointer",
+          }}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <IconChevronDown
+          size={12}
+          stroke={2}
+          style={{
+            position: "absolute",
+            insetInlineEnd: "0.5rem",
+            color: "var(--app-color-text-muted)",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
+    </Tooltip>
   );
 }
 
@@ -182,6 +190,7 @@ function QueueFilterRow({ label, filters, onFilterChange, onClearFilters }) {
         onChange={(value) => onFilterChange("aerialEvac", value)}
         options={AERIAL_EVAC_FILTER_OPTIONS}
         ariaLabel={`סנן את ${label} לפי פינוי אווירי`}
+        tooltipLabel="סנן לפי פינוי אווירי"
       />
 
       <NativeSelectField
@@ -190,6 +199,7 @@ function QueueFilterRow({ label, filters, onFilterChange, onClearFilters }) {
         onChange={(value) => onFilterChange("type", value)}
         options={TYPE_FILTER_OPTIONS}
         ariaLabel={`סנן את ${label} לפי סוג אירוע`}
+        tooltipLabel="סנן לפי סוג אירוע"
       />
     </Group>
   );
@@ -326,6 +336,7 @@ const QueueColumn = ({
           onChange={onSortChange}
           options={QUEUE_SORT_OPTIONS}
           ariaLabel={`מיין את ${status.label} לפי`}
+          tooltipLabel="מיין לפי"
         />
 
         <QueueFilterRow
