@@ -15,6 +15,10 @@ import { useHoverState } from "../../hooks/useHoverState";
 // Styles
 
 const MONO_FONT = 'ui-monospace, "SF Mono", "Consolas", monospace';
+
+/** Truncates overflowing cell content with an ellipsis instead of wrapping — the fixed column widths below need this, since a value wider than its column would otherwise wrap and grow the row. The full value is still available via each cell's `title` tooltip on hover. */
+const ELLIPSIS_STYLE = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+
 const dateTimeFormatter = new Intl.DateTimeFormat("he-IL", {
   day: "numeric",
   month: "short",
@@ -89,10 +93,10 @@ function EventRow({ event, index, onOpen }) {
       onMouseUp={() => setIsPressed(false)}
       style={{ animationDelay: `${index * 30}ms`, cursor: "pointer" }}
     >
-      <Table.Td fw={600} style={firstCellStyle}>
+      <Table.Td fw={600} style={{ ...firstCellStyle, ...ELLIPSIS_STYLE }} title={event.name}>
         {event.name}
       </Table.Td>
-      <Table.Td style={cellStyle}>
+      <Table.Td style={cellStyle} title={EVENT_TYPE_LABELS[event.type] || event.type}>
         <Badge
           size="sm"
           variant="outline"
@@ -101,29 +105,45 @@ function EventRow({ event, index, onOpen }) {
               backgroundColor: "var(--app-color-surface-high)",
               borderColor: "var(--app-color-border)",
               color: "var(--app-color-text-muted)",
+              maxWidth: "100%",
+              overflow: "hidden",
             },
+            label: ELLIPSIS_STYLE,
           }}
         >
           {EVENT_TYPE_LABELS[event.type] || event.type}
         </Badge>
       </Table.Td>
-      <Table.Td style={cellStyle}>
+      <Table.Td style={cellStyle} title={EVENT_STATUS_LABELS[event.status] || event.status}>
         <Badge
           size="sm"
           styles={{
             root: {
               backgroundColor: `color-mix(in srgb, ${EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)"} 16%, transparent)`,
               color: EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)",
+              maxWidth: "100%",
+              overflow: "hidden",
             },
+            label: ELLIPSIS_STYLE,
           }}
         >
           {EVENT_STATUS_LABELS[event.status] || event.status}
         </Badge>
       </Table.Td>
-      <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT} style={cellStyle}>
+      <Table.Td
+        c="var(--app-color-text-muted)"
+        ff={MONO_FONT}
+        style={{ ...cellStyle, ...ELLIPSIS_STYLE }}
+        title={dateTimeFormatter.format(new Date(event.created_at))}
+      >
         {dateTimeFormatter.format(new Date(event.created_at))}
       </Table.Td>
-      <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT} style={lastCellStyle}>
+      <Table.Td
+        c="var(--app-color-text-muted)"
+        ff={MONO_FONT}
+        style={{ ...lastCellStyle, ...ELLIPSIS_STYLE }}
+        title={event.closure_at ? dateTimeFormatter.format(new Date(event.closure_at)) : "פעיל"}
+      >
         {event.closure_at ? dateTimeFormatter.format(new Date(event.closure_at)) : "פעיל"}
       </Table.Td>
     </Table.Tr>
@@ -217,15 +237,34 @@ const EventQueueTable = ({ events }) => {
           </Badge>
         }
       >
-        <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-          <Table verticalSpacing="sm" fz="sm" style={{ width: "100%" }}>
+        <Box style={{ flex: 1, minHeight: 0, overflow: "auto", scrollbarGutter: "stable" }}>
+          {/* table-layout: fixed + an explicit width per column keeps column
+              widths constant regardless of what's rendered in the body —
+              including the spanning "no results" row shown when a filter
+              matches nothing, which under the default auto layout would
+              otherwise resize every column. Headers are also sticky
+              (`sticky` on each ColumnHeader) so they stay visible while
+              scrolling a long, filtered list. */}
+          <Table verticalSpacing="sm" fz="sm" style={{ width: "100%", tableLayout: "fixed" }}>
             <Table.Thead>
               <Table.Tr>
-                <ColumnHeader label="שם אירוע" {...sortProps("name")} />
-                <ColumnHeader label="סוג" {...sortProps("type")} {...filterProps("type", TYPE_FILTER_OPTIONS)} />
-                <ColumnHeader label="סטטוס" {...sortProps("status")} {...filterProps("status", STATUS_FILTER_OPTIONS)} />
-                <ColumnHeader label="נפתח" {...sortProps("created_at")} />
-                <ColumnHeader label="נסגר" {...sortProps("closure_at")} />
+                <ColumnHeader label="שם אירוע" w="12rem" sticky {...sortProps("name")} />
+                <ColumnHeader
+                  label="סוג"
+                  w="7rem"
+                  sticky
+                  {...sortProps("type")}
+                  {...filterProps("type", TYPE_FILTER_OPTIONS)}
+                />
+                <ColumnHeader
+                  label="סטטוס"
+                  w="8rem"
+                  sticky
+                  {...sortProps("status")}
+                  {...filterProps("status", STATUS_FILTER_OPTIONS)}
+                />
+                <ColumnHeader label="נפתח" w="8.5rem" sticky {...sortProps("created_at")} />
+                <ColumnHeader label="נסגר" w="8.5rem" sticky {...sortProps("closure_at")} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
