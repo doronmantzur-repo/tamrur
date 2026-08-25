@@ -16,6 +16,9 @@ import { useHoverState } from "../../hooks/useHoverState";
 
 const MONO_FONT = 'ui-monospace, "SF Mono", "Consolas", monospace';
 
+/** Truncates overflowing cell content with an ellipsis instead of wrapping — the fixed column widths below need this, since a value wider than its column would otherwise wrap and grow the row. The full value is still available via each cell's `title` tooltip on hover. */
+const ELLIPSIS_STYLE = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+
 const timeFormatter = new Intl.DateTimeFormat("he-IL", { timeStyle: "short" });
 
 const URGENCY_FILTER_OPTIONS = URGENCY_ORDER.map((key) => ({ value: key, label: URGENCY_LABELS[key] }));
@@ -65,23 +68,33 @@ function EvacuatedCasualtyRow({ casualty }) {
 
   return (
     <Table.Tr className="app-fade-in" {...hoverHandlers}>
-      <Table.Td ff={MONO_FONT} style={firstCellStyle}>
+      <Table.Td
+        ff={MONO_FONT}
+        style={{ ...firstCellStyle, ...ELLIPSIS_STYLE }}
+        title={casualty["casualty-number"] ?? "—"}
+      >
         {casualty["casualty-number"] ?? "—"}
       </Table.Td>
-      <Table.Td style={cellStyle}>
+      <Table.Td style={cellStyle} title={urgencyLabel(casualty.urgency)}>
         <Badge
           size="sm"
           styles={{
-            root: { ...urgencyBadgeColors(casualty.urgency) },
+            root: { ...urgencyBadgeColors(casualty.urgency), maxWidth: "100%", overflow: "hidden" },
+            label: ELLIPSIS_STYLE,
           }}
         >
           {urgencyLabel(casualty.urgency)}
         </Badge>
       </Table.Td>
-      <Table.Td ff={MONO_FONT} style={cellStyle}>
+      <Table.Td ff={MONO_FONT} style={{ ...cellStyle, ...ELLIPSIS_STYLE }} title={casualty["evac-priority"] ?? "—"}>
         {casualty["evac-priority"] ?? "—"}
       </Table.Td>
-      <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT} style={lastCellStyle}>
+      <Table.Td
+        c="var(--app-color-text-muted)"
+        ff={MONO_FONT}
+        style={{ ...lastCellStyle, ...ELLIPSIS_STYLE }}
+        title={casualty.evacuated_at ? timeFormatter.format(new Date(casualty.evacuated_at)) : "—"}
+      >
         {casualty.evacuated_at ? timeFormatter.format(new Date(casualty.evacuated_at)) : "—"}
       </Table.Td>
     </Table.Tr>
@@ -190,30 +203,41 @@ const EvacuatedCasualtiesCard = ({ casualties }) => {
         </Badge>
       }
     >
-      <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-        {/* Explicit width prevents this table (only 4 narrow columns) from
+      <Box style={{ flex: 1, minHeight: 0, overflow: "auto", scrollbarGutter: "stable" }}>
+        {/* width: 100% prevents this table (only 4 narrow columns) from
             shrinking to its natural content width and — since the page is
             RTL — snapping flush to the right edge of its container with
-            empty space on the left, instead of filling the card evenly. */}
-        <Table verticalSpacing={4} fz="xs" style={{ width: "100%" }}>
+            empty space on the left, instead of filling the card evenly.
+            table-layout: fixed + an explicit width per column (ratios of
+            that 100%) on top of that keeps the columns from resizing based
+            on row content, e.g. the "no results" row. Headers are sticky
+            (`sticky` on each ColumnHeader) so they stay visible while
+            scrolling a long, filtered list. */}
+        <Table verticalSpacing={4} fz="xs" style={{ width: "100%", tableLayout: "fixed" }}>
           <Table.Thead>
             <Table.Tr>
               <ColumnHeader
                 label="מס' פצוע"
+                w="5rem"
+                sticky
                 {...sortProps("casualty-number")}
                 {...filterProps("casualty-number", numberOptions)}
               />
               <ColumnHeader
                 label="דחיפות"
+                w="7rem"
+                sticky
                 {...sortProps("urgency")}
                 {...filterProps("urgency", URGENCY_FILTER_OPTIONS)}
               />
               <ColumnHeader
                 label="עדיפות לפינוי"
+                w="7rem"
+                sticky
                 {...sortProps("evac-priority")}
                 {...filterProps("evac-priority", priorityOptions)}
               />
-              <ColumnHeader label="שעת פינוי" {...sortProps("evacuated_at")} />
+              <ColumnHeader label="שעת פינוי" w="6rem" sticky {...sortProps("evacuated_at")} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

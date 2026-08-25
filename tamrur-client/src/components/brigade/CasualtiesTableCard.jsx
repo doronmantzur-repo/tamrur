@@ -25,6 +25,9 @@ import { useHoverState } from "../../hooks/useHoverState";
 
 const MONO_FONT = 'ui-monospace, "SF Mono", "Consolas", monospace';
 
+/** Truncates overflowing cell content with an ellipsis instead of wrapping — the fixed column widths below need this, since a value wider than its column would otherwise wrap and grow the row. The full value is still available via each cell's `title` tooltip on hover. */
+const ELLIPSIS_STYLE = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+
 function YesNo({ value }) {
   return value ? (
     <IconCheck size={16} color="var(--app-color-success)" />
@@ -175,26 +178,41 @@ function CasualtyRow({ casualty, index, isOpen, onToggle }) {
             )}
           </ActionIcon>
         </Table.Td>
-        <Table.Td ff={MONO_FONT} style={cellStyle}>
+        <Table.Td ff={MONO_FONT} style={{ ...cellStyle, ...ELLIPSIS_STYLE }} title={casualty["casualty-number"] ?? "—"}>
           {casualty["casualty-number"] ?? "—"}
         </Table.Td>
-        <Table.Td style={cellStyle}>
+        <Table.Td style={cellStyle} title={urgencyLabel(casualty.urgency)}>
           <Badge
             styles={{
               root: {
                 ...urgencyBadgeColors(casualty.urgency),
+                maxWidth: "100%",
+                overflow: "hidden",
               },
+              label: ELLIPSIS_STYLE,
             }}
           >
             {urgencyLabel(casualty.urgency)}
           </Badge>
         </Table.Td>
-        <Table.Td ff={MONO_FONT} style={cellStyle}>
+        <Table.Td ff={MONO_FONT} style={{ ...cellStyle, ...ELLIPSIS_STYLE }} title={casualty["evac-priority"] ?? "—"}>
           {casualty["evac-priority"] ?? "—"}
         </Table.Td>
-        <Table.Td style={cellStyle}>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>
-        <Table.Td style={cellStyle}>{VENTILATION_LABELS[casualty.ventilation] || "—"}</Table.Td>
-        <Table.Td style={cellStyle}>{ESCORT_TYPE_LABELS[casualty["escort-type"]] || "—"}</Table.Td>
+        <Table.Td
+          style={{ ...cellStyle, ...ELLIPSIS_STYLE }}
+          title={EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}
+        >
+          {EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}
+        </Table.Td>
+        <Table.Td style={{ ...cellStyle, ...ELLIPSIS_STYLE }} title={VENTILATION_LABELS[casualty.ventilation] || "—"}>
+          {VENTILATION_LABELS[casualty.ventilation] || "—"}
+        </Table.Td>
+        <Table.Td
+          style={{ ...cellStyle, ...ELLIPSIS_STYLE }}
+          title={ESCORT_TYPE_LABELS[casualty["escort-type"]] || "—"}
+        >
+          {ESCORT_TYPE_LABELS[casualty["escort-type"]] || "—"}
+        </Table.Td>
         <Table.Td style={cellStyle}>
           <YesNo value={casualty.helivac} />
         </Table.Td>
@@ -306,44 +324,75 @@ const CasualtiesTableCard = ({ casualties }) => {
 
   return (
     <DashboardCard title={`נפגעים שטרם פונו (${casualties.length})`} padding="md" gap="sm" fullHeight>
-      <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-        <Table verticalSpacing="sm" fz="sm">
+      <Box style={{ flex: 1, minHeight: 0, overflow: "auto", scrollbarGutter: "stable" }}>
+        {/* table-layout: fixed + an explicit width per column (matching
+            EvacuationsTable right beside this card) keeps the table's column
+            widths constant regardless of what's rendered in the body —
+            including the spanning "no results" row shown when a filter
+            matches nothing, which under the default auto layout would
+            otherwise resize every column. Headers are also sticky (`sticky`
+            on each ColumnHeader) so they stay visible while scrolling
+            through a long, filtered list instead of scrolling out of view. */}
+        <Table verticalSpacing="sm" fz="sm" style={{ tableLayout: "fixed" }}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th />
+              <Table.Th
+                w="2.25rem"
+                style={{ position: "sticky", top: 0, zIndex: 1, backgroundColor: "var(--app-color-surface)", borderBottom: "1px solid var(--app-color-border)" }}
+              />
               <ColumnHeader
                 label="מס' פצוע"
+                w="6rem"
+                sticky
                 {...sortProps("casualty-number")}
                 {...filterProps("casualty-number", numberOptions)}
               />
               <ColumnHeader
                 label="דחיפות"
+                w="7rem"
+                sticky
                 {...sortProps("urgency")}
                 {...filterProps("urgency", URGENCY_FILTER_OPTIONS)}
               />
               <ColumnHeader
                 label="עדיפות לפינוי"
+                w="7rem"
+                sticky
                 {...sortProps("evac-priority")}
                 {...filterProps("evac-priority", priorityOptions)}
               />
               <ColumnHeader
                 label="יכולת פינוי"
+                w="7.5rem"
+                sticky
                 {...sortProps("evac-ability")}
                 {...filterProps("evac-ability", ABILITY_FILTER_OPTIONS)}
               />
               <ColumnHeader
                 label="מונשם"
+                w="6rem"
+                sticky
                 {...sortProps("ventilation")}
                 {...filterProps("ventilation", VENTILATION_FILTER_OPTIONS)}
               />
               <ColumnHeader
                 label="ליווי"
+                w="7rem"
+                sticky
                 {...sortProps("escort-type")}
                 {...filterProps("escort-type", ESCORT_TYPE_FILTER_OPTIONS)}
               />
-              <ColumnHeader label="מוסק" {...sortProps("helivac")} {...filterProps("helivac", BOOL_FILTER_OPTIONS)} />
+              <ColumnHeader
+                label="מוסק"
+                w="5.5rem"
+                sticky
+                {...sortProps("helivac")}
+                {...filterProps("helivac", BOOL_FILTER_OPTIONS)}
+              />
               <ColumnHeader
                 label="מוכן לפינוי"
+                w="7.5rem"
+                sticky
                 {...sortProps("evac-ready")}
                 {...filterProps("evac-ready", BOOL_FILTER_OPTIONS)}
               />

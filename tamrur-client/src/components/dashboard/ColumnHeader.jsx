@@ -26,6 +26,7 @@ import { IconChevronDown, IconChevronUp, IconFilter, IconSearch } from "@tabler/
  *   onToggleFilterValue?: (value: string) => void,
  *   onClearFilter?: () => void,
  *   w?: string | number,
+ *   sticky?: boolean,
  * }} props
  * @returns {JSX.Element} The column header cell.
  */
@@ -38,6 +39,7 @@ const ColumnHeader = ({
   onToggleFilterValue,
   onClearFilter,
   w,
+  sticky = false,
 }) => {
   const [search, setSearch] = useState("");
 
@@ -47,7 +49,20 @@ const ColumnHeader = ({
   const visibleOptions = filterOptions?.filter((option) => option.label.includes(search)) ?? [];
 
   return (
-    <Table.Th w={w}>
+    <Table.Th
+      w={w}
+      style={
+        sticky
+          ? {
+              position: "sticky",
+              top: 0,
+              zIndex: 1,
+              backgroundColor: "var(--app-color-surface)",
+              borderBottom: "1px solid var(--app-color-border)",
+            }
+          : undefined
+      }
+    >
       {/* Order is deliberate: label, then filter icon (right next to the
           label it belongs to), then the sort chevron last. flex-start (not
           space-between) keeps everything clustered together — in this RTL

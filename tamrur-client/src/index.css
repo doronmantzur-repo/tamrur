@@ -27,6 +27,19 @@ body,
   min-height: 100%;
 }
 
+/* Always reserves the document scrollbar's gutter, whether or not it's
+   currently showing — otherwise a page whose height crosses the viewport
+   threshold (e.g. filtering a table to zero rows and back) toggles the
+   scrollbar on/off, and every fixed-layout table on the page rescales its
+   columns as the available width briefly changes underneath it. */
+html {
+  /* scrollbar-gutter has no effect unless overflow is explicitly non-
+     visible on the same element — without this, the rule below was
+     silently ignored and the document scrollbar kept toggling on/off. */
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
 body {
   min-width: 20rem;
   min-height: 100vh;

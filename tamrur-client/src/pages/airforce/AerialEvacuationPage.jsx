@@ -131,7 +131,7 @@ const AerialEvacuationPage = () => {
           zIndex: 10,
         }}
       >
-        <Box w="100%" maw={1240}>
+        <Box w="100%" maw={1536}>
           <Stack align="stretch" gap="xl">
             {/* The app's brand mark and the account controls share this row,
                 same as the brigade board page — the mark is centered via

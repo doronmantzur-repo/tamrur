@@ -285,10 +285,12 @@ const EventQueueBoardPage = () => {
       <Stack
         align="stretch"
         h="100vh"
+        w="100%"
+        maw={1536}
         px="var(--app-page-padding)"
         py="md"
         pos="relative"
-        style={{ zIndex: 10, overflow: "hidden" }}
+        style={{ zIndex: 10, overflow: "hidden", marginInline: "auto" }}
       >
         {/* Page title, the app's brand mark, and the account controls all
             share this one row — the mark is centered on the row the same

@@ -293,7 +293,9 @@ function EvacuationRow({ evac, index, locations, aerialMissions, readOnly, onSta
       <Table.Td style={cellStyle}>
         <Group gap={6} wrap="nowrap">
           <MethodIcon size={16} stroke={1.8} />
-          <Text truncate>{EVAC_METHOD_LABELS[evac.method] || evac.method}</Text>
+          <Text truncate title={EVAC_METHOD_LABELS[evac.method] || evac.method}>
+            {EVAC_METHOD_LABELS[evac.method] || evac.method}
+          </Text>
         </Group>
       </Table.Td>
 
@@ -309,16 +311,18 @@ function EvacuationRow({ evac, index, locations, aerialMissions, readOnly, onSta
       </Table.Td>
 
       <Table.Td style={cellStyle}>
-        <Text truncate>{evac.forceRadioSign || "—"}</Text>
+        <Text truncate title={evac.forceRadioSign || "—"}>
+          {evac.forceRadioSign || "—"}
+        </Text>
       </Table.Td>
 
       <Table.Td style={cellStyle}>
-        <Text c="var(--app-color-text-muted)" truncate>
+        <Text c="var(--app-color-text-muted)" truncate title={mission?.radio_sign || "—"}>
           {mission?.radio_sign || "—"}
         </Text>
       </Table.Td>
 
-      <Table.Td style={readOnly ? lastCellStyle : cellStyle}>
+      <Table.Td style={readOnly ? lastCellStyle : cellStyle} title={EVAC_TEAM_STATUS_LABELS[evac.status] || evac.status}>
         <Badge
           size="sm"
           leftSection={<MethodIcon size={12} stroke={1.8} />}
@@ -326,7 +330,10 @@ function EvacuationRow({ evac, index, locations, aerialMissions, readOnly, onSta
             root: {
               backgroundColor: `color-mix(in srgb, ${statusColor} 16%, transparent)`,
               color: statusColor,
+              maxWidth: "100%",
+              overflow: "hidden",
             },
+            label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" },
           }}
         >
           {EVAC_TEAM_STATUS_LABELS[evac.status] || evac.status}
@@ -655,53 +662,68 @@ const EvacuationsTable = ({
         </Group>
       }
     >
-      <Box style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+      <Box style={{ flex: 1, minHeight: 0, overflow: "auto", scrollbarGutter: "stable" }}>
         {/* table-layout: fixed + an explicit width per column keeps the
             table's overall size constant, and — now that editing lives in
             EditEvacuationModal instead of inline cells — every column only
             has to fit compact display content (badges, short mono times,
             two-line text), not a Select/datetime-local input. That's what
             actually closes most of the horizontal-scroll gap; this table
-            used to need ~11 columns' worth of edit-input-sized width. */}
+            used to need ~11 columns' worth of edit-input-sized width.
+            Headers are sticky (`sticky` on each ColumnHeader) so they stay
+            visible while scrolling a long, filtered list. */}
         <Table verticalSpacing="sm" fz="xs" style={{ tableLayout: "fixed" }}>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th w="2.25rem"></Table.Th>
-              <ColumnHeader label="ציר זמן" w="7.5rem" {...sortProps("startTime")} />
+              <Table.Th
+                w="2.25rem"
+                style={{ position: "sticky", top: 0, zIndex: 1, backgroundColor: "var(--app-color-surface)", borderBottom: "1px solid var(--app-color-border)" }}
+              ></Table.Th>
+              <ColumnHeader label="ציר זמן" w="7.5rem" sticky {...sortProps("startTime")} />
               <ColumnHeader
                 label="סוג"
                 w="5.5rem"
+                sticky
                 {...sortProps("method")}
                 {...filterProps("method", METHOD_FILTER_OPTIONS)}
               />
               <ColumnHeader
                 label="מסלול"
                 w="7rem"
+                sticky
                 {...sortProps("departurePoint")}
                 {...filterProps("departurePoint", departureOptions)}
               />
               <ColumnHeader
                 label='או"ק'
                 w="5rem"
+                sticky
                 {...sortProps("forceRadioSign")}
                 {...filterProps("forceRadioSign", radioSignOptions)}
               />
               <ColumnHeader
                 label="משימה אווירית"
                 w="6rem"
+                sticky
                 {...sortProps("aerialMissionId")}
                 {...filterProps("aerialMissionId", missionOptions)}
               />
               <ColumnHeader
                 label="סטטוס"
                 w="6rem"
+                sticky
                 {...sortProps("status")}
                 {...filterProps("status", STATUS_FILTER_OPTIONS)}
               />
               {/* The row-actions column is dropped entirely in read-only mode
                   rather than left empty, so the remaining columns take the
                   width back. */}
-              {!readOnly && <Table.Th w="3.5rem"></Table.Th>}
+              {!readOnly && (
+                <Table.Th
+                  w="3.5rem"
+                  style={{ position: "sticky", top: 0, zIndex: 1, backgroundColor: "var(--app-color-surface)", borderBottom: "1px solid var(--app-color-border)" }}
+                ></Table.Th>
+              )}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>

@@ -25,6 +25,9 @@ import { useHoverState } from "../../hooks/useHoverState";
 
 const MONO_FONT = 'ui-monospace, "SF Mono", "Consolas", monospace';
 
+/** Truncates overflowing cell content with an ellipsis instead of wrapping — the fixed column widths below need this, since a value wider than its column would otherwise wrap and grow the row. The full value is still available via each cell's `title` tooltip on hover. */
+const ELLIPSIS_STYLE = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+
 /** The chevron column plus the 7 data columns. */
 const COLUMN_COUNT = 8;
 
@@ -177,11 +180,15 @@ function EventRow({ event, mission, casualties, aerialStatus, index, dimmed, isR
           </ActionIcon>
         </Table.Td>
 
-        <Table.Td fw={600} style={cellStyle}>
+        <Table.Td
+          fw={600}
+          style={{ ...cellStyle, ...ELLIPSIS_STYLE }}
+          title={event.name || "אירוע ללא שם"}
+        >
           {event.name || "אירוע ללא שם"}
         </Table.Td>
 
-        <Table.Td style={cellStyle}>
+        <Table.Td style={cellStyle} title={EVENT_TYPE_LABELS[event.type] || event.type}>
           <Badge
             size="sm"
             variant="outline"
@@ -190,32 +197,46 @@ function EventRow({ event, mission, casualties, aerialStatus, index, dimmed, isR
                 backgroundColor: "var(--app-color-surface-high)",
                 borderColor: "var(--app-color-border)",
                 color: "var(--app-color-text-muted)",
+                maxWidth: "100%",
+                overflow: "hidden",
               },
+              label: ELLIPSIS_STYLE,
             }}
           >
             {EVENT_TYPE_LABELS[event.type] || event.type}
           </Badge>
         </Table.Td>
 
-        <Table.Td style={cellStyle}>
+        <Table.Td style={cellStyle} title={EVENT_STATUS_LABELS[event.status] || event.status}>
           <Badge
             size="sm"
             styles={{
               root: {
                 backgroundColor: `color-mix(in srgb, ${EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)"} 16%, transparent)`,
                 color: EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)",
+                maxWidth: "100%",
+                overflow: "hidden",
               },
+              label: ELLIPSIS_STYLE,
             }}
           >
             {EVENT_STATUS_LABELS[event.status] || event.status}
           </Badge>
         </Table.Td>
 
-        <Table.Td style={cellStyle}>
+        <Table.Td style={cellStyle} title={AERIAL_EVAC_LABELS[aerialStatus] || aerialStatus}>
           <Badge
             size="sm"
             leftSection={<IconHelicopter size={12} />}
-            styles={{ root: { backgroundColor: `color-mix(in srgb, ${evacColor} 16%, transparent)`, color: evacColor } }}
+            styles={{
+              root: {
+                backgroundColor: `color-mix(in srgb, ${evacColor} 16%, transparent)`,
+                color: evacColor,
+                maxWidth: "100%",
+                overflow: "hidden",
+              },
+              label: ELLIPSIS_STYLE,
+            }}
           >
             {AERIAL_EVAC_LABELS[aerialStatus] || aerialStatus}
           </Badge>
@@ -414,23 +435,56 @@ function EventTableSection({
     </Badge>
   );
 
+  // overflow-y explicitly hidden below — without it, `overflow-x: auto`
+  // alone gets silently promoted to `overflow-y: auto` too (per the CSS
+  // Overflow spec), making this Box a real vertical scroll container it was
+  // never meant to be. Rows entering with the `app-fade-in` class animate
+  // `transform: translateY(...)`, which briefly grows the scrollable-
+  // overflow region during that animation — enough to trigger a real, if
+  // momentary, vertical scrollbar, which then rescales every fixed-width
+  // column for that instant. Hidden here since this Box only ever needs to
+  // scroll horizontally (a table wider than its card).
   const tableBody = (
-    <Box style={{ overflowX: "auto" }}>
-      <Table verticalSpacing="sm" fz="sm" style={{ width: "100%" }}>
+    <Box style={{ overflowX: "auto", overflowY: "hidden" }}>
+      {/* table-layout: fixed + an explicit width per column keeps column
+          widths constant regardless of what's rendered in the body —
+          including the spanning "no results" row shown when a filter
+          matches nothing, which under the default auto layout would
+          otherwise resize every column. Headers are also sticky (`sticky`
+          on each ColumnHeader) so they stay visible while scrolling through
+          a long, filtered list. */}
+      <Table verticalSpacing="sm" fz="sm" style={{ width: "100%", tableLayout: "fixed" }}>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th w={40} />
-            <ColumnHeader label="שם אירוע" {...sortProps("name")} />
-            <ColumnHeader label="סוג" {...sortProps("type")} {...filterProps("type", TYPE_FILTER_OPTIONS)} />
-            <ColumnHeader label="סטטוס" {...sortProps("status")} {...filterProps("status", STATUS_FILTER_OPTIONS)} />
+            <Table.Th
+              w={40}
+              style={{ position: "sticky", top: 0, zIndex: 1, backgroundColor: "var(--app-color-surface)", borderBottom: "1px solid var(--app-color-border)" }}
+            />
+            <ColumnHeader label="שם אירוע" w="9rem" sticky {...sortProps("name")} />
+            <ColumnHeader
+              label="סוג"
+              w="6.5rem"
+              sticky
+              {...sortProps("type")}
+              {...filterProps("type", TYPE_FILTER_OPTIONS)}
+            />
+            <ColumnHeader
+              label="סטטוס"
+              w="7.5rem"
+              sticky
+              {...sortProps("status")}
+              {...filterProps("status", STATUS_FILTER_OPTIONS)}
+            />
             <ColumnHeader
               label="פינוי אווירי"
+              w="9rem"
+              sticky
               {...(showAerialEvacSort ? sortProps("aerialEvac") : {})}
               {...(showAerialEvacFilter ? filterProps("aerialEvac", aerialEvacFilterOptions) : {})}
             />
-            <ColumnHeader label="נפגעים" {...sortProps("casualties")} />
-            <ColumnHeader label="מיקום" />
-            <ColumnHeader label="זמן מאירוע" {...sortProps("elapsed")} />
+            <ColumnHeader label="נפגעים" w="9rem" sticky {...sortProps("casualties")} />
+            <ColumnHeader label="מיקום" w="10rem" sticky />
+            <ColumnHeader label="זמן מאירוע" w="7.5rem" sticky {...sortProps("elapsed")} />
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
