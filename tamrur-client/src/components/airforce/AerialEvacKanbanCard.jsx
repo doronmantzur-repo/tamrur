@@ -111,7 +111,7 @@ export function AerialEvacKanbanCardContent({ event, casualties, aerialStatus })
           </Group>
         </Group>
 
-        {isOpen && <CasualtiesCard casualties={casualties} statBreakdown="ability" bare />}
+        {isOpen && <CasualtiesCard casualties={casualties} statBreakdown="ability" bare rowHover />}
       </Stack>
     </DashboardCard>
   );

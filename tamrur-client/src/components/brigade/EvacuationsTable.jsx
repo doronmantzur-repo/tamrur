@@ -41,6 +41,7 @@ import { EVAC_METHOD_LABELS } from "../../constants/evacuationMethod";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
 import { findLocationByPoint } from "../../utils/geo";
 import { hospitalLabel } from "../../constants/locationMarkers";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -142,6 +143,220 @@ function describeLocationPoint(point, locations, fallback = "מיקום מותא
  */
 function describeDeparturePoint(evac, locations) {
   return describeLocationPoint(evac.departurePoint, locations, evac.method === "ride" ? "מיקום האירוע" : undefined);
+}
+
+/**
+ * One evacuation row — hover is real state (`useHoverState`) rather than a
+ * `styles` "&:hover" key, since Mantine's `styles` prop merges into an
+ * inline `style` attribute where pseudo-selectors are never compiled into
+ * real CSS. Isolated in its own component so each row's hover state doesn't
+ * leak into its siblings, since hooks can't run inside the parent's
+ * `.map()` either way.
+ *
+ * The background lives on every `<Table.Td>`, not the `<Table.Tr>` — this
+ * table has `border-collapse: collapse` (the app's own table reset), and
+ * under that a `<tr>` isn't a real paintable box, so a radius set there
+ * squares off instead of clipping the row's background. Rounding just the
+ * outer two cells' outer corners (logical `border-*-*-radius`, so it's
+ * correct in this RTL layout without hardcoding a side) reads as one
+ * rounded row instead — the last visible cell differs by `readOnly`, since
+ * the actions column doesn't render at all in that mode.
+ *
+ * @param {{
+ *   evac: object,
+ *   index: number,
+ *   locations: Array<object>,
+ *   aerialMissions: Array<object>,
+ *   readOnly: boolean,
+ *   onStartNow: () => void,
+ *   onFinish: () => void,
+ *   onEdit: () => void,
+ *   onDelete: () => void,
+ * }} props
+ * @returns {JSX.Element} The row.
+ */
+function EvacuationRow({ evac, index, locations, aerialMissions, readOnly, onStartNow, onFinish, onEdit, onDelete }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+
+  const MethodIcon = METHOD_ICONS[evac.method] || IconHelicopter;
+  const statusColor = EVAC_TEAM_STATUS_COLOR_VARS[evac.status] || "var(--app-color-text-muted)";
+  const incomplete = isIncomplete(evac);
+  const mission = aerialMissions.find((m) => m.id === evac.aerialMissionId);
+
+  const backgroundColor = isHovered ? "var(--app-effect-hover-background)" : "transparent";
+  const cellStyle = { backgroundColor, transition: "background-color 0.15s ease" };
+  const firstCellStyle = {
+    ...cellStyle,
+    textAlign: "center",
+    borderStartStartRadius: "var(--mantine-radius-sm)",
+    borderEndStartRadius: "var(--mantine-radius-sm)",
+  };
+  const lastCellStyle = {
+    ...cellStyle,
+    borderStartEndRadius: "var(--mantine-radius-sm)",
+    borderEndEndRadius: "var(--mantine-radius-sm)",
+  };
+
+  return (
+    <Table.Tr className="app-fade-in" style={{ animationDelay: `${index * 30}ms` }} {...hoverHandlers}>
+      <Table.Td w="2.25rem" style={firstCellStyle}>
+        {incomplete && (
+          <Tooltip label="חסרים נתונים בשורה זו">
+            {/* The pulse's 1.25x peak scale needs headroom of its own —
+                centered in a fixed-width cell so it grows symmetrically
+                instead of visually spilling into the next column. */}
+            <Box style={{ display: "inline-flex" }}>
+              <IconAlertTriangle className="app-pulse-scale" size={18} stroke={1.8} color="var(--app-color-warning)" />
+            </Box>
+          </Tooltip>
+        )}
+      </Table.Td>
+
+      <Table.Td style={cellStyle}>
+        {/* Concluded: ETA is no longer relevant, only the actual
+            start->end times matter. Started but not concluded:
+            ETA is the best "end time" estimate there is, so it
+            gets the same visual weight as the start time, not a
+            muted afterthought — labeled so it's unambiguous
+            which value is which. */}
+        {evac.concludedAt ? (
+          <Stack gap={0}>
+            <Text fz="0.62rem" c="var(--app-color-text-muted)" ff={MONO_FONT}>
+              {formatDateRange(evac.startTime, evac.concludedAt)}
+            </Text>
+            <Text ff={MONO_FONT}>
+              {timeFormatter.format(new Date(evac.startTime))} ← {timeFormatter.format(new Date(evac.concludedAt))}
+            </Text>
+          </Stack>
+        ) : evac.startTime ? (
+          <Group gap={4} wrap="nowrap">
+            <Stack gap={0}>
+              <Text fz="0.62rem" c="var(--app-color-text-muted)" ff={MONO_FONT}>
+                {formatDateRange(evac.startTime, evac.eta)}
+              </Text>
+              <Group gap={4} wrap="nowrap">
+                <Text fz="0.62rem" c="var(--app-color-text-muted)">
+                  יצא
+                </Text>
+                <Text ff={MONO_FONT}>{timeFormatter.format(new Date(evac.startTime))}</Text>
+              </Group>
+              <Group gap={4} wrap="nowrap">
+                <Text fz="0.62rem" c="var(--app-color-text-muted)">
+                  צפי
+                </Text>
+                <Text ff={MONO_FONT}>{evac.eta ? timeFormatter.format(new Date(evac.eta)) : "—"}</Text>
+              </Group>
+            </Stack>
+            {!readOnly && (
+              <Tooltip label="סיים פינוי">
+                <ActionIcon size="sm" variant="light" color="green" aria-label="סיים פינוי" onClick={onFinish}>
+                  <IconFlagCheck size={14} stroke={1.8} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Group>
+        ) : (
+          <Group gap={4} wrap="nowrap">
+            {!readOnly && (
+              <Tooltip label="התחל עכשיו">
+                <ActionIcon
+                  size="sm"
+                  aria-label="התחל עכשיו"
+                  onClick={onStartNow}
+                  styles={{
+                    root: {
+                      backgroundColor: "var(--app-color-primary)",
+                      color: "var(--app-color-primary-text)",
+                      "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
+                    },
+                  }}
+                >
+                  <IconPlayerPlay size={14} stroke={1.8} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            <Stack gap={0}>
+              {evac.eta && (
+                <Text fz="0.62rem" c="var(--app-color-text-muted)" ff={MONO_FONT}>
+                  {dateFormatter.format(new Date(evac.eta))}
+                </Text>
+              )}
+              <Text fz="0.62rem" c="var(--app-color-text-muted)">
+                צפי
+              </Text>
+              <Text ff={MONO_FONT}>{evac.eta ? timeFormatter.format(new Date(evac.eta)) : "—"}</Text>
+            </Stack>
+          </Group>
+        )}
+      </Table.Td>
+
+      <Table.Td style={cellStyle}>
+        <Group gap={6} wrap="nowrap">
+          <MethodIcon size={16} stroke={1.8} />
+          <Text truncate>{EVAC_METHOD_LABELS[evac.method] || evac.method}</Text>
+        </Group>
+      </Table.Td>
+
+      <Table.Td style={cellStyle}>
+        <Stack gap={0}>
+          <Text truncate title={describeDeparturePoint(evac, locations)}>
+            מ: {describeDeparturePoint(evac, locations)}
+          </Text>
+          <Text c="var(--app-color-text-muted)" truncate title={describeLocationPoint(evac.destinationPoint, locations)}>
+            אל: {describeLocationPoint(evac.destinationPoint, locations)}
+          </Text>
+        </Stack>
+      </Table.Td>
+
+      <Table.Td style={cellStyle}>
+        <Text truncate>{evac.forceRadioSign || "—"}</Text>
+      </Table.Td>
+
+      <Table.Td style={cellStyle}>
+        <Text c="var(--app-color-text-muted)" truncate>
+          {mission?.radio_sign || "—"}
+        </Text>
+      </Table.Td>
+
+      <Table.Td style={readOnly ? lastCellStyle : cellStyle}>
+        <Badge
+          size="sm"
+          leftSection={<MethodIcon size={12} stroke={1.8} />}
+          styles={{
+            root: {
+              backgroundColor: `color-mix(in srgb, ${statusColor} 16%, transparent)`,
+              color: statusColor,
+            },
+          }}
+        >
+          {EVAC_TEAM_STATUS_LABELS[evac.status] || evac.status}
+        </Badge>
+      </Table.Td>
+
+      {!readOnly && (
+        <Table.Td style={lastCellStyle}>
+          <Group gap={4} wrap="nowrap">
+            <ActionIcon
+              variant="subtle"
+              aria-label="ערוך שורה"
+              onClick={onEdit}
+              styles={{ root: { color: "var(--app-color-primary)" } }}
+            >
+              <IconPencil size={18} stroke={1.8} />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              aria-label="מחק שורה"
+              onClick={onDelete}
+              styles={{ root: { color: "var(--app-color-error)" } }}
+            >
+              <IconTrash size={18} stroke={1.8} />
+            </ActionIcon>
+          </Group>
+        </Table.Td>
+      )}
+    </Table.Tr>
+  );
 }
 
 /**
@@ -490,202 +705,23 @@ const EvacuationsTable = ({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {visibleEvacuations.map((evac, index) => {
-              const MethodIcon = METHOD_ICONS[evac.method] || IconHelicopter;
-              const statusColor =
-                EVAC_TEAM_STATUS_COLOR_VARS[evac.status] || "var(--app-color-text-muted)";
-              const incomplete = isIncomplete(evac);
-              const mission = aerialMissions.find((m) => m.id === evac.aerialMissionId);
-
-              return (
-                <Table.Tr
-                  key={evac.id}
-                  className="app-fade-in"
-                  style={{ animationDelay: `${index * 30}ms` }}
-                >
-                  <Table.Td w="2.25rem" style={{ textAlign: "center" }}>
-                    {incomplete && (
-                      <Tooltip label="חסרים נתונים בשורה זו">
-                        {/* The pulse's 1.25x peak scale needs headroom of its own —
-                            centered in a fixed-width cell so it grows symmetrically
-                            instead of visually spilling into the next column. */}
-                        <Box style={{ display: "inline-flex" }}>
-                          <IconAlertTriangle
-                            className="app-pulse-scale"
-                            size={18}
-                            stroke={1.8}
-                            color="var(--app-color-warning)"
-                          />
-                        </Box>
-                      </Tooltip>
-                    )}
-                  </Table.Td>
-
-                  <Table.Td>
-                    {/* Concluded: ETA is no longer relevant, only the actual
-                        start->end times matter. Started but not concluded:
-                        ETA is the best "end time" estimate there is, so it
-                        gets the same visual weight as the start time, not a
-                        muted afterthought — labeled so it's unambiguous
-                        which value is which. */}
-                    {evac.concludedAt ? (
-                      <Stack gap={0}>
-                        <Text fz="0.62rem" c="var(--app-color-text-muted)" ff={MONO_FONT}>
-                          {formatDateRange(evac.startTime, evac.concludedAt)}
-                        </Text>
-                        <Text ff={MONO_FONT}>
-                          {timeFormatter.format(new Date(evac.startTime))} ← {timeFormatter.format(new Date(evac.concludedAt))}
-                        </Text>
-                      </Stack>
-                    ) : evac.startTime ? (
-                      <Group gap={4} wrap="nowrap">
-                        <Stack gap={0}>
-                          <Text fz="0.62rem" c="var(--app-color-text-muted)" ff={MONO_FONT}>
-                            {formatDateRange(evac.startTime, evac.eta)}
-                          </Text>
-                          <Group gap={4} wrap="nowrap">
-                            <Text fz="0.62rem" c="var(--app-color-text-muted)">
-                              יצא
-                            </Text>
-                            <Text ff={MONO_FONT}>
-                              {timeFormatter.format(new Date(evac.startTime))}
-                            </Text>
-                          </Group>
-                          <Group gap={4} wrap="nowrap">
-                            <Text fz="0.62rem" c="var(--app-color-text-muted)">
-                              צפי
-                            </Text>
-                            <Text ff={MONO_FONT}>
-                              {evac.eta ? timeFormatter.format(new Date(evac.eta)) : "—"}
-                            </Text>
-                          </Group>
-                        </Stack>
-                        {!readOnly && (
-                          <Tooltip label="סיים פינוי">
-                            <ActionIcon
-                              size="sm"
-                              variant="light"
-                              color="green"
-                              aria-label="סיים פינוי"
-                              onClick={() => finishEvacuation(evac.id)}
-                            >
-                              <IconFlagCheck size={14} stroke={1.8} />
-                            </ActionIcon>
-                          </Tooltip>
-                        )}
-                      </Group>
-                    ) : (
-                      <Group gap={4} wrap="nowrap">
-                        {!readOnly && (
-                          <Tooltip label="התחל עכשיו">
-                            <ActionIcon
-                              size="sm"
-                              aria-label="התחל עכשיו"
-                              onClick={() => startNow(evac.id)}
-                              styles={{
-                                root: {
-                                  backgroundColor: "var(--app-color-primary)",
-                                  color: "var(--app-color-primary-text)",
-                                  "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
-                                },
-                              }}
-                            >
-                              <IconPlayerPlay size={14} stroke={1.8} />
-                            </ActionIcon>
-                          </Tooltip>
-                        )}
-                        <Stack gap={0}>
-                          {evac.eta && (
-                            <Text fz="0.62rem" c="var(--app-color-text-muted)" ff={MONO_FONT}>
-                              {dateFormatter.format(new Date(evac.eta))}
-                            </Text>
-                          )}
-                          <Text fz="0.62rem" c="var(--app-color-text-muted)">
-                            צפי
-                          </Text>
-                          <Text ff={MONO_FONT}>
-                            {evac.eta ? timeFormatter.format(new Date(evac.eta)) : "—"}
-                          </Text>
-                        </Stack>
-                      </Group>
-                    )}
-                  </Table.Td>
-
-                  <Table.Td>
-                    <Group gap={6} wrap="nowrap">
-                      <MethodIcon size={16} stroke={1.8} />
-                      <Text truncate>{EVAC_METHOD_LABELS[evac.method] || evac.method}</Text>
-                    </Group>
-                  </Table.Td>
-
-                  <Table.Td>
-                    <Stack gap={0}>
-                      <Text truncate title={describeDeparturePoint(evac, locations)}>
-                        מ: {describeDeparturePoint(evac, locations)}
-                      </Text>
-                      <Text
-                        c="var(--app-color-text-muted)"
-                        truncate
-                        title={describeLocationPoint(evac.destinationPoint, locations)}
-                      >
-                        אל: {describeLocationPoint(evac.destinationPoint, locations)}
-                      </Text>
-                    </Stack>
-                  </Table.Td>
-
-                  <Table.Td>
-                    <Text truncate>{evac.forceRadioSign || "—"}</Text>
-                  </Table.Td>
-
-                  <Table.Td>
-                    <Text c="var(--app-color-text-muted)" truncate>
-                      {mission?.radio_sign || "—"}
-                    </Text>
-                  </Table.Td>
-
-                  <Table.Td>
-                    <Badge
-                      size="sm"
-                      leftSection={<MethodIcon size={12} stroke={1.8} />}
-                      styles={{
-                        root: {
-                          backgroundColor: `color-mix(in srgb, ${statusColor} 16%, transparent)`,
-                          color: statusColor,
-                        },
-                      }}
-                    >
-                      {EVAC_TEAM_STATUS_LABELS[evac.status] || evac.status}
-                    </Badge>
-                  </Table.Td>
-
-                  {!readOnly && (
-                    <Table.Td>
-                      <Group gap={4} wrap="nowrap">
-                        <ActionIcon
-                          variant="subtle"
-                          aria-label="ערוך שורה"
-                          onClick={() => {
-                            setEditingEvacuation(evac);
-                            setEditOpenId((id) => id + 1);
-                          }}
-                          styles={{ root: { color: "var(--app-color-primary)" } }}
-                        >
-                          <IconPencil size={18} stroke={1.8} />
-                        </ActionIcon>
-                        <ActionIcon
-                          variant="subtle"
-                          aria-label="מחק שורה"
-                          onClick={() => setDeleteTargetId(evac.id)}
-                          styles={{ root: { color: "var(--app-color-error)" } }}
-                        >
-                          <IconTrash size={18} stroke={1.8} />
-                        </ActionIcon>
-                      </Group>
-                    </Table.Td>
-                  )}
-                </Table.Tr>
-              );
-            })}
+            {visibleEvacuations.map((evac, index) => (
+              <EvacuationRow
+                key={evac.id}
+                evac={evac}
+                index={index}
+                locations={locations}
+                aerialMissions={aerialMissions}
+                readOnly={readOnly}
+                onStartNow={() => startNow(evac.id)}
+                onFinish={() => finishEvacuation(evac.id)}
+                onEdit={() => {
+                  setEditingEvacuation(evac);
+                  setEditOpenId((id) => id + 1);
+                }}
+                onDelete={() => setDeleteTargetId(evac.id)}
+              />
+            ))}
             {visibleEvacuations.length === 0 && (
               <Table.Tr>
                 <Table.Td colSpan={readOnly ? 7 : 8} c="var(--app-color-text-muted)" ta="center">
