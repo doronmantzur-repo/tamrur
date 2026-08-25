@@ -293,11 +293,10 @@ function EventRow({ event, mission, casualties, aerialStatus, index, dimmed, isR
 
 /**
  * One of the two sections the table splits into — pending or decided — each
- * its own sortable/filterable table so a column click in one never affects
- * the other. Filtering itself is shared (passed in already applied); this
- * component only sorts and renders. `dimmed` fades every row in this
- * section uniformly (decided) or not at all (pending) — no per-row branch
- * needed since a section is always homogeneous.
+ * with its own independent sort *and* filter state, so a column click or a
+ * filter pick in one never affects the other. `dimmed` fades every row in
+ * this section uniformly (decided) or not at all (pending) — no per-row
+ * branch needed since a section is always homogeneous.
  *
  * @param {{
  *   title: string,
@@ -309,12 +308,9 @@ function EventRow({ event, mission, casualties, aerialStatus, index, dimmed, isR
  *   collapsible: boolean,
  *   isOpen: boolean,
  *   onToggleOpen: () => void,
- *   filters: object,
  *   aerialEvacFilterOptions: Array<{ value: string, label: string }>,
  *   showAerialEvacFilter: boolean,
  *   showAerialEvacSort: boolean,
- *   onToggleFilter: (key: string, value: string) => void,
- *   onClearFilter: (key: string) => void,
  *   expandedIds: Set<string>,
  *   onToggleRow: (id: string) => void,
  * }} props
@@ -330,31 +326,54 @@ function EventTableSection({
   collapsible,
   isOpen,
   onToggleOpen,
-  filters,
   aerialEvacFilterOptions,
   showAerialEvacFilter,
   showAerialEvacSort,
-  onToggleFilter,
-  onClearFilter,
   expandedIds,
   onToggleRow,
 }) {
   const [sort, setSort] = useState({ key: null, direction: null });
+  const [filters, setFilters] = useState({});
 
   const handleSortClick = (key) => {
     setSort((prev) => ({ key, direction: prev.key === key ? nextSortDirection(prev.direction) : "asc" }));
   };
 
+  const handleToggleFilter = (key, value) => {
+    setFilters((prev) => {
+      const current = prev[key] || new Set();
+      const next = new Set(current);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return { ...prev, [key]: next };
+    });
+  };
+
+  const handleClearFilter = (key) => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
   const rows = useMemo(() => {
+    const filtered = sectionRows.filter((row) =>
+      Object.entries(filters).every(([key, values]) => {
+        if (!values || values.size === 0) return true;
+        return values.has(String(COLUMN_ACCESSORS[key](row)));
+      }),
+    );
+
     if (sort.key && sort.direction) {
       const accessor = COLUMN_ACCESSORS[sort.key];
-      const sorted = [...sectionRows].sort((a, b) => compareValues(accessor(a), accessor(b)));
+      const sorted = [...filtered].sort((a, b) => compareValues(accessor(a), accessor(b)));
       if (sort.direction === "desc") sorted.reverse();
       return sorted;
     }
 
-    return [...sectionRows].sort(byDefaultPriority);
-  }, [sectionRows, sort]);
+    return [...filtered].sort(byDefaultPriority);
+  }, [sectionRows, filters, sort]);
 
   const sortProps = (key) => ({
     sortDirection: sort.key === key ? sort.direction : null,
@@ -364,8 +383,8 @@ function EventTableSection({
   const filterProps = (key, options) => ({
     filterOptions: options,
     activeFilterValues: filters[key],
-    onToggleFilterValue: (value) => onToggleFilter(key, value),
-    onClearFilter: () => onClearFilter(key),
+    onToggleFilterValue: (value) => handleToggleFilter(key, value),
+    onClearFilter: () => handleClearFilter(key),
   });
 
   const countBadge = (
@@ -485,7 +504,6 @@ function EventTableSection({
  * @returns {JSX.Element} The events table.
  */
 const AerialEvacTable = ({ events, casualtiesByEventId, missionsByEventId }) => {
-  const [filters, setFilters] = useState({});
   const [expandedIds, setExpandedIds] = useState(() => new Set());
   const [isDecidedOpen, setIsDecidedOpen] = useState(false);
 
@@ -515,24 +533,6 @@ const AerialEvacTable = ({ events, casualtiesByEventId, missionsByEventId }) => 
     }));
   }, [rowsData]);
 
-  const handleToggleFilter = (key, value) => {
-    setFilters((prev) => {
-      const current = prev[key] || new Set();
-      const next = new Set(current);
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
-      return { ...prev, [key]: next };
-    });
-  };
-
-  const handleClearFilter = (key) => {
-    setFilters((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-  };
-
   const toggleRow = (id) => {
     setExpandedIds((current) => {
       const next = new Set(current);
@@ -542,28 +542,19 @@ const AerialEvacTable = ({ events, casualtiesByEventId, missionsByEventId }) => 
     });
   };
 
-  const { pendingRows, decidedRows } = useMemo(() => {
-    const filtered = rowsData.filter((row) =>
-      Object.entries(filters).every(([key, values]) => {
-        if (!values || values.size === 0) return true;
-        return values.has(String(COLUMN_ACCESSORS[key](row)));
-      }),
-    );
+  const { pendingRows, decidedRows } = useMemo(
+    () => ({
+      pendingRows: rowsData.filter((row) => row.isPending),
+      decidedRows: rowsData.filter((row) => !row.isPending),
+    }),
+    [rowsData],
+  );
 
-    return {
-      pendingRows: filtered.filter((row) => row.isPending),
-      decidedRows: filtered.filter((row) => !row.isPending),
-    };
-  }, [rowsData, filters]);
-
-  const pendingTotal = rowsData.filter((row) => row.isPending).length;
-  const decidedTotal = rowsData.length - pendingTotal;
+  const pendingTotal = pendingRows.length;
+  const decidedTotal = decidedRows.length;
 
   const sharedProps = {
-    filters,
     aerialEvacFilterOptions,
-    onToggleFilter: handleToggleFilter,
-    onClearFilter: handleClearFilter,
     expandedIds,
     onToggleRow: toggleRow,
   };
