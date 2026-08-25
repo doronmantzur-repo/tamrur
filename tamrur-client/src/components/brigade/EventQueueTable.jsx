@@ -10,6 +10,7 @@ import DashboardCard from "../dashboard/DashboardCard";
 import ColumnHeader from "../dashboard/ColumnHeader";
 import { EVENT_STATUS_COLOR_VARS, EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "../../constants/eventStatus";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -33,6 +34,101 @@ const COLUMN_ACCESSORS = {
   created_at: (event) => new Date(event.created_at).getTime(),
   closure_at: (event) => (event.closure_at ? new Date(event.closure_at).getTime() : null),
 };
+
+/**
+ * One clickable row — hover and press feedback are real state
+ * (`useHoverState` + `onMouseDown`/`onMouseUp`, `onMouseLeave` resetting
+ * both) rather than a `styles` "&:hover"/"&:active" key, since Mantine's
+ * `styles` prop merges straight into an inline `style` attribute where
+ * pseudo-selectors are never compiled into real CSS. Isolated in its own
+ * component so each row's hover/press state doesn't leak into its
+ * siblings — hooks can't run inside the parent's `.map()` either way.
+ *
+ * The background lives on every `<Table.Td>`, not the `<Table.Tr>` — the
+ * table has `border-collapse: collapse` (the app's own table reset), and
+ * under that a `<tr>` isn't a real paintable box, so a radius set there
+ * squares off instead of clipping the row's background. Rounding just the
+ * outer two cells' outer corners (logical `border-*-*-radius`, so it's
+ * correct in this RTL layout without hardcoding a side) reads as one
+ * rounded row instead.
+ *
+ * @param {{ event: object, index: number, onOpen: () => void }} props
+ * @returns {JSX.Element} The table row.
+ */
+function EventRow({ event, index, onOpen }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+  const [isPressed, setIsPressed] = useState(false);
+
+  const backgroundColor = isPressed
+    ? "color-mix(in srgb, var(--app-color-primary) 16%, var(--app-effect-hover-background))"
+    : isHovered
+      ? "var(--app-effect-hover-background)"
+      : "transparent";
+  const cellStyle = { backgroundColor, transition: "background-color 0.15s ease" };
+  const firstCellStyle = {
+    ...cellStyle,
+    borderStartStartRadius: "var(--mantine-radius-sm)",
+    borderEndStartRadius: "var(--mantine-radius-sm)",
+  };
+  const lastCellStyle = {
+    ...cellStyle,
+    borderStartEndRadius: "var(--mantine-radius-sm)",
+    borderEndEndRadius: "var(--mantine-radius-sm)",
+  };
+
+  return (
+    <Table.Tr
+      className="app-fade-in"
+      onClick={onOpen}
+      {...hoverHandlers}
+      onMouseLeave={() => {
+        hoverHandlers.onMouseLeave();
+        setIsPressed(false);
+      }}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      style={{ animationDelay: `${index * 30}ms`, cursor: "pointer" }}
+    >
+      <Table.Td fw={600} style={firstCellStyle}>
+        {event.name}
+      </Table.Td>
+      <Table.Td style={cellStyle}>
+        <Badge
+          size="sm"
+          variant="outline"
+          styles={{
+            root: {
+              backgroundColor: "var(--app-color-surface-high)",
+              borderColor: "var(--app-color-border)",
+              color: "var(--app-color-text-muted)",
+            },
+          }}
+        >
+          {EVENT_TYPE_LABELS[event.type] || event.type}
+        </Badge>
+      </Table.Td>
+      <Table.Td style={cellStyle}>
+        <Badge
+          size="sm"
+          styles={{
+            root: {
+              backgroundColor: `color-mix(in srgb, ${EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)"} 16%, transparent)`,
+              color: EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)",
+            },
+          }}
+        >
+          {EVENT_STATUS_LABELS[event.status] || event.status}
+        </Badge>
+      </Table.Td>
+      <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT} style={cellStyle}>
+        {dateTimeFormatter.format(new Date(event.created_at))}
+      </Table.Td>
+      <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT} style={lastCellStyle}>
+        {event.closure_at ? dateTimeFormatter.format(new Date(event.closure_at)) : "פעיל"}
+      </Table.Td>
+    </Table.Tr>
+  );
+}
 
 /**
  * A flat, sortable and filterable list of every event visible on the queue
@@ -134,48 +230,7 @@ const EventQueueTable = ({ events }) => {
             </Table.Thead>
             <Table.Tbody>
               {rows.map((event, index) => (
-                <Table.Tr
-                  key={event.id}
-                  className="app-fade-in"
-                  style={{ animationDelay: `${index * 30}ms`, cursor: "pointer" }}
-                  onClick={() => navigate(`/brigade/${event.id}`)}
-                >
-                  <Table.Td fw={600}>{event.name}</Table.Td>
-                  <Table.Td>
-                    <Badge
-                      size="sm"
-                      variant="outline"
-                      styles={{
-                        root: {
-                          backgroundColor: "var(--app-color-surface-high)",
-                          borderColor: "var(--app-color-border)",
-                          color: "var(--app-color-text-muted)",
-                        },
-                      }}
-                    >
-                      {EVENT_TYPE_LABELS[event.type] || event.type}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td>
-                    <Badge
-                      size="sm"
-                      styles={{
-                        root: {
-                          backgroundColor: `color-mix(in srgb, ${EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)"} 16%, transparent)`,
-                          color: EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)",
-                        },
-                      }}
-                    >
-                      {EVENT_STATUS_LABELS[event.status] || event.status}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
-                    {dateTimeFormatter.format(new Date(event.created_at))}
-                  </Table.Td>
-                  <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
-                    {event.closure_at ? dateTimeFormatter.format(new Date(event.closure_at)) : "פעיל"}
-                  </Table.Td>
-                </Table.Tr>
+                <EventRow key={event.id} event={event} index={index} onOpen={() => navigate(`/brigade/${event.id}`)} />
               ))}
               {rows.length === 0 && (
                 <Table.Tr>

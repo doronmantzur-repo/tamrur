@@ -19,6 +19,7 @@ import {
   VENTILATION_LABELS,
 } from "../../constants/casualtyStatus";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -119,6 +120,97 @@ function CasualtyDetails({ casualty }) {
         )}
       </Stack>
     </Group>
+  );
+}
+
+/**
+ * One casualty row (plus its expanded detail row, when open) — hover is
+ * real state (`useHoverState`) rather than a `styles` "&:hover" key, since
+ * Mantine's `styles` prop merges into an inline `style` attribute where
+ * pseudo-selectors are never compiled into real CSS. Isolated in its own
+ * component so each row's hover state doesn't leak into its siblings, since
+ * hooks can't run inside the parent's `.map()` either way.
+ *
+ * The background lives on every `<Table.Td>`, not the `<Table.Tr>` — this
+ * table has `border-collapse: collapse` (the app's own table reset), and
+ * under that a `<tr>` isn't a real paintable box, so a radius set there
+ * squares off instead of clipping the row's background. Rounding just the
+ * outer two cells' outer corners (logical `border-*-*-radius`, so it's
+ * correct in this RTL layout without hardcoding a side) reads as one
+ * rounded row instead.
+ *
+ * @param {{ casualty: object, index: number, isOpen: boolean, onToggle: () => void }} props
+ * @returns {JSX.Element} The row (and its detail row, when open).
+ */
+function CasualtyRow({ casualty, index, isOpen, onToggle }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+
+  const backgroundColor = isHovered ? "var(--app-effect-hover-background)" : "transparent";
+  const cellStyle = { backgroundColor, transition: "background-color 0.15s ease" };
+  const firstCellStyle = {
+    ...cellStyle,
+    borderStartStartRadius: "var(--mantine-radius-sm)",
+    borderEndStartRadius: "var(--mantine-radius-sm)",
+  };
+  const lastCellStyle = {
+    ...cellStyle,
+    borderStartEndRadius: "var(--mantine-radius-sm)",
+    borderEndEndRadius: "var(--mantine-radius-sm)",
+  };
+
+  return (
+    <Fragment>
+      <Table.Tr className="app-fade-in" style={{ animationDelay: `${index * 30}ms` }} {...hoverHandlers}>
+        <Table.Td style={firstCellStyle}>
+          <ActionIcon
+            aria-label={isOpen ? "הסתר פרטים" : "הצג פרטים"}
+            title={isOpen ? "הסתר פרטים" : "הצג פרטים"}
+            variant="subtle"
+            onClick={onToggle}
+          >
+            {isOpen ? (
+              <IconChevronUp size={18} color="var(--app-color-primary)" />
+            ) : (
+              <IconChevronDown size={18} color="var(--app-color-primary)" />
+            )}
+          </ActionIcon>
+        </Table.Td>
+        <Table.Td ff={MONO_FONT} style={cellStyle}>
+          {casualty["casualty-number"] ?? "—"}
+        </Table.Td>
+        <Table.Td style={cellStyle}>
+          <Badge
+            styles={{
+              root: {
+                ...urgencyBadgeColors(casualty.urgency),
+              },
+            }}
+          >
+            {urgencyLabel(casualty.urgency)}
+          </Badge>
+        </Table.Td>
+        <Table.Td ff={MONO_FONT} style={cellStyle}>
+          {casualty["evac-priority"] ?? "—"}
+        </Table.Td>
+        <Table.Td style={cellStyle}>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>
+        <Table.Td style={cellStyle}>{VENTILATION_LABELS[casualty.ventilation] || "—"}</Table.Td>
+        <Table.Td style={cellStyle}>{ESCORT_TYPE_LABELS[casualty["escort-type"]] || "—"}</Table.Td>
+        <Table.Td style={cellStyle}>
+          <YesNo value={casualty.helivac} />
+        </Table.Td>
+        <Table.Td style={lastCellStyle}>
+          <YesNo value={casualty["evac-ready"]} />
+        </Table.Td>
+      </Table.Tr>
+
+      {isOpen && (
+        <Table.Tr>
+          <Table.Td colSpan={COLUMN_COUNT} p="md" style={{ backgroundColor: "var(--app-color-surface-high)" }}>
+            <CasualtyDetails casualty={casualty} />
+          </Table.Td>
+        </Table.Tr>
+      )}
+    </Fragment>
   );
 }
 
@@ -258,64 +350,15 @@ const CasualtiesTableCard = ({ casualties }) => {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {visibleCasualties.map((casualty, index) => {
-              const isOpen = expandedIds.has(casualty.id);
-
-              return (
-                <Fragment key={casualty.id}>
-                  <Table.Tr className="app-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
-                    <Table.Td>
-                      <ActionIcon
-                        aria-label={isOpen ? "הסתר פרטים" : "הצג פרטים"}
-                        title={isOpen ? "הסתר פרטים" : "הצג פרטים"}
-                        variant="subtle"
-                        onClick={() => toggleRow(casualty.id)}
-                      >
-                        {isOpen ? (
-                          <IconChevronUp size={18} color="var(--app-color-primary)" />
-                        ) : (
-                          <IconChevronDown size={18} color="var(--app-color-primary)" />
-                        )}
-                      </ActionIcon>
-                    </Table.Td>
-                    <Table.Td ff={MONO_FONT}>{casualty["casualty-number"] ?? "—"}</Table.Td>
-                    <Table.Td>
-                      <Badge
-                        styles={{
-                          root: {
-                            ...urgencyBadgeColors(casualty.urgency),
-                          },
-                        }}
-                      >
-                        {urgencyLabel(casualty.urgency)}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td ff={MONO_FONT}>{casualty["evac-priority"] ?? "—"}</Table.Td>
-                    <Table.Td>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>
-                    <Table.Td>{VENTILATION_LABELS[casualty.ventilation] || "—"}</Table.Td>
-                    <Table.Td>{ESCORT_TYPE_LABELS[casualty["escort-type"]] || "—"}</Table.Td>
-                    <Table.Td>
-                      <YesNo value={casualty.helivac} />
-                    </Table.Td>
-                    <Table.Td>
-                      <YesNo value={casualty["evac-ready"]} />
-                    </Table.Td>
-                  </Table.Tr>
-
-                  {isOpen && (
-                    <Table.Tr>
-                      <Table.Td
-                        colSpan={COLUMN_COUNT}
-                        p="md"
-                        style={{ backgroundColor: "var(--app-color-surface-high)" }}
-                      >
-                        <CasualtyDetails casualty={casualty} />
-                      </Table.Td>
-                    </Table.Tr>
-                  )}
-                </Fragment>
-              );
-            })}
+            {visibleCasualties.map((casualty, index) => (
+              <CasualtyRow
+                key={casualty.id}
+                casualty={casualty}
+                index={index}
+                isOpen={expandedIds.has(casualty.id)}
+                onToggle={() => toggleRow(casualty.id)}
+              />
+            ))}
             {visibleCasualties.length === 0 && (
               <Table.Tr>
                 <Table.Td colSpan={COLUMN_COUNT} c="var(--app-color-text-muted)" ta="center">

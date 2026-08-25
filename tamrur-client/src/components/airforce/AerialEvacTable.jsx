@@ -19,6 +19,7 @@ import { compareValues, nextSortDirection } from "../../utils/tableFilterSort";
 import { byDefaultPriority } from "../../utils/aerialEvacRowOrder";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
 import { formatDuration } from "../../utils/duration";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -49,15 +50,15 @@ const COLUMN_ACCESSORS = {
  * component so `useClipboard`'s per-row copied state doesn't leak into
  * every other row — hooks can't run inside the parent's `.map()` either way.
  *
- * @param {{ latLng: { lat: number, lng: number } | null }} props
+ * @param {{ latLng: { lat: number, lng: number } | null, style?: object }} props
  * @returns {JSX.Element} The location table cell.
  */
-function LocationCell({ latLng }) {
+function LocationCell({ latLng, style }) {
   const clipboard = useClipboard({ timeout: 1200 });
 
   if (!latLng) {
     return (
-      <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
+      <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT} style={style}>
         —
       </Table.Td>
     );
@@ -66,7 +67,7 @@ function LocationCell({ latLng }) {
   const text = `${latLng.lat.toFixed(4)}, ${latLng.lng.toFixed(4)}`;
 
   return (
-    <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
+    <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT} style={style}>
       <Tooltip label="מיקום הועתק" opened={clipboard.copied} position="top" withArrow>
         <Group
           gap={4}
@@ -87,19 +88,206 @@ function LocationCell({ latLng }) {
  * The elapsed-time cell, isolated in its own component so `useElapsedSeconds`
  * ticks once per row — hooks can't run inside the parent's `.map()`.
  *
- * @param {{ event: object }} props
+ * @param {{ event: object, style?: object }} props
  * @returns {JSX.Element} The elapsed-time table cell.
  */
-function ElapsedCell({ event }) {
+function ElapsedCell({ event, style }) {
   const seconds = useElapsedSeconds(event.created_at, null);
 
   return (
-    <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
+    <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT} style={style}>
       <Group gap={6} wrap="nowrap">
         <IconClock size={14} stroke={1.8} />
         {formatDuration(seconds, { showDays: false })}
       </Group>
     </Table.Td>
+  );
+}
+
+/**
+ * One event row (plus its expanded detail row, when open) — hover is real
+ * state (`useHoverState`) rather than a `styles` "&:hover" key, since
+ * Mantine's `styles` prop merges into an inline `style` attribute where
+ * pseudo-selectors are never compiled into real CSS. Isolated in its own
+ * component so each row's hover state doesn't leak into its siblings, since
+ * hooks can't run inside the parent's `.map()` either way.
+ *
+ * The background lives on every `<Table.Td>`, not the `<Table.Tr>` — this
+ * table has `border-collapse: collapse` (the app's own table reset), and
+ * under that a `<tr>` isn't a real paintable box, so a radius set there
+ * squares off instead of clipping the row's background (see
+ * `EventQueueTable.jsx`'s own row for the same fix). Rounding just the
+ * outer two cells' outer corners (logical `border-*-*-radius`, so it's
+ * correct in this RTL layout without hardcoding a side) reads as one
+ * rounded row instead.
+ *
+ * @param {{
+ *   event: object,
+ *   mission: object | undefined,
+ *   casualties: Array<object>,
+ *   aerialStatus: string,
+ *   index: number,
+ *   dimmed: boolean,
+ *   isRowOpen: boolean,
+ *   onToggleRow: () => void,
+ * }} props
+ * @returns {JSX.Element} The event row (and its detail row, when open).
+ */
+function EventRow({ event, mission, casualties, aerialStatus, index, dimmed, isRowOpen, onToggleRow }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+
+  const evacColor = AERIAL_EVAC_COLOR_VARS[aerialStatus] || "var(--app-color-text-muted)";
+  const latLng = toLatLng(event.location);
+  const sitCount = casualties.filter((casualty) => casualty["evac-ability"] === "sit").length;
+  const lieCount = casualties.filter((casualty) => casualty["evac-ability"] === "lie").length;
+  const rowOpacity = dimmed ? 0.7 : 1;
+
+  const backgroundColor = isHovered ? "var(--app-effect-hover-background)" : "transparent";
+  const cellStyle = { backgroundColor, transition: "background-color 0.15s ease" };
+  const firstCellStyle = {
+    ...cellStyle,
+    borderStartStartRadius: "var(--mantine-radius-sm)",
+    borderEndStartRadius: "var(--mantine-radius-sm)",
+  };
+  const lastCellStyle = {
+    ...cellStyle,
+    borderStartEndRadius: "var(--mantine-radius-sm)",
+    borderEndEndRadius: "var(--mantine-radius-sm)",
+  };
+
+  return (
+    <Fragment>
+      <Table.Tr className="app-fade-in" style={{ animationDelay: `${index * 30}ms`, opacity: rowOpacity }} {...hoverHandlers}>
+        <Table.Td style={firstCellStyle}>
+          <ActionIcon
+            aria-label={isRowOpen ? "הסתר פרטים" : "הצג פרטים"}
+            title={isRowOpen ? "הסתר פרטים" : "הצג פרטים"}
+            variant="subtle"
+            onClick={onToggleRow}
+          >
+            {isRowOpen ? (
+              <IconChevronUp size={18} color="var(--app-color-primary)" />
+            ) : (
+              <IconChevronDown size={18} color="var(--app-color-primary)" />
+            )}
+          </ActionIcon>
+        </Table.Td>
+
+        <Table.Td fw={600} style={cellStyle}>
+          {event.name || "אירוע ללא שם"}
+        </Table.Td>
+
+        <Table.Td style={cellStyle}>
+          <Badge
+            size="sm"
+            variant="outline"
+            styles={{
+              root: {
+                backgroundColor: "var(--app-color-surface-high)",
+                borderColor: "var(--app-color-border)",
+                color: "var(--app-color-text-muted)",
+              },
+            }}
+          >
+            {EVENT_TYPE_LABELS[event.type] || event.type}
+          </Badge>
+        </Table.Td>
+
+        <Table.Td style={cellStyle}>
+          <Badge
+            size="sm"
+            styles={{
+              root: {
+                backgroundColor: `color-mix(in srgb, ${EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)"} 16%, transparent)`,
+                color: EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)",
+              },
+            }}
+          >
+            {EVENT_STATUS_LABELS[event.status] || event.status}
+          </Badge>
+        </Table.Td>
+
+        <Table.Td style={cellStyle}>
+          <Badge
+            size="sm"
+            leftSection={<IconHelicopter size={12} />}
+            styles={{ root: { backgroundColor: `color-mix(in srgb, ${evacColor} 16%, transparent)`, color: evacColor } }}
+          >
+            {AERIAL_EVAC_LABELS[aerialStatus] || aerialStatus}
+          </Badge>
+        </Table.Td>
+
+        <Table.Td style={cellStyle}>
+          <Group gap={6} wrap="nowrap">
+            <Badge
+              size="sm"
+              styles={{
+                root: {
+                  backgroundColor: `color-mix(in srgb, ${EVAC_ABILITY_COLOR_VARS.sit} 16%, transparent)`,
+                  color: EVAC_ABILITY_COLOR_VARS.sit,
+                },
+              }}
+            >
+              {sitCount} {EVAC_ABILITY_LABELS.sit}
+            </Badge>
+            <Badge
+              size="sm"
+              styles={{
+                root: {
+                  backgroundColor: `color-mix(in srgb, ${EVAC_ABILITY_COLOR_VARS.lie} 16%, transparent)`,
+                  color: EVAC_ABILITY_COLOR_VARS.lie,
+                },
+              }}
+            >
+              {lieCount} {EVAC_ABILITY_LABELS.lie}
+            </Badge>
+          </Group>
+        </Table.Td>
+
+        <LocationCell latLng={latLng} style={cellStyle} />
+
+        <ElapsedCell event={event} style={lastCellStyle} />
+      </Table.Tr>
+
+      {isRowOpen && (
+        <Table.Tr style={{ opacity: rowOpacity }}>
+          <Table.Td colSpan={COLUMN_COUNT} p="md" style={{ backgroundColor: "var(--app-color-surface-high)" }}>
+            {/* Same card shell the triage queue uses (surface, border,
+                top accent bar colored by the decision) so an expanded
+                row reads as the same functionality, just in a
+                different layout — not a lighter variant. */}
+            <Box
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                backgroundColor: "var(--app-color-surface)",
+                border: "1px solid var(--app-color-border)",
+                borderRadius: "var(--mantine-radius-sm)",
+                padding: "var(--mantine-spacing-lg)",
+              }}
+            >
+              <Box
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  insetInline: 0,
+                  top: 0,
+                  height: "4px",
+                  backgroundColor:
+                    aerialStatus === "approved" || aerialStatus === "denied" ? evacColor : "var(--app-color-primary)",
+                }}
+              />
+
+              <Stack gap="lg">
+                <CasualtiesCard casualties={casualties} statBreakdown="ability" bare rowHover />
+                <Divider color="var(--app-color-border)" />
+                <AerialEvacDecisionFooter event={event} mission={mission} />
+              </Stack>
+            </Box>
+          </Table.Td>
+        </Table.Tr>
+      )}
+    </Fragment>
   );
 }
 
@@ -215,152 +403,19 @@ function EventTableSection({
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {rows.map(({ event, mission, casualties, aerialStatus }, index) => {
-            const isRowOpen = expandedIds.has(event.id);
-            const evacColor = AERIAL_EVAC_COLOR_VARS[aerialStatus] || "var(--app-color-text-muted)";
-            const latLng = toLatLng(event.location);
-            const sitCount = casualties.filter((casualty) => casualty["evac-ability"] === "sit").length;
-            const lieCount = casualties.filter((casualty) => casualty["evac-ability"] === "lie").length;
-            const rowOpacity = dimmed ? 0.7 : 1;
-
-            return (
-              <Fragment key={event.id}>
-                <Table.Tr
-                  className="app-fade-in"
-                  style={{ animationDelay: `${index * 30}ms`, opacity: rowOpacity }}
-                >
-                  <Table.Td>
-                    <ActionIcon
-                      aria-label={isRowOpen ? "הסתר פרטים" : "הצג פרטים"}
-                      title={isRowOpen ? "הסתר פרטים" : "הצג פרטים"}
-                      variant="subtle"
-                      onClick={() => onToggleRow(event.id)}
-                    >
-                      {isRowOpen ? (
-                        <IconChevronUp size={18} color="var(--app-color-primary)" />
-                      ) : (
-                        <IconChevronDown size={18} color="var(--app-color-primary)" />
-                      )}
-                    </ActionIcon>
-                  </Table.Td>
-
-                  <Table.Td fw={600}>{event.name || "אירוע ללא שם"}</Table.Td>
-
-                  <Table.Td>
-                    <Badge
-                      size="sm"
-                      variant="outline"
-                      styles={{
-                        root: {
-                          backgroundColor: "var(--app-color-surface-high)",
-                          borderColor: "var(--app-color-border)",
-                          color: "var(--app-color-text-muted)",
-                        },
-                      }}
-                    >
-                      {EVENT_TYPE_LABELS[event.type] || event.type}
-                    </Badge>
-                  </Table.Td>
-
-                  <Table.Td>
-                    <Badge
-                      size="sm"
-                      styles={{
-                        root: {
-                          backgroundColor: `color-mix(in srgb, ${EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)"} 16%, transparent)`,
-                          color: EVENT_STATUS_COLOR_VARS[event.status] || "var(--app-color-text-muted)",
-                        },
-                      }}
-                    >
-                      {EVENT_STATUS_LABELS[event.status] || event.status}
-                    </Badge>
-                  </Table.Td>
-
-                  <Table.Td>
-                    <Badge
-                      size="sm"
-                      leftSection={<IconHelicopter size={12} />}
-                      styles={{ root: { backgroundColor: `color-mix(in srgb, ${evacColor} 16%, transparent)`, color: evacColor } }}
-                    >
-                      {AERIAL_EVAC_LABELS[aerialStatus] || aerialStatus}
-                    </Badge>
-                  </Table.Td>
-
-                  <Table.Td>
-                    <Group gap={6} wrap="nowrap">
-                      <Badge
-                        size="sm"
-                        styles={{
-                          root: {
-                            backgroundColor: `color-mix(in srgb, ${EVAC_ABILITY_COLOR_VARS.sit} 16%, transparent)`,
-                            color: EVAC_ABILITY_COLOR_VARS.sit,
-                          },
-                        }}
-                      >
-                        {sitCount} {EVAC_ABILITY_LABELS.sit}
-                      </Badge>
-                      <Badge
-                        size="sm"
-                        styles={{
-                          root: {
-                            backgroundColor: `color-mix(in srgb, ${EVAC_ABILITY_COLOR_VARS.lie} 16%, transparent)`,
-                            color: EVAC_ABILITY_COLOR_VARS.lie,
-                          },
-                        }}
-                      >
-                        {lieCount} {EVAC_ABILITY_LABELS.lie}
-                      </Badge>
-                    </Group>
-                  </Table.Td>
-
-                  <LocationCell latLng={latLng} />
-
-                  <ElapsedCell event={event} />
-                </Table.Tr>
-
-                {isRowOpen && (
-                  <Table.Tr style={{ opacity: rowOpacity }}>
-                    <Table.Td colSpan={COLUMN_COUNT} p="md" style={{ backgroundColor: "var(--app-color-surface-high)" }}>
-                      {/* Same card shell the triage queue uses (surface, border,
-                          top accent bar colored by the decision) so an expanded
-                          row reads as the same functionality, just in a
-                          different layout — not a lighter variant. */}
-                      <Box
-                        style={{
-                          position: "relative",
-                          overflow: "hidden",
-                          backgroundColor: "var(--app-color-surface)",
-                          border: "1px solid var(--app-color-border)",
-                          borderRadius: "var(--mantine-radius-sm)",
-                          padding: "var(--mantine-spacing-lg)",
-                        }}
-                      >
-                        <Box
-                          aria-hidden="true"
-                          style={{
-                            position: "absolute",
-                            insetInline: 0,
-                            top: 0,
-                            height: "4px",
-                            backgroundColor:
-                              aerialStatus === "approved" || aerialStatus === "denied"
-                                ? evacColor
-                                : "var(--app-color-primary)",
-                          }}
-                        />
-
-                        <Stack gap="lg">
-                          <CasualtiesCard casualties={casualties} statBreakdown="ability" bare />
-                          <Divider color="var(--app-color-border)" />
-                          <AerialEvacDecisionFooter event={event} mission={mission} />
-                        </Stack>
-                      </Box>
-                    </Table.Td>
-                  </Table.Tr>
-                )}
-              </Fragment>
-            );
-          })}
+          {rows.map(({ event, mission, casualties, aerialStatus }, index) => (
+            <EventRow
+              key={event.id}
+              event={event}
+              mission={mission}
+              casualties={casualties}
+              aerialStatus={aerialStatus}
+              index={index}
+              dimmed={dimmed}
+              isRowOpen={expandedIds.has(event.id)}
+              onToggleRow={() => onToggleRow(event.id)}
+            />
+          ))}
 
           {rows.length === 0 && (
             <Table.Tr>

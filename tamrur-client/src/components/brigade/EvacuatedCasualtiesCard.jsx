@@ -10,6 +10,7 @@ import DashboardCard from "../dashboard/DashboardCard";
 import ColumnHeader from "../dashboard/ColumnHeader";
 import { URGENCY_LABELS, URGENCY_ORDER, urgencyBadgeColors, urgencyLabel } from "../../constants/casualtyStatus";
 import { compareValues, nextSortDirection, toggleSetValue } from "../../utils/tableFilterSort";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -26,6 +27,66 @@ const COLUMN_ACCESSORS = {
   "evac-priority": (casualty) => casualty["evac-priority"],
   evacuated_at: (casualty) => (casualty.evacuated_at ? new Date(casualty.evacuated_at).getTime() : null),
 };
+
+/**
+ * One evacuated-casualty row — hover is real state (`useHoverState`) rather
+ * than a `styles` "&:hover" key, since Mantine's `styles` prop merges into
+ * an inline `style` attribute where pseudo-selectors are never compiled
+ * into real CSS. Isolated in its own component so each row's hover state
+ * doesn't leak into its siblings, since hooks can't run inside the
+ * parent's `.map()` either way.
+ *
+ * The background lives on every `<Table.Td>`, not the `<Table.Tr>` — this
+ * table has `border-collapse: collapse` (the app's own table reset), and
+ * under that a `<tr>` isn't a real paintable box, so a radius set there
+ * squares off instead of clipping the row's background. Rounding just the
+ * outer two cells' outer corners (logical `border-*-*-radius`, so it's
+ * correct in this RTL layout without hardcoding a side) reads as one
+ * rounded row instead.
+ *
+ * @param {{ casualty: object }} props
+ * @returns {JSX.Element} The row.
+ */
+function EvacuatedCasualtyRow({ casualty }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+
+  const backgroundColor = isHovered ? "var(--app-effect-hover-background)" : "transparent";
+  const cellStyle = { backgroundColor, transition: "background-color 0.15s ease" };
+  const firstCellStyle = {
+    ...cellStyle,
+    borderStartStartRadius: "var(--mantine-radius-sm)",
+    borderEndStartRadius: "var(--mantine-radius-sm)",
+  };
+  const lastCellStyle = {
+    ...cellStyle,
+    borderStartEndRadius: "var(--mantine-radius-sm)",
+    borderEndEndRadius: "var(--mantine-radius-sm)",
+  };
+
+  return (
+    <Table.Tr className="app-fade-in" {...hoverHandlers}>
+      <Table.Td ff={MONO_FONT} style={firstCellStyle}>
+        {casualty["casualty-number"] ?? "—"}
+      </Table.Td>
+      <Table.Td style={cellStyle}>
+        <Badge
+          size="sm"
+          styles={{
+            root: { ...urgencyBadgeColors(casualty.urgency) },
+          }}
+        >
+          {urgencyLabel(casualty.urgency)}
+        </Badge>
+      </Table.Td>
+      <Table.Td ff={MONO_FONT} style={cellStyle}>
+        {casualty["evac-priority"] ?? "—"}
+      </Table.Td>
+      <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT} style={lastCellStyle}>
+        {casualty.evacuated_at ? timeFormatter.format(new Date(casualty.evacuated_at)) : "—"}
+      </Table.Td>
+    </Table.Tr>
+  );
+}
 
 /**
  * Renders a compact, read-only reference table of already-evacuated
@@ -157,23 +218,7 @@ const EvacuatedCasualtiesCard = ({ casualties }) => {
           </Table.Thead>
           <Table.Tbody>
             {visibleCasualties.map((casualty) => (
-              <Table.Tr key={casualty.id} className="app-fade-in">
-                <Table.Td ff={MONO_FONT}>{casualty["casualty-number"] ?? "—"}</Table.Td>
-                <Table.Td>
-                  <Badge
-                    size="sm"
-                    styles={{
-                      root: { ...urgencyBadgeColors(casualty.urgency) },
-                    }}
-                  >
-                    {urgencyLabel(casualty.urgency)}
-                  </Badge>
-                </Table.Td>
-                <Table.Td ff={MONO_FONT}>{casualty["evac-priority"] ?? "—"}</Table.Td>
-                <Table.Td c="var(--app-color-text-muted)" ff={MONO_FONT}>
-                  {casualty.evacuated_at ? timeFormatter.format(new Date(casualty.evacuated_at)) : "—"}
-                </Table.Td>
-              </Table.Tr>
+              <EvacuatedCasualtyRow key={casualty.id} casualty={casualty} />
             ))}
             {visibleCasualties.length === 0 && (
               <Table.Tr>

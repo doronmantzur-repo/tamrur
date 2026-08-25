@@ -17,6 +17,7 @@ import {
   urgencyBadgeColors,
   urgencyLabel,
 } from "../../constants/casualtyStatus";
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -31,6 +32,82 @@ function YesNo({ value }) {
 }
 
 /**
+ * One casualty row. Hover is opt-in (`rowHover`) — the triage queue asked
+ * for it, but this table is also reused, unmodified, on the airforce table/
+ * kanban expanded rows, the brigade single-event dashboard and the medic
+ * page, none of which asked for it. When on, it's real state
+ * (`useHoverState`) rather than a `styles` "&:hover" key, since Mantine's
+ * `styles` prop merges into an inline `style` attribute where pseudo-
+ * selectors are never compiled into real CSS — isolated in its own
+ * component so each row's hover state doesn't leak into its siblings, since
+ * hooks can't run inside the parent's `.map()` either way.
+ *
+ * The background lives on every `<Table.Td>`, not the `<Table.Tr>` — this
+ * table has `border-collapse: collapse` (the app's own table reset), and
+ * under that a `<tr>` isn't a real paintable box, so a radius set there
+ * squares off instead of clipping the row's background (see
+ * `EventQueueTable.jsx`'s own row for the same fix). Rounding just the
+ * outer two cells' outer corners (logical `border-*-*-radius`, so it's
+ * correct in this RTL layout without hardcoding a side) reads as one
+ * rounded row instead.
+ *
+ * @param {{ casualty: object, rowHover: boolean }} props
+ * @returns {JSX.Element} The casualty row.
+ */
+function CasualtyRow({ casualty, rowHover }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+
+  const backgroundColor = rowHover && isHovered ? "var(--app-effect-hover-background)" : "transparent";
+  const cellStyle = { backgroundColor, transition: "background-color 0.15s ease" };
+  const firstCellStyle = {
+    ...cellStyle,
+    borderStartStartRadius: "var(--mantine-radius-sm)",
+    borderEndStartRadius: "var(--mantine-radius-sm)",
+  };
+  const lastCellStyle = {
+    ...cellStyle,
+    borderStartEndRadius: "var(--mantine-radius-sm)",
+    borderEndEndRadius: "var(--mantine-radius-sm)",
+  };
+
+  return (
+    <Table.Tr {...(rowHover ? hoverHandlers : undefined)}>
+      <Table.Td style={firstCellStyle}>
+        <Badge
+          styles={{
+            root: {
+              ...urgencyBadgeColors(casualty.urgency),
+            },
+          }}
+        >
+          {urgencyLabel(casualty.urgency)}
+        </Badge>
+      </Table.Td>
+      <Table.Td style={cellStyle}>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>
+      <Table.Td ff='ui-monospace, "SF Mono", "Consolas", monospace' style={cellStyle}>
+        {casualty["evac-priority"] ?? "—"}
+      </Table.Td>
+      <Table.Td style={cellStyle}>
+        <YesNo value={casualty.escort} />
+      </Table.Td>
+      <Table.Td c="var(--app-color-text-muted)" style={cellStyle}>
+        {EVAC_DEST_LABELS[casualty["recommended-evac-dest"]] || casualty["recommended-evac-dest"] || "—"}
+      </Table.Td>
+      <Table.Td style={cellStyle}>
+        <YesNo value={casualty["evac-ready"]} />
+      </Table.Td>
+      <Table.Td
+        c="var(--app-color-text-muted)"
+        ff='ui-monospace, "SF Mono", "Consolas", monospace'
+        style={lastCellStyle}
+      >
+        {casualty.created_at ? timeFormatter.format(new Date(casualty.created_at)) : "—"}
+      </Table.Td>
+    </Table.Tr>
+  );
+}
+
+/**
  * Renders the selected event's casualties: a stat row plus a per-casualty
  * table. The stat row breaks down by urgency (default — every other page)
  * or by evacuation ability, i.e. lie/sit counts (`statBreakdown="ability"` —
@@ -39,12 +116,14 @@ function YesNo({ value }) {
  *
  * `bare` skips this card's own Paper/accent-bar shell (but keeps the "נפגעים"
  * title row), for nesting inside another card that already provides one —
- * see the triage queue's unified event card.
+ * see the triage queue's unified event card. `rowHover` turns on the
+ * per-row hover background — opt-in, since this card is shared across
+ * several pages and only the triage queue asked for it.
  *
- * @param {{ casualties: Array<object>, statBreakdown?: "urgency" | "ability", bare?: boolean }} props
+ * @param {{ casualties: Array<object>, statBreakdown?: "urgency" | "ability", bare?: boolean, rowHover?: boolean }} props
  * @returns {JSX.Element} The casualties card.
  */
-const CasualtiesCard = ({ casualties, statBreakdown = "urgency", bare = false }) => {
+const CasualtiesCard = ({ casualties, statBreakdown = "urgency", bare = false, rowHover = false }) => {
   const isAbilityBreakdown = statBreakdown === "ability";
   const statKeys = isAbilityBreakdown ? EVAC_ABILITY_ORDER : URGENCY_ORDER;
   const statLabels = isAbilityBreakdown ? EVAC_ABILITY_LABELS : URGENCY_LABELS;
@@ -118,35 +197,7 @@ const CasualtiesCard = ({ casualties, statBreakdown = "urgency", bare = false })
           </Table.Thead>
           <Table.Tbody>
             {casualties.map((casualty) => (
-              <Table.Tr key={casualty.id}>
-                <Table.Td>
-                  <Badge
-                    styles={{
-                      root: {
-                        ...urgencyBadgeColors(casualty.urgency),
-                      },
-                    }}
-                  >
-                    {urgencyLabel(casualty.urgency)}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>{EVAC_ABILITY_LABELS[casualty["evac-ability"]] || "—"}</Table.Td>
-                <Table.Td ff='ui-monospace, "SF Mono", "Consolas", monospace'>
-                  {casualty["evac-priority"] ?? "—"}
-                </Table.Td>
-                <Table.Td>
-                  <YesNo value={casualty.escort} />
-                </Table.Td>
-                <Table.Td c="var(--app-color-text-muted)">
-                  {EVAC_DEST_LABELS[casualty["recommended-evac-dest"]] || casualty["recommended-evac-dest"] || "—"}
-                </Table.Td>
-                <Table.Td>
-                  <YesNo value={casualty["evac-ready"]} />
-                </Table.Td>
-                <Table.Td c="var(--app-color-text-muted)" ff='ui-monospace, "SF Mono", "Consolas", monospace'>
-                  {casualty.created_at ? timeFormatter.format(new Date(casualty.created_at)) : "—"}
-                </Table.Td>
-              </Table.Tr>
+              <CasualtyRow key={casualty.id} casualty={casualty} rowHover={rowHover} />
             ))}
             {casualties.length === 0 && (
               <Table.Tr>

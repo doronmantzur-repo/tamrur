@@ -83,7 +83,7 @@ const TriageQueueRow = ({ event, mission, casualties, rank, isPending }) => {
         }
       >
         <Stack gap="lg">
-          <CasualtiesCard casualties={casualties} statBreakdown="ability" bare />
+          <CasualtiesCard casualties={casualties} statBreakdown="ability" bare rowHover />
 
           <Divider color="var(--app-color-border)" />
 
