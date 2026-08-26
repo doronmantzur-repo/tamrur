@@ -3,10 +3,11 @@ import { useEffect, useState } from "react";
 
 // External libraries
 import { Alert, Button, Group, Loader, Stack, Text } from "@mantine/core";
-import { IconAlertCircle, IconFolder, IconX } from "@tabler/icons-react";
+import { IconAlertCircle, IconX } from "@tabler/icons-react";
 
 // Internal application modules
 import DashboardCard from "../dashboard/DashboardCard";
+import Folder3DButton from "./Folder3DButton";
 import {
   clearSavedFolderHandle,
   ensurePermission,
@@ -27,48 +28,6 @@ const buttonStyles = {
     "&:hover": { backgroundColor: "var(--app-color-surface)" },
   },
 };
-
-/**
- * The primary "בחר תיקייה"/"שנה תיקייה" action — hover/press feedback is
- * real state (`useHoverState` + local `isPressed`), not the `&:hover` key
- * inside `buttonStyles` above (still used as-is by the reconnect button,
- * unchanged): that key never actually applied, since Mantine's `styles`
- * prop flattens straight into a plain inline `style` attribute in this app,
- * silently dropping any pseudo-selectors inside it.
- *
- * @param {{ folderHandle: FileSystemDirectoryHandle | null, onClick: () => void }} props
- * @returns {JSX.Element} The choose/alter-folder button.
- */
-function PickFolderButton({ folderHandle, onClick }) {
-  const [isHovered, hoverHandlers] = useHoverState();
-  const [isPressed, setIsPressed] = useState(false);
-
-  return (
-    <Button
-      size="xs"
-      leftSection={<IconFolder size={16} stroke={1.8} />}
-      onClick={onClick}
-      {...hoverHandlers}
-      onMouseLeave={() => {
-        hoverHandlers.onMouseLeave();
-        setIsPressed(false);
-      }}
-      onMouseDown={() => setIsPressed(true)}
-      onMouseUp={() => setIsPressed(false)}
-      styles={{
-        root: {
-          backgroundColor: isHovered ? "var(--app-color-surface)" : "var(--app-color-surface-high)",
-          color: "var(--app-color-text)",
-          border: "1px solid var(--app-color-border)",
-          transform: isPressed ? "scale(0.96)" : "scale(1)",
-          transition: "background-color 0.15s ease, transform 0.1s ease",
-        },
-      }}
-    >
-      {folderHandle ? "שנה תיקייה" : "בחר תיקייה"}
-    </Button>
-  );
-}
 
 /**
  * Clears the chosen folder — before this, once a folder was picked there was
@@ -207,7 +166,11 @@ const ReportsFolderCard = ({ folderHandle, onFolderChange, refreshSignal }) => {
     <DashboardCard title="תיקיית שמירת דוחות">
       <Stack gap="sm">
         <Group gap="sm" wrap="wrap" align="center">
-          <PickFolderButton folderHandle={folderHandle} onClick={handlePick} />
+          <Folder3DButton
+            size={48}
+            label={folderHandle ? "שנה תיקייה" : "בחר תיקייה"}
+            onClick={handlePick}
+          />
 
           {folderHandle && <ResetFolderButton onClick={handleReset} />}
 
