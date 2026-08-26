@@ -43,6 +43,21 @@ async function saveFolderHandle(handle) {
 }
 
 /**
+ * Forgets the persisted folder handle — without this, clearing the in-memory
+ * selection alone would still get silently re-adopted on the next page load
+ * (see `ReportsFolderCard`'s mount effect, which calls `getSavedFolderHandle`).
+ */
+export async function clearSavedFolderHandle() {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    tx.objectStore(STORE_NAME).delete(HANDLE_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/**
  * Opens the browser's directory picker (defaulting to Downloads) and
  * persists the chosen handle to IndexedDB for next time.
  */
