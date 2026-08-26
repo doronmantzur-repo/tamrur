@@ -43,8 +43,13 @@ const DEFAULT_ZOOM = 12;
 const EVENT_ICON = buildDivIcon({
   label: "!",
   background: "var(--app-color-error)",
-  size: 28,
+  // Deliberately larger than every other marker on this map (forces 24px,
+  // hospitals/other-locations/landing-pads 26px) — the event is the one
+  // thing this map is about, so it should read as clearly bigger, not just
+  // a couple px more.
+  size: 34,
   glow: true,
+  pulse: true,
 });
 
 /** Opens a marker's popup on hover (not just click) and closes it when the pointer leaves, so the same popup content shows on both interactions instead of a separate tooltip. */

@@ -12,22 +12,39 @@ import L from "leaflet";
  * since Leaflet renders div-icons as real DOM elements (unlike its SVG path
  * renderer, which needs resolved hex values).
  *
- * @param {{ label: string, background: string, size?: number, glow?: boolean }} options
+ * `pulse` adds two staggered expanding-and-fading rings (`.app-marker-pulse-ring`,
+ * see index.css) behind the circle, tinted to match `background` via a CSS
+ * custom property — a persistent "this one's different" cue for markers that
+ * need to stand out from the rest of the map at a glance, not just on hover.
+ * The rings are `pointer-events: none` so they never intercept clicks/hover
+ * meant for the marker itself (some callers bind a click handler to it).
+ *
+ * @param {{ label: string, background: string, size?: number, glow?: boolean, pulse?: boolean }} options
  * @returns {L.DivIcon}
  */
-export function buildDivIcon({ label, background, size = 26, glow = false }) {
+export function buildDivIcon({ label, background, size = 26, glow = false, pulse = false }) {
   const boxShadow = glow
     ? `0 0 0 2px var(--app-color-surface), 0 0 8px ${background}`
     : "0 0 0 2px var(--app-color-surface)";
 
-  return L.divIcon({
-    html: `<div style="
-      width:${size}px;height:${size}px;border-radius:50%;
+  const circle = `<div style="
+      position:relative;width:${size}px;height:${size}px;border-radius:50%;
       background:${background};box-shadow:${boxShadow};
       display:flex;align-items:center;justify-content:center;
       color:#fff;font-weight:700;font-size:${Math.round(size * 0.5)}px;
       font-family:ui-monospace, 'SF Mono', 'Consolas', monospace;
-    ">${label}</div>`,
+    ">${label}</div>`;
+
+  const html = pulse
+    ? `<div style="position:relative;width:${size}px;height:${size}px;">
+        <div class="app-marker-pulse-ring" style="--marker-color:${background};"></div>
+        <div class="app-marker-pulse-ring app-marker-pulse-ring-delayed" style="--marker-color:${background};"></div>
+        ${circle}
+      </div>`
+    : circle;
+
+  return L.divIcon({
+    html,
     className: "",
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
