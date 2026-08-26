@@ -146,6 +146,68 @@ function describeDeparturePoint(evac, locations) {
 }
 
 /**
+ * The row-actions column's edit/delete buttons — real `useHoverState` for
+ * the hover feedback, not Mantine's default `variant="subtle"` hover fill:
+ * with no `color` prop set (only `styles.root.color`), that default fill
+ * falls back to the theme's primary color regardless of the icon's own
+ * color, which is the gold background this was replacing. Each button now
+ * tints toward its own color instead — primary for edit, error for delete —
+ * matching `ResetFolderButton`'s same pattern. Isolated in their own
+ * components so hover state doesn't leak between rows — hooks can't run
+ * inside the parent's `.map()` either way.
+ *
+ * @param {{ onClick: () => void }} props
+ * @returns {JSX.Element} The edit-row button.
+ */
+function EditRowButton({ onClick }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+
+  return (
+    <ActionIcon
+      variant="subtle"
+      aria-label="ערוך שורה"
+      onClick={onClick}
+      {...hoverHandlers}
+      styles={{
+        root: {
+          color: "var(--app-color-primary)",
+          backgroundColor: isHovered ? "color-mix(in srgb, var(--app-color-primary) 14%, transparent)" : "transparent",
+          transition: "background-color 0.15s ease",
+        },
+      }}
+    >
+      <IconPencil size={18} stroke={1.8} />
+    </ActionIcon>
+  );
+}
+
+/**
+ * @param {{ onClick: () => void }} props
+ * @returns {JSX.Element} The delete-row button.
+ */
+function DeleteRowButton({ onClick }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+
+  return (
+    <ActionIcon
+      variant="subtle"
+      aria-label="מחק שורה"
+      onClick={onClick}
+      {...hoverHandlers}
+      styles={{
+        root: {
+          color: "var(--app-color-error)",
+          backgroundColor: isHovered ? "color-mix(in srgb, var(--app-color-error) 14%, transparent)" : "transparent",
+          transition: "background-color 0.15s ease",
+        },
+      }}
+    >
+      <IconTrash size={18} stroke={1.8} />
+    </ActionIcon>
+  );
+}
+
+/**
  * One evacuation row — hover is real state (`useHoverState`) rather than a
  * `styles` "&:hover" key, since Mantine's `styles` prop merges into an
  * inline `style` attribute where pseudo-selectors are never compiled into
@@ -343,22 +405,8 @@ function EvacuationRow({ evac, index, locations, aerialMissions, readOnly, onSta
       {!readOnly && (
         <Table.Td style={lastCellStyle}>
           <Group gap={4} wrap="nowrap">
-            <ActionIcon
-              variant="subtle"
-              aria-label="ערוך שורה"
-              onClick={onEdit}
-              styles={{ root: { color: "var(--app-color-primary)" } }}
-            >
-              <IconPencil size={18} stroke={1.8} />
-            </ActionIcon>
-            <ActionIcon
-              variant="subtle"
-              aria-label="מחק שורה"
-              onClick={onDelete}
-              styles={{ root: { color: "var(--app-color-error)" } }}
-            >
-              <IconTrash size={18} stroke={1.8} />
-            </ActionIcon>
+            <EditRowButton onClick={onEdit} />
+            <DeleteRowButton onClick={onDelete} />
           </Group>
         </Table.Td>
       )}
@@ -577,20 +625,7 @@ const EvacuationsTable = ({
       gap="sm"
       fullHeight
       headerExtra={
-        <Group gap="xs" wrap="wrap">
-          <Badge
-            variant="outline"
-            styles={{
-              root: {
-                backgroundColor: "var(--app-color-surface-high)",
-                borderColor: "var(--app-color-border)",
-                color: "var(--app-color-text-muted)",
-              },
-            }}
-          >
-            {visibleEvacuations.length} מתוך {normalizedEvacuations.length}
-          </Badge>
-
+        <Stack gap="xs" align="flex-end">
           <Badge
             leftSection={<IconTruck size={12} stroke={1.8} />}
             variant="outline"
@@ -609,57 +644,57 @@ const EvacuationsTable = ({
               withheld in read-only mode. Command watches the picture; it does
               not task forces. */}
           {!readOnly && (
-            <Button
-              leftSection={
-                AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) ? (
-                  <IconCheck size={16} stroke={1.8} />
-                ) : (
-                  <IconSend size={16} stroke={1.8} />
-                )
-              }
-              size="xs"
-              mih="2rem"
-              loading={isRequestingAerialEvac}
-              disabled={
-                isCompleted ||
-                AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) ||
-                isRequestingAerialEvac
-              }
-              onClick={handleRequestAerialEvacClick}
-              styles={{
-                root: {
-                  backgroundColor: "var(--app-color-primary)",
-                  color: "var(--app-color-primary-text)",
-                  "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
-                  ...interactiveScaleStyles,
-                },
-              }}
-            >
-              {AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus)
-                ? "פינוי אווירי התבקש"
-                : "בקש פינוי אווירי"}
-            </Button>
-          )}
+            <Group gap="xs" wrap="wrap">
+              <Button
+                leftSection={
+                  AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) ? (
+                    <IconCheck size={16} stroke={1.8} />
+                  ) : (
+                    <IconSend size={16} stroke={1.8} />
+                  )
+                }
+                size="xs"
+                mih="2rem"
+                loading={isRequestingAerialEvac}
+                disabled={
+                  isCompleted ||
+                  AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus) ||
+                  isRequestingAerialEvac
+                }
+                onClick={handleRequestAerialEvacClick}
+                styles={{
+                  root: {
+                    backgroundColor: "var(--app-color-primary)",
+                    color: "var(--app-color-primary-text)",
+                    "&:hover": { backgroundColor: "var(--app-color-primary-hover)" },
+                    ...interactiveScaleStyles,
+                  },
+                }}
+              >
+                {AERIAL_EVAC_REQUESTED_STATUSES.includes(aerialEvacStatus)
+                  ? "פינוי אווירי התבקש"
+                  : "בקש פינוי אווירי"}
+              </Button>
 
-          {!readOnly && (
-            <Button
-              leftSection={<IconCar size={16} stroke={1.8} />}
-              variant="outline"
-              size="xs"
-              mih="2rem"
-              onClick={handleRequestRideEvac}
-              styles={{
-                root: {
-                  borderColor: "var(--app-color-border)",
-                  color: "var(--app-color-text)",
-                  ...interactiveScaleStyles,
-                },
-              }}
-            >
-              בקש פינוי רכב
-            </Button>
+              <Button
+                leftSection={<IconCar size={16} stroke={1.8} />}
+                variant="outline"
+                size="xs"
+                mih="2rem"
+                onClick={handleRequestRideEvac}
+                styles={{
+                  root: {
+                    borderColor: "var(--app-color-border)",
+                    color: "var(--app-color-text)",
+                    ...interactiveScaleStyles,
+                  },
+                }}
+              >
+                בקש פינוי רכב
+              </Button>
+            </Group>
           )}
-        </Group>
+        </Stack>
       }
     >
       <Box style={{ flex: 1, minHeight: 0, overflow: "auto", scrollbarGutter: "stable" }}>

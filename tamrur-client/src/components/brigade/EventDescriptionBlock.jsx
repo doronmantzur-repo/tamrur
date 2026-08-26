@@ -6,6 +6,7 @@ import { ActionIcon, Group, Text, Tooltip } from "@mantine/core";
 import { IconCheck, IconPencil, IconX } from "@tabler/icons-react";
 
 // Internal application modules
+import { useHoverState } from "../../hooks/useHoverState";
 
 // Styles
 
@@ -18,6 +19,45 @@ import { IconCheck, IconPencil, IconX } from "@tabler/icons-react";
  * top bar down. Same value in both states keeps the row's height constant.
  */
 const DESCRIPTION_ROW_HEIGHT = "1.75rem";
+
+/**
+ * The pencil that opens the description editor — real `useHoverState` for
+ * the hover feedback, not Mantine's default `variant="subtle"` hover fill:
+ * with no `color` prop set (only `styles.root.color`), that default fill
+ * falls back to the theme's primary color regardless of the icon's own
+ * styled color, producing an unwanted gold background. Muted at rest (no
+ * inherent identity color, unlike e.g. a delete action), so the hover
+ * shift itself — muted to primary, with a light primary tint instead of a
+ * solid fill — is what signals "editable."
+ *
+ * @param {{ label: string, ariaLabel: string, onClick: () => void }} props
+ * @returns {JSX.Element} The edit-description button.
+ */
+function EditDescriptionButton({ label, ariaLabel, onClick }) {
+  const [isHovered, hoverHandlers] = useHoverState();
+
+  return (
+    <Tooltip label={label} withArrow>
+      <ActionIcon
+        variant="subtle"
+        aria-label={ariaLabel}
+        onClick={onClick}
+        {...hoverHandlers}
+        styles={{
+          root: {
+            height: DESCRIPTION_ROW_HEIGHT,
+            width: DESCRIPTION_ROW_HEIGHT,
+            color: isHovered ? "var(--app-color-primary)" : "var(--app-color-text-muted)",
+            backgroundColor: isHovered ? "color-mix(in srgb, var(--app-color-primary) 14%, transparent)" : "transparent",
+            transition: "background-color 0.15s ease, color 0.15s ease",
+          },
+        }}
+      >
+        <IconPencil size={14} stroke={1.8} />
+      </ActionIcon>
+    </Tooltip>
+  );
+}
 
 /**
  * Renders a client-only note about the selected event, edited via the
@@ -117,22 +157,11 @@ const EventDescriptionBlock = () => {
               {description}
             </Text>
           )}
-          <Tooltip label={description ? "ערוך תיאור אירוע" : "הוסף תיאור אירוע"} withArrow>
-            <ActionIcon
-              variant="subtle"
-              aria-label={description ? "ערוך תיאור" : "הוסף תיאור"}
-              onClick={startEditingDescription}
-              styles={{
-                root: {
-                  color: "var(--app-color-text-muted)",
-                  height: DESCRIPTION_ROW_HEIGHT,
-                  width: DESCRIPTION_ROW_HEIGHT,
-                },
-              }}
-            >
-              <IconPencil size={14} stroke={1.8} />
-            </ActionIcon>
-          </Tooltip>
+          <EditDescriptionButton
+            label={description ? "ערוך תיאור אירוע" : "הוסף תיאור אירוע"}
+            ariaLabel={description ? "ערוך תיאור" : "הוסף תיאור"}
+            onClick={startEditingDescription}
+          />
         </Group>
       )}
     </>
