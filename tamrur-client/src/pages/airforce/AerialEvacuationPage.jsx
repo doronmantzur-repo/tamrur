@@ -62,6 +62,16 @@ const AerialEvacuationPage = () => {
 
   useEffect(() => {
     dispatch(fetchEvents());
+
+    // New events can start needing aerial evac (or an existing one's
+    // aerial-evac field can flip to "needed") at any time, so keep polling
+    // instead of fetching once — same pattern every other page already uses
+    // (see EventQueueBoardPage.jsx, MedicPage.jsx).
+    const intervalId = setInterval(() => {
+      dispatch(fetchEvents());
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
   }, [dispatch]);
 
   useEffect(() => {
