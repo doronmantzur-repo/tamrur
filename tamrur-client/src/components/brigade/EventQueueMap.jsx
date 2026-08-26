@@ -45,6 +45,9 @@ const ALERT_TRIANGLE_PATHS = [
   "M12 16h.01",
 ];
 
+/** `buildEventIcon`'s cache — see that function's comment for why this exists. */
+const eventIconCache = new Map();
+
 /**
  * Builds an event marker: a warning-triangle glyph on a circle colored by
  * the event's status (same status-color mapping as the table's badges),
@@ -53,16 +56,40 @@ const ALERT_TRIANGLE_PATHS = [
  * toward the background instead of full opacity, so they visually recede
  * without needing a separate "dimmed" rendering path.
  *
+ * Cached by `color`+`dimmed` (the only two inputs that affect the output)
+ * rather than built fresh every call: this is invoked inline in a `.map()`
+ * on every render, and the page polls `fetchEvents()` every `POLL_INTERVAL_MS`
+ * — each poll replaces the Redux `events` array (and every event object in
+ * it) with new references even when nothing actually changed, which
+ * re-triggers this render regardless. A freshly-built icon is a new object
+ * every time, so react-leaflet's `Marker` sees a changed `icon` prop and
+ * calls Leaflet's `setIcon()`, which tears down and rebuilds the marker's
+ * DOM node — restarting the pulse animation from scratch on every poll
+ * instead of letting it run continuously. Returning the same cached object
+ * for the same status keeps the DOM node (and its animation) stable across
+ * re-renders.
+ *
  * @param {{ color: string, dimmed?: boolean }} options
  * @returns {L.DivIcon}
  */
 function buildEventIcon({ color, dimmed = false }) {
-  return buildDivIcon({
-    label: tablerSvg(ALERT_TRIANGLE_PATHS, 14),
+  const cacheKey = `${color}|${dimmed}`;
+  if (eventIconCache.has(cacheKey)) return eventIconCache.get(cacheKey);
+
+  const icon = buildDivIcon({
+    // 20px, not the original 14px — scaled up along with `size` below so the
+    // glyph doesn't look lost inside the now-larger circle.
+    label: tablerSvg(ALERT_TRIANGLE_PATHS, 20),
     background: dimmed ? `color-mix(in srgb, ${color} 55%, var(--app-color-background))` : color,
-    size: 22,
+    // Deliberately larger than every other marker on this map (forces 24px,
+    // hospitals/other-locations/landing-pads 26px) — was 22px before, the
+    // *smallest* marker here despite being the whole point of the map.
+    size: 34,
     glow: !dimmed,
+    pulse: !dimmed,
   });
+  eventIconCache.set(cacheKey, icon);
+  return icon;
 }
 
 /** Opens a marker's popup on hover (not just click) and closes it when the pointer leaves, matching EvacuationMap's convention so force markers behave the same on every map. */

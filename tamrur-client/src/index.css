@@ -286,6 +286,41 @@ table {
   animation: app-fade-in 0.25s ease-out both;
 }
 
+/* Expanding, fading "radar ping" ring for a map event marker (see
+   buildDivIcon's `pulse` option in leafletIcons.js) — not the currentColor-
+   based app-pulse-* classes above, since a marker's tint is dynamic (its own
+   fill color, passed via --marker-color) rather than tied to a fixed
+   ancestor text color. Two instances are rendered per marker, the second
+   using -delayed so the rings stagger instead of pulsing in lockstep. */
+.app-marker-pulse-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--marker-color, var(--app-color-error));
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0.8;
+  animation: app-marker-pulse-ring 2s ease-out infinite;
+  pointer-events: none;
+}
+
+.app-marker-pulse-ring-delayed {
+  animation-delay: 1s;
+}
+
+@keyframes app-marker-pulse-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.2);
+    opacity: 0;
+  }
+}
+
 /* The native date input's calendar icon is its own pseudo-element — it
    doesn't inherit the input's own `cursor` style, so DateNavBar's
    date-jump input needs this set explicitly for the icon to read as
