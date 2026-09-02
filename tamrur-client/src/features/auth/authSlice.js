@@ -41,7 +41,7 @@ export const registerUser = createAsyncThunk(
  */
 export const loginUser = createAsyncThunk(
   "auth/login",
-  async ({ email, password, rememberMe = false }, { rejectWithValue }) => {
+  async ({ email, password }, { rejectWithValue }) => {
     try {
       const response = await TamrurAPI.post("/auth/login", {
         email,
