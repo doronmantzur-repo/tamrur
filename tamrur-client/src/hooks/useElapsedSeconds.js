@@ -27,11 +27,16 @@ function secondsBetween(startIso, endIso) {
  * @returns {number} Elapsed seconds.
  */
 export function useElapsedSeconds(startIso, endIso) {
+  const [key, setKey] = useState(`${startIso}|${endIso}`);
   const [elapsed, setElapsed] = useState(() => secondsBetween(startIso, endIso));
 
-  useEffect(() => {
+  const nextKey = `${startIso}|${endIso}`;
+  if (nextKey !== key) {
+    setKey(nextKey);
     setElapsed(secondsBetween(startIso, endIso));
+  }
 
+  useEffect(() => {
     if (!startIso || endIso) return undefined;
 
     const intervalId = setInterval(() => {
